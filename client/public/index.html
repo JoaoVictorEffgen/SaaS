@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#3B82F6" />
+    <meta
+      name="description"
+      content="Sistema de agendamento online para profissionais e empresas. Gerencie sua agenda de forma inteligente e eficiente."
+    />
+    <meta name="keywords" content="agendamento, online, agenda, consultas, profissionais, empresas, SaaS" />
+    <meta name="author" content="AgendaPro" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://agendapro.com/" />
+    <meta property="og:title" content="AgendaPro - Sistema de Agendamento Online" />
+    <meta property="og:description" content="Transforme sua agenda em uma ferramenta poderosa. Deixe seus clientes agendarem online 24/7." />
+    <meta property="og:image" content="%PUBLIC_URL%/og-image.jpg" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://agendapro.com/" />
+    <meta property="twitter:title" content="AgendaPro - Sistema de Agendamento Online" />
+    <meta property="twitter:description" content="Transforme sua agenda em uma ferramenta poderosa. Deixe seus clientes agendarem online 24/7." />
+    <meta property="twitter:image" content="%PUBLIC_URL%/og-image.jpg" />
+
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
+    <!-- Preconnect para performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    
+    <title>AgendaPro - Sistema de Agendamento Online</title>
+  </head>
+  <body>
+    <noscript>Você precisa habilitar JavaScript para executar esta aplicação.</noscript>
+    <div id="root"></div>
+    
+    <!-- Loading inicial -->
+    <div id="loading" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <h2 class="text-xl font-semibold text-gray-700">Carregando AgendaPro...</h2>
+        <p class="text-gray-500 mt-2">Preparando sua experiência</p>
+      </div>
+    </div>
+
+    <script>
+      // Remover loading quando a aplicação carregar
+      window.addEventListener('load', function() {
+        const loading = document.getElementById('loading');
+        if (loading) {
+          loading.style.opacity = '0';
+          setTimeout(() => {
+            loading.style.display = 'none';
+          }, 300);
+        }
+      });
+    </script>
+  </body>
+</html> 
