@@ -14,7 +14,8 @@ class LocalStorageService {
           email: 'admin@agendapro.com',
           senha: 'admin123', // Em produção, seria hash
           plano: 'business',
-          empresa: 'AgendaPro'
+          empresa: 'AgendaPro',
+          especializacao: 'Tecnologia'
         },
         {
           id: '2',
@@ -22,7 +23,8 @@ class LocalStorageService {
           email: 'joao@exemplo.com',
           senha: '123456',
           plano: 'free',
-          empresa: 'Consultoria Silva'
+          empresa: 'Consultoria Silva',
+          especializacao: 'Consultoria'
         }
       ];
       localStorage.setItem('users', JSON.stringify(defaultUsers));

@@ -38,6 +38,10 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(100),
     allowNull: true
   },
+  especializacao: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
   cnpj: {
     type: DataTypes.STRING(18),
     allowNull: true

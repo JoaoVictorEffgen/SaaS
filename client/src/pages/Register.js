@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
-import { Eye, EyeOff, Mail, Lock, User, Building, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Building, Briefcase, ArrowLeft } from 'lucide-react';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -9,7 +9,8 @@ const Register = () => {
     email: '',
     senha: '',
     confirmarSenha: '',
-    empresa: ''
+    empresa: '',
+    especializacao: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -74,7 +75,8 @@ const Register = () => {
         nome: formData.nome,
         email: formData.email,
         senha: formData.senha,
-        empresa: formData.empresa
+        empresa: formData.empresa,
+        especializacao: formData.especializacao
       });
       
       if (result.success) {
@@ -180,6 +182,27 @@ const Register = () => {
                   onChange={handleChange}
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Nome da sua empresa"
+                />
+              </div>
+            </div>
+
+            {/* Especialização */}
+            <div>
+              <label htmlFor="especializacao" className="block text-sm font-medium text-gray-700 mb-2">
+                Especialização da empresa (opcional)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Briefcase className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="especializacao"
+                  name="especializacao"
+                  type="text"
+                  value={formData.especializacao}
+                  onChange={handleChange}
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Ex: Consultoria, Tecnologia, Saúde, etc."
                 />
               </div>
             </div>

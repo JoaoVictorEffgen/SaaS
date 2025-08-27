@@ -29,6 +29,11 @@ const validateRegister = [
     .trim()
     .isLength({ max: 100 })
     .withMessage('Nome da empresa deve ter no máximo 100 caracteres'),
+  body('especializacao')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Especialização deve ter no máximo 100 caracteres'),
   body('cnpj')
     .optional()
     .matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/)
@@ -66,7 +71,7 @@ router.post('/register', validateRegister, async (req, res) => {
       });
     }
 
-    const { nome, email, senha, telefone, empresa, cnpj, endereco } = req.body;
+    const { nome, email, senha, telefone, empresa, especializacao, cnpj, endereco } = req.body;
 
     // Verificar se e-mail já existe
     const existingUser = await User.findByEmail(email);
@@ -84,6 +89,7 @@ router.post('/register', validateRegister, async (req, res) => {
       senha,
       telefone,
       empresa,
+      especializacao,
       cnpj,
       endereco,
       plano: 'free'
