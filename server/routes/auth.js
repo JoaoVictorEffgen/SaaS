@@ -22,8 +22,8 @@ const validateRegister = [
     .withMessage('Senha deve ter pelo menos 6 caracteres'),
   body('telefone')
     .optional()
-    .isMobilePhone('pt-BR')
-    .withMessage('Telefone inválido'),
+    .matches(/^\(?[1-9]{2}\)? ?(?:[2-8]|9[1-9])[0-9]{3}\-?[0-9]{4}$/)
+    .withMessage('Telefone inválido. Use apenas números, parênteses, hífen e espaços'),
   body('empresa')
     .optional()
     .trim()
@@ -36,7 +36,42 @@ const validateRegister = [
     .withMessage('Especialização deve ter no máximo 100 caracteres'),
   body('cnpj')
     .optional()
-    .matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/)
+    .custom((value) => {
+      if (!value) return true; // CNPJ é opcional
+      
+      // Remove caracteres não numéricos
+      const cnpjClean = value.replace(/[^\d]/g, '');
+      
+      // Verifica se tem 14 dígitos
+      if (cnpjClean.length !== 14) throw new Error('CNPJ deve ter 14 dígitos');
+      
+      // Verifica se não são todos iguais
+      if (/^(\d)\1{13}$/.test(cnpjClean)) throw new Error('CNPJ inválido');
+      
+      // Validação do primeiro dígito verificador
+      let sum = 0;
+      let weight = 5;
+      for (let i = 0; i < 12; i++) {
+        sum += parseInt(cnpjClean.charAt(i)) * weight;
+        weight = weight === 2 ? 9 : weight - 1;
+      }
+      let digit = 11 - (sum % 11);
+      if (digit > 9) digit = 0;
+      if (parseInt(cnpjClean.charAt(12)) !== digit) throw new Error('CNPJ inválido');
+      
+      // Validação do segundo dígito verificador
+      sum = 0;
+      weight = 6;
+      for (let i = 0; i < 13; i++) {
+        sum += parseInt(cnpjClean.charAt(i)) * weight;
+        weight = weight === 2 ? 9 : weight - 1;
+      }
+      digit = 11 - (sum % 11);
+      if (digit > 9) digit = 0;
+      if (parseInt(cnpjClean.charAt(13)) !== digit) throw new Error('CNPJ inválido');
+      
+      return true;
+    })
     .withMessage('CNPJ inválido')
 ];
 

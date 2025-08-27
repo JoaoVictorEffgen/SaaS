@@ -8,10 +8,12 @@ const PublicAgenda = () => {
   const [selectedAgenda, setSelectedAgenda] = useState(null);
   const [showQuickBooking, setShowQuickBooking] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
+  const [errors, setErrors] = useState({});
   
   const [quickBooking, setQuickBooking] = useState({
     nome: '',
     email: '',
+    telefone: '',
     data: '',
     hora: ''
   });
@@ -22,6 +24,28 @@ const PublicAgenda = () => {
     senha: '',
     confirmarSenha: ''
   });
+
+  // Função para validar data não retroativa
+  const validateFutureDate = (date) => {
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      setErrors(prev => ({
+        ...prev,
+        data: 'Data não pode ser no passado'
+      }));
+      return false;
+    }
+    
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.data;
+      return newErrors;
+    });
+    return true;
+  };
 
   useEffect(() => {
     // Simular busca de dados do usuário e agendas
@@ -49,6 +73,12 @@ const PublicAgenda = () => {
 
   const handleQuickBooking = (e) => {
     e.preventDefault();
+    
+    // Validar data
+    if (quickBooking.data && !validateFutureDate(quickBooking.data)) {
+      return;
+    }
+    
     if (!quickBooking.nome || !quickBooking.email || !quickBooking.data || !quickBooking.hora) {
       alert('Preencha todos os campos!');
       return;
@@ -243,16 +273,37 @@ const PublicAgenda = () => {
                       required
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Telefone (opcional)</label>
+                    <input
+                      type="tel"
+                      value={quickBooking.telefone}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^\d]/g, '');
+                        setQuickBooking({...quickBooking, telefone: value});
+                      }}
+                      className="w-full p-2 border rounded"
+                      placeholder="Apenas números (11987654321)"
+                      maxLength="11"
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Data</label>
                       <input
                         type="date"
                         value={quickBooking.data}
-                        onChange={(e) => setQuickBooking({...quickBooking, data: e.target.value})}
-                        className="w-full p-2 border rounded"
+                        onChange={(e) => {
+                          setQuickBooking({...quickBooking, data: e.target.value});
+                          if (e.target.value) {
+                            validateFutureDate(e.target.value);
+                          }
+                        }}
+                        min={new Date().toISOString().split('T')[0]}
+                        className={`w-full p-2 border rounded ${errors.data ? 'border-red-500' : ''}`}
                         required
                       />
+                                             {errors.data && <p className="text-red-500 text-xs mt-1">{errors.data}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Hora</label>

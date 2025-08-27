@@ -263,6 +263,93 @@ export const utils = {
     return re.test(phone);
   },
   
+  // Validar CNPJ
+  validateCNPJ: (cnpj) => {
+    // Remove caracteres não numéricos
+    const cnpjClean = cnpj.replace(/[^\d]/g, '');
+    
+    // Verifica se tem 14 dígitos
+    if (cnpjClean.length !== 14) return false;
+    
+    // Verifica se não são todos iguais
+    if (/^(\d)\1{13}$/.test(cnpjClean)) return false;
+    
+    // Validação do primeiro dígito verificador
+    let sum = 0;
+    let weight = 5;
+    for (let i = 0; i < 12; i++) {
+      sum += parseInt(cnpjClean.charAt(i)) * weight;
+      weight = weight === 2 ? 9 : weight - 1;
+    }
+    let digit = 11 - (sum % 11);
+    if (digit > 9) digit = 0;
+    if (parseInt(cnpjClean.charAt(12)) !== digit) return false;
+    
+    // Validação do segundo dígito verificador
+    sum = 0;
+    weight = 6;
+    for (let i = 0; i < 13; i++) {
+      sum += parseInt(cnpjClean.charAt(i)) * weight;
+      weight = weight === 2 ? 9 : weight - 1;
+    }
+    digit = 11 - (sum % 11);
+    if (digit > 9) digit = 0;
+    if (parseInt(cnpjClean.charAt(13)) !== digit) return false;
+    
+    return true;
+  },
+  
+  // Validar CPF
+  validateCPF: (cpf) => {
+    // Remove caracteres não numéricos
+    const cpfClean = cpf.replace(/[^\d]/g, '');
+    
+    // Verifica se tem 11 dígitos
+    if (cpfClean.length !== 11) return false;
+    
+    // Verifica se não são todos iguais
+    if (/^(\d)\1{10}$/.test(cpfClean)) return false;
+    
+    // Validação do primeiro dígito verificador
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      sum += parseInt(cpfClean.charAt(i)) * (10 - i);
+    }
+    let digit = 11 - (sum % 11);
+    if (digit > 9) digit = 0;
+    if (parseInt(cpfClean.charAt(9)) !== digit) return false;
+    
+    // Validação do segundo dígito verificador
+    sum = 0;
+    for (let i = 0; i < 10; i++) {
+      sum += parseInt(cpfClean.charAt(i)) * (11 - i);
+    }
+    digit = 11 - (sum % 11);
+    if (digit > 9) digit = 0;
+    if (parseInt(cpfClean.charAt(10)) !== digit) return false;
+    
+    return true;
+  },
+  
+  // Validar se data não é retroativa
+  validateFutureDate: (date) => {
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Remove horas para comparar apenas a data
+    
+    return selectedDate >= today;
+  },
+  
+  // Formatar telefone (apenas números)
+  formatPhone: (phone) => {
+    return phone.replace(/[^\d]/g, '');
+  },
+  
+  // Formatar CNPJ/CPF (apenas números)
+  formatDocument: (document) => {
+    return document.replace(/[^\d]/g, '');
+  },
+  
   // Gerar ID único
   generateId: () => {
     return Math.random().toString(36).substr(2, 9);

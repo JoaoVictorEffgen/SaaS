@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
-import { Eye, EyeOff, Mail, Lock, User, Building, Briefcase, ArrowLeft } from 'lucide-react';
+import { useValidation } from '../hooks/useValidation';
+import { Eye, EyeOff, Mail, Lock, User, Building, Briefcase, Phone, ArrowLeft } from 'lucide-react';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -10,27 +11,38 @@ const Register = () => {
     senha: '',
     confirmarSenha: '',
     empresa: '',
-    especializacao: ''
+    especializacao: '',
+    telefone: '',
+    cnpj: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  
+  const { errors, validatePhoneInput, validateDocumentInput, addError, clearError } = useValidation();
   
   const { register } = useLocalAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+    let processedValue = value;
+
+    // Aplicar validações específicas
+    if (name === 'telefone') {
+      processedValue = validatePhoneInput(value);
+    } else if (name === 'cnpj') {
+      processedValue = validateDocumentInput(value);
+    }
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: processedValue
     });
+
     // Limpar erro do campo quando usuário digita
-    if (errors[e.target.name]) {
-      setErrors({
-        ...errors,
-        [e.target.name]: ''
-      });
+    if (errors[name]) {
+      clearError(name);
     }
   };
 
@@ -76,7 +88,9 @@ const Register = () => {
         email: formData.email,
         senha: formData.senha,
         empresa: formData.empresa,
-        especializacao: formData.especializacao
+        especializacao: formData.especializacao,
+        telefone: formData.telefone,
+        cnpj: formData.cnpj
       });
       
       if (result.success) {
@@ -205,6 +219,60 @@ const Register = () => {
                   placeholder="Ex: Consultoria, Tecnologia, Saúde, etc."
                 />
               </div>
+            </div>
+
+            {/* Telefone */}
+            <div>
+              <label htmlFor="telefone" className="block text-sm font-medium text-gray-700 mb-2">
+                Telefone (opcional)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="telefone"
+                  name="telefone"
+                  type="tel"
+                  value={formData.telefone}
+                  onChange={handleChange}
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.telefone ? 'border-red-300' : 'border-gray-300'
+                  }`}
+                  placeholder="Apenas números (11987654321)"
+                  maxLength="11"
+                />
+              </div>
+              {errors.telefone && (
+                <p className="mt-1 text-sm text-red-600">{errors.telefone}</p>
+              )}
+            </div>
+
+            {/* CNPJ */}
+            <div>
+              <label htmlFor="cnpj" className="block text-sm font-medium text-gray-700 mb-2">
+                CNPJ (opcional)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Building className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="cnpj"
+                  name="cnpj"
+                  type="text"
+                  value={formData.cnpj}
+                  onChange={handleChange}
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.cnpj ? 'border-red-300' : 'border-gray-300'
+                  }`}
+                  placeholder="Apenas números (12345678000123)"
+                  maxLength="14"
+                />
+              </div>
+              {errors.cnpj && (
+                <p className="mt-1 text-sm text-red-600">{errors.cnpj}</p>
+              )}
             </div>
 
             {/* Senha */}
