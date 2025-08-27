@@ -354,6 +354,66 @@ export const utils = {
   generateId: () => {
     return Math.random().toString(36).substr(2, 9);
   },
+
+  // Verificar se é dia de trabalho
+  isWorkingDay: (date, diasTrabalho) => {
+    const dayOfWeek = new Date(date).getDay(); // 0 = Domingo, 1 = Segunda, etc.
+    return diasTrabalho.includes(dayOfWeek);
+  },
+
+  // Gerar horários disponíveis para uma data
+  generateAvailableSlots: (date, horarioInicio, horarioFim, duracao, intervalos) => {
+    const slots = [];
+    const startTime = new Date(`${date}T${horarioInicio}`);
+    const endTime = new Date(`${date}T${horarioFim}`);
+    
+    let currentTime = new Date(startTime);
+    
+    while (currentTime < endTime) {
+      const slotStart = new Date(currentTime);
+      const slotEnd = new Date(currentTime.getTime() + duracao * 60000);
+      
+      if (slotEnd <= endTime) {
+        slots.push({
+          inicio: slotStart.toTimeString().slice(0, 5),
+          fim: slotEnd.toTimeString().slice(0, 5),
+          duracao: duracao
+        });
+      }
+      
+      currentTime = new Date(currentTime.getTime() + (duracao + intervalos) * 60000);
+    }
+    
+    return slots;
+  },
+
+  // Verificar conflitos de horário
+  hasTimeConflicts: (newStart, newEnd, existingAppointments) => {
+    const newStartTime = new Date(`2000-01-01T${newStart}`);
+    const newEndTime = new Date(`2000-01-01T${newEnd}`);
+    
+    return existingAppointments.some(appointment => {
+      if (appointment.status === 'cancelado') return false;
+      
+      const existingStart = new Date(`2000-01-01T${appointment.hora_inicio}`);
+      const existingEnd = new Date(`2000-01-01T${appointment.hora_fim}`);
+      
+      // Verificar sobreposição
+      return (newStartTime < existingEnd && newEndTime > existingStart);
+    });
+  },
+
+  // Filtrar horários disponíveis removendo conflitos
+  filterAvailableSlots: (slots, existingAppointments) => {
+    return slots.filter(slot => {
+      return !utils.hasTimeConflicts(slot.inicio, slot.fim, existingAppointments);
+    });
+  },
+
+  // Formatar horário para exibição
+  formatTimeSlot: (inicio, fim) => {
+    return `${inicio} - ${fim}`;
+  }
 };
 
 export default api; 
