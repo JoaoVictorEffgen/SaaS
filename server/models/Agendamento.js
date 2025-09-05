@@ -15,6 +15,22 @@ const Agendamento = sequelize.define('Agendamento', {
     type: DataTypes.UUID,
     allowNull: false
   },
+  funcionario_id: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: 'funcionarios',
+      key: 'id'
+    }
+  },
+  cliente_id: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: 'usuarios',
+      key: 'id'
+    }
+  },
   cliente_nome: {
     type: DataTypes.STRING(100),
     allowNull: false
@@ -129,6 +145,41 @@ const Agendamento = sequelize.define('Agendamento', {
     },
     set(value) {
       this.setDataValue('metadata', JSON.stringify(value));
+    }
+  },
+  agendamento_recorrente: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  recorrencia_tipo: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: {
+      isIn: [['semanal', 'mensal']]
+    }
+  },
+  recorrencia_fim: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  lista_espera: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  lista_espera_posicao: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  notificacoes_enviadas: {
+    type: DataTypes.TEXT, // JSON como string para SQLite
+    allowNull: true,
+    defaultValue: '{}',
+    get() {
+      const value = this.getDataValue('notificacoes_enviadas');
+      return value ? JSON.parse(value) : {};
+    },
+    set(value) {
+      this.setDataValue('notificacoes_enviadas', JSON.stringify(value));
     }
   }
 }, {

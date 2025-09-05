@@ -63,6 +63,28 @@
           }, 300);
         }
       });
+
+      // Registrar Service Worker para PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+              console.log('ServiceWorker registrado com sucesso:', registration.scope);
+            })
+            .catch(function(error) {
+              console.log('Falha ao registrar ServiceWorker:', error);
+            });
+        });
+      }
+
+      // Solicitar permissão para notificações
+      if ('Notification' in window && 'serviceWorker' in navigator) {
+        Notification.requestPermission().then(function(permission) {
+          if (permission === 'granted') {
+            console.log('Permissão para notificações concedida');
+          }
+        });
+      }
     </script>
   </body>
 </html> 

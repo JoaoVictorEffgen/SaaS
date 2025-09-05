@@ -40,6 +40,21 @@ const User = sequelize.define('User', {
   },
   especializacao: {
     type: DataTypes.STRING(100),
+    allowNull: false,
+    validate: {
+      notEmpty: true
+    }
+  },
+  descricao_servico: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  logo_url: {
+    type: DataTypes.STRING(500),
+    allowNull: true
+  },
+  whatsapp_contato: {
+    type: DataTypes.STRING(20),
     allowNull: true
   },
   cnpj: {

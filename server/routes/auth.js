@@ -30,10 +30,24 @@ const validateRegister = [
     .isLength({ max: 100 })
     .withMessage('Nome da empresa deve ter no máximo 100 caracteres'),
   body('especializacao')
-    .optional()
     .trim()
+    .notEmpty()
+    .withMessage('Especialização é obrigatória')
     .isLength({ max: 100 })
     .withMessage('Especialização deve ter no máximo 100 caracteres'),
+  body('descricao_servico')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Descrição do serviço deve ter no máximo 1000 caracteres'),
+  body('whatsapp_contato')
+    .optional()
+    .matches(/^\(?[1-9]{2}\)? ?(?:[2-8]|9[1-9])[0-9]{3}\-?[0-9]{4}$/)
+    .withMessage('WhatsApp inválido. Use apenas números, parênteses, hífen e espaços'),
+  body('logo_url')
+    .optional()
+    .isURL()
+    .withMessage('URL do logo inválida'),
   body('cnpj')
     .optional()
     .custom((value) => {
@@ -106,7 +120,7 @@ router.post('/register', validateRegister, async (req, res) => {
       });
     }
 
-    const { nome, email, senha, telefone, empresa, especializacao, cnpj, endereco } = req.body;
+    const { nome, email, senha, telefone, empresa, especializacao, descricao_servico, cnpj, endereco, whatsapp_contato, logo_url } = req.body;
 
     // Verificar se e-mail já existe
     const existingUser = await User.findByEmail(email);
@@ -125,8 +139,11 @@ router.post('/register', validateRegister, async (req, res) => {
       telefone,
       empresa,
       especializacao,
+      descricao_servico,
       cnpj,
       endereco,
+      whatsapp_contato,
+      logo_url,
       plano: 'free'
     });
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
 import { useValidation } from '../hooks/useValidation';
+import ImageUpload from '../components/ImageUpload';
 import { Eye, EyeOff, Mail, Lock, User, Building, Briefcase, Phone, ArrowLeft } from 'lucide-react';
 
 const Register = () => {
@@ -12,12 +13,19 @@ const Register = () => {
     confirmarSenha: '',
     empresa: '',
     especializacao: '',
+    descricao_servico: '',
     telefone: '',
-    cnpj: ''
+    cnpj: '',
+    whatsapp_contato: '',
+    logo_url: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogoChange = (url) => {
+    setFormData(prev => ({ ...prev, logo_url: url }));
+  };
   
   const { errors, validatePhoneInput, validateDocumentInput, addError, clearError } = useValidation();
   
@@ -29,7 +37,7 @@ const Register = () => {
     let processedValue = value;
 
     // Aplicar validações específicas
-    if (name === 'telefone') {
+    if (name === 'telefone' || name === 'whatsapp_contato') {
       processedValue = validatePhoneInput(value);
     } else if (name === 'cnpj') {
       processedValue = validateDocumentInput(value);
@@ -59,6 +67,10 @@ const Register = () => {
       newErrors.email = 'E-mail inválido';
     }
 
+    if (!formData.especializacao.trim()) {
+      newErrors.especializacao = 'Especialização é obrigatória';
+    }
+
     if (!formData.senha) {
       newErrors.senha = 'Senha é obrigatória';
     } else if (formData.senha.length < 6) {
@@ -69,7 +81,10 @@ const Register = () => {
       newErrors.confirmarSenha = 'Senhas não coincidem';
     }
 
-    setErrors(newErrors);
+    // Usar addError para cada erro encontrado
+    Object.keys(newErrors).forEach(key => {
+      addError(key, newErrors[key]);
+    });
     return Object.keys(newErrors).length === 0;
   };
 
@@ -89,8 +104,11 @@ const Register = () => {
         senha: formData.senha,
         empresa: formData.empresa,
         especializacao: formData.especializacao,
+        descricao_servico: formData.descricao_servico,
         telefone: formData.telefone,
-        cnpj: formData.cnpj
+        cnpj: formData.cnpj,
+        whatsapp_contato: formData.whatsapp_contato,
+        logo_url: formData.logo_url
       });
       
       if (result.success) {
@@ -203,7 +221,7 @@ const Register = () => {
             {/* Especialização */}
             <div>
               <label htmlFor="especializacao" className="block text-sm font-medium text-gray-700 mb-2">
-                Especialização da empresa (opcional)
+                Especialização da empresa *
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -213,12 +231,47 @@ const Register = () => {
                   id="especializacao"
                   name="especializacao"
                   type="text"
+                  required
                   value={formData.especializacao}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.especializacao ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   placeholder="Ex: Consultoria, Tecnologia, Saúde, etc."
                 />
               </div>
+              {errors.especializacao && (
+                <p className="mt-1 text-sm text-red-600">{errors.especializacao}</p>
+              )}
+            </div>
+
+            {/* Descrição do Serviço */}
+            <div>
+              <label htmlFor="descricao_servico" className="block text-sm font-medium text-gray-700 mb-2">
+                Descrição do Serviço (OBS)
+              </label>
+              <textarea
+                id="descricao_servico"
+                name="descricao_servico"
+                rows={3}
+                value={formData.descricao_servico}
+                onChange={handleChange}
+                className="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Descreva os serviços que sua empresa oferece..."
+              />
+            </div>
+
+            {/* Logo da Empresa */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Logo da Empresa (opcional)
+              </label>
+              <ImageUpload
+                value={formData.logo_url}
+                onChange={handleLogoChange}
+                placeholder="Faça upload do logo da sua empresa"
+                maxSize={2 * 1024 * 1024} // 2MB
+              />
             </div>
 
             {/* Telefone */}
@@ -273,6 +326,28 @@ const Register = () => {
               {errors.cnpj && (
                 <p className="mt-1 text-sm text-red-600">{errors.cnpj}</p>
               )}
+            </div>
+
+            {/* WhatsApp */}
+            <div>
+              <label htmlFor="whatsapp_contato" className="block text-sm font-medium text-gray-700 mb-2">
+                WhatsApp para contato (opcional)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="whatsapp_contato"
+                  name="whatsapp_contato"
+                  type="tel"
+                  value={formData.whatsapp_contato}
+                  onChange={handleChange}
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Apenas números (11987654321)"
+                  maxLength="11"
+                />
+              </div>
             </div>
 
             {/* Senha */}

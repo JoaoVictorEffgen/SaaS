@@ -14,7 +14,11 @@ import {
   Trash2,
   TrendingUp,
   DollarSign,
-  MessageCircle
+  MessageCircle,
+  Briefcase,
+  UserPlus,
+  Image,
+  Bell
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -137,6 +141,64 @@ const Dashboard = () => {
                 <p className="text-2xl font-semibold text-green-600 capitalize">{subscription?.status}</p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mt-8">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Ações Rápidas</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button 
+              onClick={() => navigate('/servicos')}
+              className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+            >
+              <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                <Briefcase className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-medium text-gray-900">Serviços</p>
+                <p className="text-xs text-gray-500">Gerenciar serviços</p>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => navigate('/funcionarios')}
+              className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+            >
+              <div className="p-2 bg-green-100 rounded-lg mr-3">
+                <UserPlus className="h-5 w-5 text-green-600" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-medium text-gray-900">Funcionários</p>
+                <p className="text-xs text-gray-500">Gerenciar equipe</p>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => navigate('/configuracoes')}
+              className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+            >
+              <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                <Settings className="h-5 w-5 text-purple-600" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-medium text-gray-900">Configurações</p>
+                <p className="text-xs text-gray-500">Horários e preferências</p>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => navigate('/notificacoes')}
+              className="flex items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+            >
+              <div className="p-2 bg-yellow-100 rounded-lg mr-3">
+                <Bell className="h-5 w-5 text-yellow-600" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-medium text-gray-900">Notificações</p>
+                <p className="text-xs text-gray-500">Email e WhatsApp</p>
+              </div>
+            </button>
           </div>
         </div>
 

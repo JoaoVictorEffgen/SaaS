@@ -199,7 +199,8 @@ class LocalStorageService {
   }
 
   getCurrentUser() {
-    return JSON.parse(localStorage.getItem('currentUser'));
+    const currentUser = localStorage.getItem('currentUser');
+    return currentUser ? JSON.parse(currentUser) : null;
   }
 
   isAuthenticated() {
@@ -218,4 +219,5 @@ class LocalStorageService {
   }
 }
 
-export default new LocalStorageService(); 
+const localStorageService = new LocalStorageService();
+export default localStorageService; 

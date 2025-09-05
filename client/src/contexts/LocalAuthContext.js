@@ -19,20 +19,26 @@ export const LocalAuthProvider = ({ children }) => {
 
   // Verificar se usuário está logado ao carregar
   useEffect(() => {
-    const currentUser = localStorageService.getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
-      setSubscription({
-        plano: currentUser.plano,
-        status: 'ativo',
-        recursos: {
-          whatsapp: currentUser.plano !== 'free',
-          relatorios: currentUser.plano !== 'free',
-          multiusuario: currentUser.plano === 'business'
-        }
-      });
+    try {
+      const currentUser = localStorageService.getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
+        setSubscription({
+          plano: currentUser.plano,
+          status: 'ativo',
+          recursos: {
+            whatsapp: currentUser.plano !== 'free',
+            relatorios: currentUser.plano !== 'free',
+            multiusuario: currentUser.plano === 'business'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar usuário:', error);
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   // Login
