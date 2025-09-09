@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -37,16 +37,18 @@ const DashboardKPIs = () => {
     loadKPIs();
   }, [loadKPIs]);
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
+  // Memoização dos formatadores para evitar recriação a cada render
+  const formatCurrency = useMemo(() => {
+    const formatter = new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    }).format(value);
-  };
+    });
+    return (value) => formatter.format(value);
+  }, []);
 
-  const formatPercentage = (value) => {
-    return `${value.toFixed(1)}%`;
-  };
+  const formatPercentage = useMemo(() => {
+    return (value) => `${value.toFixed(1)}%`;
+  }, []);
 
   const getTrendIcon = (trend) => {
     if (trend > 0) return <TrendingUp className="h-4 w-4 text-green-500" />;

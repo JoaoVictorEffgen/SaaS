@@ -1,8 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useLocalAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Se não está carregando e não há usuário, redirecionar
+    if (!loading && !user) {
+      navigate('/empresa/login');
+    }
+  }, [loading, user, navigate]);
 
   if (loading) {
     return (
@@ -19,14 +28,9 @@ const ProtectedRoute = ({ children }) => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Acesso Negado</h2>
-          <p className="text-gray-600 mb-4">Você precisa estar logado para acessar esta página.</p>
-          <a 
-            href="/empresa/login" 
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-          >
-            Fazer Login
-          </a>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Redirecionando...</h2>
+          <p className="text-gray-600 mb-4">Você será redirecionado para a página de login.</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
         </div>
       </div>
     );

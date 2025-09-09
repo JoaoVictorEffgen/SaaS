@@ -66,10 +66,20 @@ const EmpresaCard = ({ empresa, onSelect, showWhatsApp = true }) => {
           <div className="flex items-center">
             <div className="flex text-yellow-400">
               {[...Array(5)].map((_, i) => (
-                <Star key={i} className="h-4 w-4 fill-current" />
+                <Star 
+                  key={i} 
+                  className={`h-4 w-4 ${
+                    i < Math.floor(empresa.notaMedia || 0) 
+                      ? 'fill-current' 
+                      : 'stroke-current fill-none'
+                  }`} 
+                />
               ))}
             </div>
-            <span className="ml-2 text-sm text-gray-600">4.8 (127 avaliações)</span>
+            <span className="ml-2 text-sm text-gray-600">
+              {empresa.notaMedia ? empresa.notaMedia.toFixed(1) : 'N/A'} 
+              ({empresa.totalAvaliacoes || 0} avaliações)
+            </span>
           </div>
         </div>
 

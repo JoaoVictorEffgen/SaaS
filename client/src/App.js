@@ -49,6 +49,9 @@ function App() {
         <Route path="/cliente/login" element={<ClienteLogin />} />
         <Route path="/cliente" element={<SelecaoEmpresa />} />
         <Route path="/cliente/empresa/:empresaId" element={<AgendamentoEmpresa />} />
+        
+        {/* Rota de fallback para rotas não encontradas */}
+        <Route path="*" element={<AccessSelector />} />
         </Routes>
       </Router>
     </LocalAuthProvider>

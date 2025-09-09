@@ -22,11 +22,14 @@ const ClienteLogin = () => {
     try {
       const result = await login(email, senha);
       if (result && result.success) {
+        alert('Login realizado com sucesso!');
         navigate('/cliente');
+      } else {
+        alert('Email ou senha incorretos!');
       }
     } catch (error) {
       console.error('Erro no login:', error);
-      alert('Email ou senha incorretos!');
+      alert('Erro ao fazer login. Tente novamente.');
     }
   };
 

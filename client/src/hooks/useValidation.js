@@ -140,7 +140,62 @@ export const useValidation = () => {
     return null;
   };
 
-  // Adicionar erro
+  // Validar formulário completo
+  const validateForm = (formData, validationRules) => {
+    const validationErrors = {};
+    
+    Object.keys(validationRules).forEach(field => {
+      const rules = validationRules[field];
+      const value = formData[field];
+      
+      // Validar campo obrigatório
+      if (rules.required && !validateRequiredUtil(value)) {
+        validationErrors[field] = `${rules.label || field} é obrigatório`;
+        return;
+      }
+      
+      // Validar email
+      if (rules.email && value && !validateEmailUtil(value)) {
+        validationErrors[field] = 'E-mail inválido';
+        return;
+      }
+      
+      // Validar telefone
+      if (rules.phone && value && !validatePhone(value)) {
+        validationErrors[field] = 'Telefone inválido';
+        return;
+      }
+      
+      // Validar CNPJ
+      if (rules.cnpj && value && !validateCNPJ(value)) {
+        validationErrors[field] = 'CNPJ inválido';
+        return;
+      }
+      
+      // Validar CPF
+      if (rules.cpf && value && !validateCPF(value)) {
+        validationErrors[field] = 'CPF inválido';
+        return;
+      }
+      
+      // Validar senha
+      if (rules.password && value && !validatePasswordUtil(value)) {
+        validationErrors[field] = 'Senha deve ter pelo menos 6 caracteres';
+        return;
+      }
+      
+      // Validar confirmação de senha
+      if (rules.confirmPassword && value !== formData[rules.confirmPassword]) {
+        validationErrors[field] = 'Senhas não coincidem';
+        return;
+      }
+    });
+    
+    setErrors(validationErrors);
+    return Object.keys(validationErrors).length === 0;
+  };
+
+  // Adicionar erro específico
   const addError = (field, message) => {
     setErrors(prev => ({
       ...prev,
@@ -148,7 +203,7 @@ export const useValidation = () => {
     }));
   };
 
-  // Limpar erro
+  // Limpar erro específico
   const clearError = (field) => {
     setErrors(prev => {
       const newErrors = { ...prev };
@@ -169,6 +224,7 @@ export const useValidation = () => {
 
   return {
     errors,
+    validateForm,
     validatePhoneInput,
     validateDocumentInput,
     validateDateInput,

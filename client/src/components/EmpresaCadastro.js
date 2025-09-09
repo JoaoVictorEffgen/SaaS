@@ -75,6 +75,9 @@ const EmpresaCadastro = () => {
     if (!formData.horario_fim) validationErrors.horario_fim = 'Horário de fim é obrigatório';
     if (formData.dias_funcionamento.length === 0) validationErrors.dias_funcionamento = 'Selecione pelo menos um dia de funcionamento';
     
+    // Limpar erros anteriores
+    clearErrors();
+    
     // Validar campos individuais
     Object.keys(validationErrors).forEach(key => {
       addError(key, validationErrors[key]);
@@ -87,10 +90,22 @@ const EmpresaCadastro = () => {
     try {
       clearErrors();
       
-      // Simular cadastro
+      // Criar nova empresa
       const novaEmpresa = {
         id: Date.now().toString(),
-        ...formData,
+        nome: formData.razaoSocial,
+        email: formData.email,
+        telefone: formData.telefone,
+        whatsapp_contato: formData.whatsapp_contato,
+        especializacao: formData.especializacao,
+        descricao_servico: formData.descricao_servico,
+        logo_url: formData.logo_url,
+        horario_inicio: formData.horario_inicio,
+        horario_fim: formData.horario_fim,
+        dias_funcionamento: formData.dias_funcionamento,
+        notaMedia: 0,
+        totalAvaliacoes: 0,
+        funcionarios: [],
         created_at: new Date().toISOString()
       };
 

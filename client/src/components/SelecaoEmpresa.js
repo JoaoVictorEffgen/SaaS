@@ -3,14 +3,15 @@ import { Link, Navigate } from 'react-router-dom';
 import EmpresaCard from './EmpresaCard';
 import { LogOut } from 'lucide-react';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
+import localStorageService from '../services/localStorageService';
 
 const SelecaoEmpresa = () => {
   const { user, logout } = useLocalAuth();
   const [empresas, setEmpresas] = useState([]);
 
   useEffect(() => {
-    // Carregar empresas
-    const empresasData = JSON.parse(localStorage.getItem('empresas') || '[]');
+    // Carregar empresas usando o serviço
+    const empresasData = localStorageService.getEmpresas();
     setEmpresas(empresasData);
   }, []);
 
@@ -73,7 +74,14 @@ const SelecaoEmpresa = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {empresas.map((empresa) => (
-              <EmpresaCard key={empresa.id} empresa={empresa} />
+              <EmpresaCard 
+                key={empresa.id} 
+                empresa={empresa} 
+                onSelect={(empresa) => {
+                  // Navegar para a página de agendamento da empresa
+                  window.location.href = `/cliente/empresa/${empresa.id}`;
+                }}
+              />
             ))}
           </div>
         )}

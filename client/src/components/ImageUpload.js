@@ -9,6 +9,8 @@ const ImageUpload = ({
   acceptedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
   className = ""
 }) => {
+
+  // TODOS os hooks devem ser chamados sempre, antes de qualquer validação condicional
   const [dragActive, setDragActive] = useState(false);
   const [preview, setPreview] = useState(value || null);
   const [error, setError] = useState('');
@@ -18,6 +20,19 @@ const ImageUpload = ({
   useEffect(() => {
     setPreview(value || null);
   }, [value]);
+
+  // Validação das props (após TODOS os hooks)
+  if (onChange && typeof onChange !== 'function') {
+    console.error('❌ ImageUpload: onChange deve ser uma função, recebido:', typeof onChange, onChange);
+    return (
+      <div className="p-4 border-2 border-red-300 rounded-lg bg-red-50">
+        <p className="text-red-600">Erro: onChange não é uma função válida</p>
+        <p className="text-xs text-red-500 mt-1">
+          Tipo recebido: {typeof onChange} | Valor: {String(onChange)}
+        </p>
+      </div>
+    );
+  }
 
   const handleFiles = (files) => {
     const file = files[0];
@@ -102,15 +117,6 @@ const ImageUpload = ({
     }
   };
 
-  // Validar se onChange é uma função (depois dos hooks)
-  if (onChange && typeof onChange !== 'function') {
-    console.error('ImageUpload: onChange deve ser uma função, recebido:', typeof onChange, onChange);
-    return (
-      <div className="p-4 border-2 border-red-300 rounded-lg bg-red-50">
-        <p className="text-red-600">Erro: onChange não é uma função válida</p>
-      </div>
-    );
-  }
 
   return (
     <div className={`w-full ${className}`}>

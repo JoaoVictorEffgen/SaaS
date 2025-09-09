@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Briefcase, 
@@ -15,26 +15,18 @@ import { useLocalAuth } from '../contexts/LocalAuthContext';
 const EmpresaDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useLocalAuth();
-  const [stats, setStats] = useState({
-    totalAgendamentos: 0,
-    agendamentosHoje: 0,
-    funcionarios: 0,
-    receitaMes: 0
-  });
-
-  useEffect(() => {
-    if (!user) {
-      navigate('/empresa/login');
-      return;
-    }
-    loadStats(user.id);
-  }, [navigate, user]);
-
-  const loadStats = (empresaId) => {
-    // Carregar estatísticas básicas
-    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
-    const funcionarios = JSON.parse(localStorage.getItem(`funcionarios_${empresaId}`) || '[]');
+  // Memoização dos dados para evitar recálculos desnecessários
+  const { agendamentos, funcionarios } = useMemo(() => {
+    if (!user?.id) return { agendamentos: [], funcionarios: [] };
     
+    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${user.id}`) || '[]');
+    const funcionarios = JSON.parse(localStorage.getItem(`funcionarios_${user.id}`) || '[]');
+    
+    return { agendamentos, funcionarios };
+  }, [user?.id]);
+
+  // Cálculo memoizado das estatísticas
+  const stats = useMemo(() => {
     const hoje = new Date().toISOString().split('T')[0];
     const agendamentosHoje = agendamentos.filter(a => a.data === hoje).length;
     
@@ -42,13 +34,19 @@ const EmpresaDashboard = () => {
       .filter(a => a.status === 'confirmado')
       .reduce((sum, a) => sum + (parseFloat(a.valor_total) || 0), 0);
 
-    setStats({
+    return {
       totalAgendamentos: agendamentos.length,
       agendamentosHoje,
       funcionarios: funcionarios.length,
       receitaMes
-    });
-  };
+    };
+  }, [agendamentos, funcionarios]);
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/empresa/login');
+    }
+  }, [navigate, user]);
 
   const handleLogout = () => {
     logout();

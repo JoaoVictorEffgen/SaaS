@@ -1,13 +1,28 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import localStorageService from '../services/localStorageService';
-import toast from 'react-hot-toast';
 
 const LocalAuthContext = createContext();
 
 export const useLocalAuth = () => {
   const context = useContext(LocalAuthContext);
   if (!context) {
-    throw new Error('useLocalAuth deve ser usado dentro de um LocalAuthProvider');
+    console.error('useLocalAuth deve ser usado dentro de um LocalAuthProvider');
+    // Retornar valores padrão em vez de lançar erro
+    return {
+      user: null,
+      loading: true,
+      subscription: null,
+      login: () => Promise.resolve({ success: false }),
+      register: () => Promise.resolve({ success: false }),
+      logout: () => {},
+      updateUser: () => ({ success: false }),
+      hasPlan: () => false,
+      canMakeAppointment: () => false,
+      getAppointmentLimit: () => 0,
+      getAppointmentsUsed: () => 0,
+      resetData: () => {},
+      isAuthenticated: false
+    };
   }
   return context;
 };
@@ -58,14 +73,14 @@ export const LocalAuthProvider = ({ children }) => {
             multiusuario: result.user.plano === 'business'
           }
         });
-        toast.success('Login realizado com sucesso!');
-        return { success: true };
+        // Removido o toast.success - deixar para o componente decidir
+        return { success: true, user: result.user };
       } else {
-        toast.error('E-mail ou senha incorretos');
+        // Removido o toast.error - deixar para o componente decidir
         return { success: false, error: 'Credenciais inválidas' };
       }
     } catch (error) {
-      toast.error('Erro ao fazer login');
+      // Removido o toast.error - deixar para o componente decidir
       return { success: false, error: error.message };
     } finally {
       setLoading(false);
@@ -80,7 +95,6 @@ export const LocalAuthProvider = ({ children }) => {
       // Verificar se email já existe
       const existingUser = localStorageService.getUserByEmail(userData.email);
       if (existingUser) {
-        toast.error('E-mail já cadastrado');
         return { success: false, error: 'E-mail já cadastrado' };
       }
 
@@ -98,10 +112,8 @@ export const LocalAuthProvider = ({ children }) => {
         }
       });
       
-      toast.success('Conta criada com sucesso!');
       return { success: true };
     } catch (error) {
-      toast.error('Erro ao criar conta');
       return { success: false, error: error.message };
     } finally {
       setLoading(false);
@@ -113,7 +125,6 @@ export const LocalAuthProvider = ({ children }) => {
     localStorageService.logout();
     setUser(null);
     setSubscription(null);
-    toast.success('Logout realizado com sucesso!');
   };
 
   // Atualizar usuário
@@ -123,7 +134,6 @@ export const LocalAuthProvider = ({ children }) => {
       if (updatedUser) {
         setUser(updatedUser);
         localStorageService.updateUser(updatedUser.id, updatedUser);
-        toast.success('Perfil atualizado com sucesso!');
         return { success: true };
       }
     }
@@ -163,7 +173,6 @@ export const LocalAuthProvider = ({ children }) => {
     localStorageService.clearAllData();
     setUser(null);
     setSubscription(null);
-    toast.success('Dados resetados com sucesso!');
   };
 
   const value = {
