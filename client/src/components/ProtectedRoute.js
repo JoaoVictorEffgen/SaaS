@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useLocalAuth();
   const navigate = useNavigate();
+  
+  console.log('ProtectedRoute - user:', user, 'loading:', loading);
 
   useEffect(() => {
     // Se não está carregando e não há usuário, redirecionar

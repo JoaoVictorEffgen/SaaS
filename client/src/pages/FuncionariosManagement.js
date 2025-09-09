@@ -3,8 +3,10 @@ import { useLocalAuth } from '../contexts/LocalAuthContext';
 import { Plus, Edit, Trash2, User, Save, X } from 'lucide-react';
 
 const FuncionariosManagement = () => {
-  const { user } = useLocalAuth();
+  const { user, loading } = useLocalAuth();
   const [funcionarios, setFuncionarios] = useState([]);
+  
+  console.log('FuncionariosManagement - user:', user, 'loading:', loading);
   const [showModal, setShowModal] = useState(false);
   const [editingFuncionario, setEditingFuncionario] = useState(null);
   const [formData, setFormData] = useState({
@@ -19,6 +21,33 @@ const FuncionariosManagement = () => {
       loadFuncionarios();
     }
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Se ainda está carregando, mostrar loading
+  if (loading) {
+    console.log('FuncionariosManagement - Mostrando loading...');
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando funcionários...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não há usuário, mostrar mensagem
+  if (!user) {
+    console.log('FuncionariosManagement - Nenhum usuário encontrado');
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Acesso Negado</h2>
+          <p className="text-gray-600 mb-4">Você precisa estar logado como empresa para acessar esta página.</p>
+          <a href="/empresa/login" className="text-blue-600 hover:text-blue-800">Fazer Login</a>
+        </div>
+      </div>
+    );
+  }
 
   const loadFuncionarios = () => {
     if (!user?.id) return;
@@ -146,6 +175,8 @@ const FuncionariosManagement = () => {
     }
   };
 
+  console.log('FuncionariosManagement - Renderizando componente principal');
+  
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

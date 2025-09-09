@@ -16,6 +16,8 @@ import AgendamentoEmpresa from './components/AgendamentoEmpresa';
 import ServicosManagement from './pages/ServicosManagement';
 import FuncionariosManagement from './pages/FuncionariosManagement';
 import CompanySettings from './pages/CompanySettings';
+import TestLogin from './pages/TestLogin';
+import DebugPage from './pages/DebugPage';
 
 // Componentes de dashboard
 import DashboardKPIs from './components/DashboardKPIs';
@@ -25,35 +27,41 @@ import ClearData from './components/ClearData';
 function App() {
   return (
     <LocalAuthProvider>
-      <Router>
-        <Routes>
-        {/* Página Principal */}
+    <Router>
+      <Routes>
+          {/* Página Principal */}
         <Route path="/" element={<AccessSelector />} />
-        
+          
         {/* Rota para limpar dados (temporária) */}
         <Route path="/clear" element={<ClearData />} />
+        
+        {/* Rota para teste rápido */}
+        <Route path="/test" element={<TestLogin />} />
+        
+        {/* Rota para debug */}
+        <Route path="/debug" element={<DebugPage />} />
         
         {/* Rotas B2B (Empresas) */}
         <Route path="/empresa/cadastro" element={<EmpresaCadastro />} />
         <Route path="/empresa/login" element={<EmpresaLogin />} />
         <Route path="/empresa/dashboard" element={<EmpresaDashboard />} />
         
-        {/* Rotas de Gestão */}
-        <Route path="/servicos" element={<ProtectedRoute><ServicosManagement /></ProtectedRoute>} />
-        <Route path="/funcionarios" element={<ProtectedRoute><FuncionariosManagement /></ProtectedRoute>} />
-        <Route path="/configuracoes" element={<ProtectedRoute><CompanySettings /></ProtectedRoute>} />
-        <Route path="/kpis" element={<ProtectedRoute><DashboardKPIs /></ProtectedRoute>} />
-        <Route path="/exportar" element={<ProtectedRoute><ExportData /></ProtectedRoute>} />
-        
-        {/* Rotas B2C (Clientes) */}
-        <Route path="/cliente/login" element={<ClienteLogin />} />
+          {/* Rotas de Gestão */}
+          <Route path="/servicos" element={<ProtectedRoute><ServicosManagement /></ProtectedRoute>} />
+          <Route path="/funcionarios" element={<ProtectedRoute><FuncionariosManagement /></ProtectedRoute>} />
+          <Route path="/configuracoes" element={<ProtectedRoute><CompanySettings /></ProtectedRoute>} />
+          <Route path="/kpis" element={<ProtectedRoute><DashboardKPIs /></ProtectedRoute>} />
+          <Route path="/exportar" element={<ProtectedRoute><ExportData /></ProtectedRoute>} />
+          
+          {/* Rotas B2C (Clientes) */}
+          <Route path="/cliente/login" element={<ClienteLogin />} />
         <Route path="/cliente" element={<SelecaoEmpresa />} />
         <Route path="/cliente/empresa/:empresaId" element={<AgendamentoEmpresa />} />
-        
-        {/* Rota de fallback para rotas não encontradas */}
-        <Route path="*" element={<AccessSelector />} />
-        </Routes>
-      </Router>
+          
+          {/* Rota de fallback para rotas não encontradas */}
+          <Route path="*" element={<AccessSelector />} />
+      </Routes>
+    </Router>
     </LocalAuthProvider>
   );
 }

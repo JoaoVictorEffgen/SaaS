@@ -60,7 +60,9 @@ export const LocalAuthProvider = ({ children }) => {
   const login = async (email, senha) => {
     try {
       setLoading(true);
+      console.log('LocalAuthContext - Tentando login com:', email);
       const result = localStorageService.login(email, senha);
+      console.log('LocalAuthContext - Resultado do login:', result);
       
       if (result) {
         setUser(result.user);
