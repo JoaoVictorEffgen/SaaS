@@ -91,15 +91,6 @@ const DashboardKPIs = () => {
       {/* Header com controles */}
       <div className="flex justify-between items-center">
         <div>
-          <div className="flex items-center gap-4 mb-2">
-            <button
-              onClick={() => navigate('/empresa/dashboard')}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              Voltar ao Dashboard
-            </button>
-          </div>
           <h2 className="text-2xl font-bold text-gray-900">Dashboard KPIs</h2>
           <p className="text-gray-600">Métricas e indicadores de performance</p>
         </div>
@@ -122,6 +113,17 @@ const DashboardKPIs = () => {
             Atualizar
           </button>
         </div>
+      </div>
+
+      {/* Botão Voltar - Discreto */}
+      <div className="mb-4">
+        <button
+          onClick={() => navigate('/empresa/dashboard')}
+          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Voltar ao Dashboard
+        </button>
       </div>
 
       {/* Cards principais */}
