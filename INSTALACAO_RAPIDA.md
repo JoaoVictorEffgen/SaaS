@@ -89,14 +89,19 @@ docker-compose down
 - [x] Estilização com Tailwind CSS
 - [x] Script de setup do banco
 
+### ✅ Funcionalidades Implementadas
+- [x] Páginas de login/registro
+- [x] Dashboard principal
+- [x] Gerenciamento de agendas
+- [x] Sistema de agendamentos
+- [x] Sistema de funcionários com agenda
+- [x] Interface de seleção de empresas
+- [x] Sistema de autenticação local
+
 ### 🚧 Em Desenvolvimento
-- [ ] Páginas de login/registro
-- [ ] Dashboard principal
-- [ ] Gerenciamento de agendas
-- [ ] Sistema de agendamentos
 - [ ] Integração com Stripe
 - [ ] Notificações por e-mail/WhatsApp
-- [ ] Relatórios e analytics
+- [ ] Relatórios e analytics avançados
 
 ## 🛠️ Estrutura do Projeto
 
@@ -176,25 +181,25 @@ kill -9 <PID>
 
 ## 📚 Próximos Passos
 
-1. **Complete as páginas principais**:
-   - Login/Registro
-   - Dashboard
-   - Gerenciamento de agendas
-
-2. **Implemente funcionalidades core**:
-   - CRUD de agendas
-   - Sistema de agendamentos
-   - Notificações
-
-3. **Adicione integrações**:
+1. **Integrações externas**:
    - Stripe para pagamentos
    - SendGrid para e-mails
    - Twilio para WhatsApp
 
-4. **Deploy**:
+2. **Analytics avançados**:
+   - Relatórios detalhados
+   - Métricas de conversão
+   - Dashboard de KPIs
+
+3. **Deploy**:
    - Configure produção
    - Use PM2 ou similar
    - Configure SSL/HTTPS
+
+4. **Melhorias futuras**:
+   - Sistema de notificações push
+   - Integração com calendários externos
+   - App mobile
 
 ## 🤝 Contribuição
 

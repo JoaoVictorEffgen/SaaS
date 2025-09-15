@@ -66,6 +66,15 @@ npm start
 - **Usuário de teste:** admin@teste.com
 - **Senha:** admin123
 
+### 🎯 Funcionalidades Atuais
+- ✅ **Sistema completo de autenticação** (Empresa, Cliente, Funcionário)
+- ✅ **Dashboard empresarial** com gestão de agendamentos
+- ✅ **Agenda pública** para clientes agendarem
+- ✅ **Sistema de funcionários** com visualização de agenda
+- ✅ **Interface responsiva** e moderna
+- ✅ **Gerenciamento de serviços** e funcionários
+- ✅ **Sistema de KPIs** e relatórios básicos
+
 ## 📱 Funcionalidades por Plano
 
 | Funcionalidade | Free | Pro | Business |
@@ -132,5 +141,3 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 - 📖 Documentação: [Wiki do Projeto](https://github.com/JoaoVictorEffgen/SaaS/wiki)
 
 ---
-
-⭐ **Se este projeto te ajudou, deixe uma estrela!** ⭐ 
