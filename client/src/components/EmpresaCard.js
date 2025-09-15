@@ -26,16 +26,18 @@ const EmpresaCard = ({ empresa, onSelect, showWhatsApp = true }) => {
 
   return (
     <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
-      {/* Header com Logo */}
-      <div className="relative h-32 bg-gradient-to-r from-blue-500 to-purple-600">
+      {/* Header com Logo como Background */}
+      <div className={`relative h-32 overflow-hidden ${empresa.logo_url ? '' : 'bg-gradient-to-r from-blue-500 to-purple-600'}`}>
         {empresa.logo_url ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <img
-              src={empresa.logo_url}
-              alt={`Logo ${empresa.nome || empresa.empresa}`}
-              className="h-20 w-20 object-contain bg-white rounded-full p-2 shadow-lg"
+          <>
+            {/* Logo como background principal */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+              style={{ backgroundImage: `url(${empresa.logo_url})` }}
             />
-          </div>
+            {/* Overlay sutil apenas para melhorar legibilidade do texto */}
+            <div className="absolute inset-0 bg-black/20" />
+          </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="h-20 w-20 bg-white rounded-full flex items-center justify-center shadow-lg">

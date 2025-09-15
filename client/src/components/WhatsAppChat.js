@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MessageCircle, X, Send, Phone } from 'lucide-react';
+import { formatTime } from '../utils/formatters';
 
 const WhatsAppChat = ({ empresa, cliente, onClose }) => {
   const [messages, setMessages] = useState([]);
@@ -41,12 +42,7 @@ const WhatsAppChat = ({ empresa, cliente, onClose }) => {
     }
   };
 
-  const formatTime = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  // Usar formatação do utils/formatters.js
 
   if (isMinimized) {
     return (

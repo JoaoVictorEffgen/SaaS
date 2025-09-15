@@ -2,23 +2,7 @@
   "short_name": "SaaS Agendamento",
   "name": "SaaS Sistema de Agendamento",
   "description": "Sistema completo de agendamento para empresas e clientes",
-  "icons": [
-    {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "logo192.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "logo512.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    }
-  ],
+  "icons": [],
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#3B82F6",
@@ -34,25 +18,15 @@
       "name": "Agendar Serviço",
       "short_name": "Agendar",
       "description": "Agendar um novo serviço",
-      "url": "/cliente/login",
-      "icons": [
-        {
-          "src": "logo192.png",
-          "sizes": "192x192"
-        }
-      ]
+      "url": "/",
+      "icons": []
     },
     {
       "name": "Dashboard Empresa",
       "short_name": "Dashboard",
       "description": "Acessar dashboard empresarial",
       "url": "/empresa/login",
-      "icons": [
-        {
-          "src": "logo192.png",
-          "sizes": "192x192"
-        }
-      ]
+      "icons": []
     }
   ]
 }

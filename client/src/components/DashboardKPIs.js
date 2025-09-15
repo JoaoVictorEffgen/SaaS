@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import kpiService from '../services/kpiService';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
+import { formatCurrency } from '../utils/formatters';
 
 const DashboardKPIs = () => {
   const { user } = useLocalAuth();
@@ -40,14 +41,7 @@ const DashboardKPIs = () => {
     loadKPIs();
   }, [loadKPIs]);
 
-  // Memoização dos formatadores para evitar recriação a cada render
-  const formatCurrency = useMemo(() => {
-    const formatter = new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    });
-    return (value) => formatter.format(value);
-  }, []);
+  // Usar formatação do utils/formatters.js
 
   const formatPercentage = useMemo(() => {
     return (value) => `${value.toFixed(1)}%`;

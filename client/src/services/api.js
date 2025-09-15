@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { formatCurrency, formatDate, formatTime } from '../utils/formatters';
 
 // Configuração base do Axios
 const api = axios.create({
@@ -32,7 +33,7 @@ api.interceptors.response.use(
     // Se o token expirou ou é inválido, fazer logout
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      window.location.href = '/';
     }
     
     return Promise.reject(error);
@@ -230,26 +231,10 @@ export const configService = {
 
 // Utilitários
 export const utils = {
-  // Formatar data
-  formatDate: (date) => {
-    if (!date) return '';
-    return new Date(date).toLocaleDateString('pt-BR');
-  },
-  
-  // Formatar hora
-  formatTime: (time) => {
-    if (!time) return '';
-    return time.substring(0, 5); // Remove segundos se houver
-  },
-  
-  // Formatar moeda
-  formatCurrency: (value, currency = 'BRL') => {
-    if (!value) return 'R$ 0,00';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: currency
-    }).format(value);
-  },
+  // Formatação (importadas de utils/formatters.js)
+  formatDate,
+  formatTime,
+  formatCurrency,
   
   // Validar e-mail
   validateEmail: (email) => {

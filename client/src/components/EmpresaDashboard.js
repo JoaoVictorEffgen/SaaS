@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Briefcase, 
@@ -13,13 +13,17 @@ import {
   Clock,
   CheckCircle,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Edit3
 } from 'lucide-react';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
+import localStorageService from '../services/localStorageService';
 
 const EmpresaDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useLocalAuth();
+  const [currentUser, setCurrentUser] = useState(user);
+  
   // Memoização dos dados para evitar recálculos desnecessários
   const { agendamentos, funcionarios } = useMemo(() => {
     if (!user?.id) return { agendamentos: [], funcionarios: [] };
@@ -49,16 +53,67 @@ const EmpresaDashboard = () => {
 
   useEffect(() => {
     if (!user) {
-      navigate('/empresa/login');
+      navigate('/');
+    } else {
+      setCurrentUser(user);
     }
   }, [navigate, user]);
 
   const handleLogout = () => {
     logout();
-    navigate('/empresa/login');
+    navigate('/');
   };
 
-  if (!user) {
+  const handleLogoUpload = () => {
+    // Criar input de arquivo temporário
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        // Verificar tamanho do arquivo (máximo 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Arquivo muito grande! Selecione uma imagem menor que 5MB.');
+          return;
+        }
+        
+        // Ler o arquivo como URL
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const logoUrl = event.target.result;
+          
+          if (currentUser) {
+            // Atualizar no localStorageService (para persistência completa)
+            const updatedUser = localStorageService.updateUser(currentUser.id, { 
+              logo_url: logoUrl 
+            });
+            
+            if (updatedUser) {
+              // Atualizar também na lista de empresas (para exibição nos cards)
+              const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
+              const empresaIndex = empresas.findIndex(emp => emp.id === currentUser.id);
+              
+              if (empresaIndex !== -1) {
+                empresas[empresaIndex].logo_url = logoUrl;
+                localStorage.setItem('empresas', JSON.stringify(empresas));
+              }
+              
+              // Atualizar o currentUser no localStorage
+              localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+              
+              // Atualizar o estado local sem recarregar a página
+              setCurrentUser(updatedUser);
+            }
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  };
+
+  if (!currentUser || !currentUser.id) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -76,22 +131,36 @@ const EmpresaDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
-              {user?.logo_url ? (
-                <img
-                  src={user.logo_url}
-                  alt={`Logo ${user.razaoSocial}`}
-                  className="h-14 w-14 object-contain rounded-2xl border border-gray-200 shadow-lg"
-                />
+              {currentUser?.logo_url ? (
+                <div className="relative group">
+                  <img
+                    src={currentUser.logo_url}
+                    alt={`Logo ${currentUser.razaoSocial}`}
+                    className="h-14 w-14 object-contain rounded-2xl border border-gray-200 shadow-lg"
+                  />
+                  <button 
+                    onClick={handleLogoUpload}
+                    className="absolute -top-1 -right-1 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg hover:bg-blue-700"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                  </button>
+                </div>
               ) : (
-                <div className="h-14 w-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-xl">
-                    {(user?.razaoSocial || 'E').charAt(0).toUpperCase()}
-                  </span>
+                <div className="relative group">
+                  <div className="h-14 w-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <Edit3 className="w-6 h-6 text-white" />
+                  </div>
+                  <button 
+                    onClick={handleLogoUpload}
+                    className="absolute -top-1 -right-1 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg hover:bg-blue-700"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                  </button>
                 </div>
               )}
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  {user.razaoSocial}
+                  {currentUser.razaoSocial} #{currentUser.id}
                 </h1>
                 <p className="text-sm text-gray-600 flex items-center gap-1">
                   <Sparkles className="h-3 w-3" />
@@ -247,22 +316,22 @@ const EmpresaDashboard = () => {
             <div>
               <h3 className="font-medium text-gray-900 mb-2">Dados Básicos</h3>
               <div className="space-y-2 text-sm text-gray-600">
-                <p><strong>CNPJ:</strong> {user.cnpj}</p>
-                <p><strong>Email:</strong> {user.email}</p>
-                <p><strong>Telefone:</strong> {user.telefone}</p>
-                {user.endereco && <p><strong>Endereço:</strong> {user.endereco}</p>}
+                <p><strong>CNPJ:</strong> {currentUser?.cnpj || 'Não informado'}</p>
+                <p><strong>Email:</strong> {currentUser?.email || 'Não informado'}</p>
+                <p><strong>Telefone:</strong> {currentUser?.telefone || 'Não informado'}</p>
+                {currentUser?.endereco && <p><strong>Endereço:</strong> {currentUser.endereco}</p>}
               </div>
             </div>
             
             <div>
               <h3 className="font-medium text-gray-900 mb-2">Funcionamento</h3>
               <div className="space-y-2 text-sm text-gray-600">
-                <p><strong>Especialização:</strong> {user.especializacao}</p>
-                {user.horario_inicio && user.horario_fim && (
-                  <p><strong>Horário:</strong> {user.horario_inicio} - {user.horario_fim}</p>
+                <p><strong>Especialização:</strong> {currentUser?.especializacao || 'Não informado'}</p>
+                {currentUser?.horario_inicio && currentUser?.horario_fim && (
+                  <p><strong>Horário:</strong> {currentUser.horario_inicio} - {currentUser.horario_fim}</p>
                 )}
-                {user.dias_funcionamento && user.dias_funcionamento.length > 0 && (
-                  <p><strong>Dias:</strong> {user.dias_funcionamento.map(d => ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][d]).join(', ')}</p>
+                {currentUser?.dias_funcionamento && currentUser.dias_funcionamento.length > 0 && (
+                  <p><strong>Dias:</strong> {currentUser.dias_funcionamento.map(d => ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][d]).join(', ')}</p>
                 )}
               </div>
             </div>

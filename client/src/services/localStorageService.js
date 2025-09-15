@@ -321,6 +321,8 @@ class LocalStorageService {
   logout() {
     localStorage.removeItem('currentUser');
     localStorage.removeItem('authToken');
+    localStorage.removeItem('clienteLogado');
+    localStorage.removeItem('empresaLogada');
   }
 
   getCurrentUser() {

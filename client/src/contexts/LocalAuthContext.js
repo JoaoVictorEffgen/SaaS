@@ -124,9 +124,27 @@ export const LocalAuthProvider = ({ children }) => {
 
   // Logout
   const logout = () => {
-    localStorageService.logout();
-    setUser(null);
-    setSubscription(null);
+    try {
+      // Limpar localStorage
+      localStorageService.logout();
+      
+      // Limpar estados do contexto
+      setUser(null);
+      setSubscription(null);
+      setLoading(false);
+      
+      // Limpar qualquer dado adicional que possa existir
+      localStorage.removeItem('clienteLogado');
+      localStorage.removeItem('empresaLogada');
+      
+      console.log('Logout realizado com sucesso');
+    } catch (error) {
+      console.error('Erro durante logout:', error);
+      // Mesmo com erro, limpar os estados
+      setUser(null);
+      setSubscription(null);
+      setLoading(false);
+    }
   };
 
   // Atualizar usuário

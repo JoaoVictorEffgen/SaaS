@@ -3,22 +3,21 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { LocalAuthProvider } from './contexts/LocalAuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
+// Removido import automático de dados de teste
+
 // Componentes principais
 import AccessSelector from './components/AccessSelector';
 import EmpresaCadastro from './components/EmpresaCadastro';
 import EmpresaLogin from './components/EmpresaLogin';
 import EmpresaDashboard from './components/EmpresaDashboard';
-import ClienteLogin from './components/ClienteLogin';
 import SelecaoEmpresa from './components/SelecaoEmpresa';
 import AgendamentoEmpresa from './components/AgendamentoEmpresa';
+import FuncionarioAgenda from './pages/FuncionarioAgenda';
 
 // Páginas de gestão
 import ServicosManagement from './pages/ServicosManagement';
 import FuncionariosManagement from './pages/FuncionariosManagement';
 import CompanySettings from './pages/CompanySettings';
-import TestLogin from './pages/TestLogin';
-import DebugPage from './pages/DebugPage';
-import DebugEmpresa from './pages/DebugEmpresa';
 
 // Componentes de dashboard
 import DashboardKPIs from './components/DashboardKPIs';
@@ -28,7 +27,7 @@ import ClearData from './components/ClearData';
 function App() {
   return (
     <LocalAuthProvider>
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
           {/* Página Principal */}
         <Route path="/" element={<AccessSelector />} />
@@ -36,12 +35,6 @@ function App() {
         {/* Rota para limpar dados (temporária) */}
         <Route path="/clear" element={<ClearData />} />
         
-        {/* Rota para teste rápido */}
-        <Route path="/test" element={<TestLogin />} />
-        
-        {/* Rota para debug */}
-        <Route path="/debug" element={<DebugPage />} />
-        <Route path="/debug-empresa/:empresaId" element={<DebugEmpresa />} />
         
         {/* Rotas B2B (Empresas) */}
         <Route path="/empresa/cadastro" element={<EmpresaCadastro />} />
@@ -56,9 +49,11 @@ function App() {
           <Route path="/exportar" element={<ProtectedRoute><ExportData /></ProtectedRoute>} />
           
           {/* Rotas B2C (Clientes) */}
-          <Route path="/cliente/login" element={<ClienteLogin />} />
         <Route path="/cliente" element={<SelecaoEmpresa />} />
         <Route path="/cliente/empresa/:empresaId" element={<AgendamentoEmpresa />} />
+          
+          {/* Rotas de Funcionários */}
+        <Route path="/funcionario/agenda" element={<FuncionarioAgenda />} />
           
           {/* Rota de fallback para rotas não encontradas */}
           <Route path="*" element={<AccessSelector />} />

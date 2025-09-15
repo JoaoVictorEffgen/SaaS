@@ -9,9 +9,9 @@ const ProtectedRoute = ({ children }) => {
   console.log('ProtectedRoute - user:', user, 'loading:', loading);
 
   useEffect(() => {
-    // Se não está carregando e não há usuário, redirecionar
+    // Se não está carregando e não há usuário, redirecionar para tela inicial
     if (!loading && !user) {
-      navigate('/empresa/login');
+      navigate('/');
     }
   }, [loading, user, navigate]);
 
