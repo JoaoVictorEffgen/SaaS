@@ -288,11 +288,14 @@ const Register = () => {
                   name="telefone"
                   type="tel"
                   value={formData.telefone}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d]/g, '');
+                    setFormData({...formData, telefone: value});
+                  }}
                   className={`block w-full pl-10 pr-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                     errors.telefone ? 'border-red-300' : 'border-gray-300'
                   }`}
-                  placeholder="Apenas números (11987654321)"
+                  placeholder="11999999999"
                   maxLength="11"
                 />
               </div>

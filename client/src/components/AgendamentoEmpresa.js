@@ -28,6 +28,15 @@ const AgendamentoEmpresa = () => {
     // Buscar dados da empresa
     const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
     const empresaEncontrada = empresas.find(emp => emp.id === empresaId);
+    
+    console.log('🏢 Dados da empresa carregados:', {
+      empresaId,
+      empresaEncontrada,
+      horario_inicio: empresaEncontrada?.horario_inicio,
+      horario_fim: empresaEncontrada?.horario_fim,
+      dias_funcionamento: empresaEncontrada?.dias_funcionamento
+    });
+    
     setEmpresa(empresaEncontrada);
     
     // Buscar funcionários e serviços da empresa
@@ -47,9 +56,33 @@ const AgendamentoEmpresa = () => {
   };
 
   const verificarHorarioFuncionamento = (horaInicio, duracaoMinutos) => {
-    if (!empresa.horario_inicio || !empresa.horario_fim) return true;
+    if (!empresa.horario_inicio || !empresa.horario_fim) {
+      console.log('⚠️ Horário de funcionamento não definido para a empresa');
+      return true;
+    }
+    
     const horaFim = calcularHoraFim(horaInicio, duracaoMinutos);
-    return horaInicio >= empresa.horario_inicio && horaFim <= empresa.horario_fim;
+    
+    // Converter para minutos para comparação
+    const horaInicioMinutos = horaInicio.split(':').reduce((acc, time) => (60 * acc) + +time);
+    const horaFimMinutos = horaFim.split(':').reduce((acc, time) => (60 * acc) + +time);
+    const empresaInicioMinutos = empresa.horario_inicio.split(':').reduce((acc, time) => (60 * acc) + +time);
+    const empresaFimMinutos = empresa.horario_fim.split(':').reduce((acc, time) => (60 * acc) + +time);
+    
+    console.log('🕐 Verificação de horário:', {
+      horaInicio,
+      horaFim,
+      empresaInicio: empresa.horario_inicio,
+      empresaFim: empresa.horario_fim,
+      duracaoMinutos,
+      horaInicioMinutos,
+      horaFimMinutos,
+      empresaInicioMinutos,
+      empresaFimMinutos,
+      dentroHorario: horaInicioMinutos >= empresaInicioMinutos && horaFimMinutos <= empresaFimMinutos
+    });
+    
+    return horaInicioMinutos >= empresaInicioMinutos && horaFimMinutos <= empresaFimMinutos;
   };
 
   const criarAgendamentosRecorrentes = (agendamentoBase, empresaId, duracaoTotal) => {
@@ -354,8 +387,10 @@ const AgendamentoEmpresa = () => {
                     <input
                       type="tel"
                       value={quickBooking.telefone}
-                      onChange={(e) => setQuickBooking({...quickBooking, telefone: e.target.value})}
+                      onChange={(e) => setQuickBooking({...quickBooking, telefone: e.target.value.replace(/[^\d]/g, '')})}
                       className="w-full p-2 border rounded"
+                      placeholder="11999999999"
+                      maxLength="11"
                       required
                     />
                   </div>
@@ -444,9 +479,12 @@ const AgendamentoEmpresa = () => {
           </div>
         )}
 
-        <div className="text-center mt-8">
+        <div className="text-center mt-8 space-x-4">
           <Link to="/cliente" className="text-blue-600 hover:text-blue-800 font-medium">
             ← Voltar à seleção de empresas
+          </Link>
+          <Link to={`/debug-empresa/${empresaId}`} className="text-gray-500 hover:text-gray-700 text-sm">
+            🔍 Debug Empresa
           </Link>
         </div>
       </div>

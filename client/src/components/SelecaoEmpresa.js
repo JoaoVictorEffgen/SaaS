@@ -1,18 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import EmpresaCard from './EmpresaCard';
-import { LogOut } from 'lucide-react';
+import { LogOut, Star, Crown, Award } from 'lucide-react';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
 import localStorageService from '../services/localStorageService';
 
 const SelecaoEmpresa = () => {
   const { user, logout } = useLocalAuth();
   const [empresas, setEmpresas] = useState([]);
+  const [empresasDestaque, setEmpresasDestaque] = useState([]);
+  const [empresasNormais, setEmpresasNormais] = useState([]);
 
   useEffect(() => {
     // Carregar empresas usando o serviço
     const empresasData = localStorageService.getEmpresas();
-    setEmpresas(empresasData);
+    
+    // Ordenar por nota média (maior para menor) e depois por total de avaliações
+    const empresasOrdenadas = empresasData.sort((a, b) => {
+      const notaA = a.notaMedia || 0;
+      const notaB = b.notaMedia || 0;
+      const avaliacoesA = a.totalAvaliacoes || 0;
+      const avaliacoesB = b.totalAvaliacoes || 0;
+      
+      // Primeiro critério: nota média
+      if (notaA !== notaB) {
+        return notaB - notaA;
+      }
+      // Segundo critério: total de avaliações (mais avaliações = mais confiável)
+      return avaliacoesB - avaliacoesA;
+    });
+    
+    setEmpresas(empresasOrdenadas);
+    
+    // Separar empresas em destaque (nota >= 4.5 e pelo menos 10 avaliações)
+    const destaque = empresasOrdenadas.filter(empresa => 
+      (empresa.notaMedia || 0) >= 4.5 && (empresa.totalAvaliacoes || 0) >= 10
+    );
+    
+    // Separar empresas normais
+    const normais = empresasOrdenadas.filter(empresa => 
+      (empresa.notaMedia || 0) < 4.5 || (empresa.totalAvaliacoes || 0) < 10
+    );
+    
+    setEmpresasDestaque(destaque);
+    setEmpresasNormais(normais);
   }, []);
 
   const handleLogout = () => {
@@ -72,17 +103,67 @@ const SelecaoEmpresa = () => {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {empresas.map((empresa) => (
-              <EmpresaCard 
-                key={empresa.id} 
-                empresa={empresa} 
-                onSelect={(empresa) => {
-                  // Navegar para a página de agendamento da empresa
-                  window.location.href = `/cliente/empresa/${empresa.id}`;
-                }}
-              />
-            ))}
+          <div className="space-y-8">
+            {/* Seção de Empresas em Destaque */}
+            {empresasDestaque.length > 0 && (
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="flex items-center gap-2">
+                    <Crown className="h-6 w-6 text-yellow-500" />
+                    <h3 className="text-2xl font-bold text-gray-900">Empresas em Destaque</h3>
+                  </div>
+                  <div className="flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+                    <Star className="h-4 w-4 fill-current" />
+                    <span>Melhor Avaliadas</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {empresasDestaque.map((empresa) => (
+                    <div key={empresa.id} className="relative">
+                      {/* Badge de Destaque */}
+                      <div className="absolute -top-2 -right-2 z-10">
+                        <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                          <Award className="h-3 w-3" />
+                          <span>DESTAQUE</span>
+                        </div>
+                      </div>
+                      <EmpresaCard 
+                        empresa={empresa} 
+                        onSelect={(empresa) => {
+                          // Navegar para a página de agendamento da empresa
+                          window.location.href = `/cliente/empresa/${empresa.id}`;
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Seção de Outras Empresas */}
+            {empresasNormais.length > 0 && (
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">Outras Empresas</h3>
+                  <div className="flex items-center gap-1 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                    <Star className="h-4 w-4" />
+                    <span>Disponíveis</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {empresasNormais.map((empresa) => (
+                    <EmpresaCard 
+                      key={empresa.id} 
+                      empresa={empresa} 
+                      onSelect={(empresa) => {
+                        // Navegar para a página de agendamento da empresa
+                        window.location.href = `/cliente/empresa/${empresa.id}`;
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

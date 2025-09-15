@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
-import { Plus, Edit, Trash2, User, Save, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Edit, Trash2, User, Save, X, ArrowLeft } from 'lucide-react';
 
 const FuncionariosManagement = () => {
   const { user, loading } = useLocalAuth();
+  const navigate = useNavigate();
   const [funcionarios, setFuncionarios] = useState([]);
   
   console.log('FuncionariosManagement - user:', user, 'loading:', loading);
@@ -184,6 +186,15 @@ const FuncionariosManagement = () => {
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <div>
+              <div className="flex items-center gap-4 mb-2">
+                <button
+                  onClick={() => navigate('/empresa/dashboard')}
+                  className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                  Voltar ao Dashboard
+                </button>
+              </div>
               <h1 className="text-3xl font-bold text-gray-900">Gestão de Funcionários</h1>
               <p className="mt-2 text-gray-600">
                 Gerencie os funcionários da sua empresa
@@ -344,9 +355,10 @@ const FuncionariosManagement = () => {
                       type="tel"
                       required
                       value={formData.telefone}
-                      onChange={(e) => setFormData({...formData, telefone: e.target.value})}
+                      onChange={(e) => setFormData({...formData, telefone: e.target.value.replace(/[^\d]/g, '')})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="(11) 99999-9999"
+                      placeholder="11999999999"
+                      maxLength="11"
                     />
                   </div>
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Download, 
   FileText, 
@@ -7,13 +8,15 @@ import {
   Calendar,
   Users,
   BarChart3,
-  Package
+  Package,
+  ArrowLeft
 } from 'lucide-react';
 import exportService from '../services/exportService';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
 
 const ExportData = () => {
   const { user } = useLocalAuth();
+  const navigate = useNavigate();
   const [periodo, setPeriodo] = useState('30d');
   const [loading, setLoading] = useState(false);
   const [empresa, setEmpresa] = useState(null);
@@ -142,6 +145,15 @@ const ExportData = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
+          <div className="flex items-center gap-4 mb-2">
+            <button
+              onClick={() => navigate('/empresa/dashboard')}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              Voltar ao Dashboard
+            </button>
+          </div>
           <h2 className="text-2xl font-bold text-gray-900">Exportação de Dados</h2>
           <p className="text-gray-600">Exporte seus dados em diferentes formatos</p>
         </div>

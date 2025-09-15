@@ -18,6 +18,7 @@ import FuncionariosManagement from './pages/FuncionariosManagement';
 import CompanySettings from './pages/CompanySettings';
 import TestLogin from './pages/TestLogin';
 import DebugPage from './pages/DebugPage';
+import DebugEmpresa from './pages/DebugEmpresa';
 
 // Componentes de dashboard
 import DashboardKPIs from './components/DashboardKPIs';
@@ -40,6 +41,7 @@ function App() {
         
         {/* Rota para debug */}
         <Route path="/debug" element={<DebugPage />} />
+        <Route path="/debug-empresa/:empresaId" element={<DebugEmpresa />} />
         
         {/* Rotas B2B (Empresas) */}
         <Route path="/empresa/cadastro" element={<EmpresaCadastro />} />

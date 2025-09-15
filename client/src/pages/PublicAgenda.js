@@ -308,9 +308,9 @@ const PublicAgenda = () => {
                         const value = e.target.value.replace(/[^\d]/g, '');
                         setQuickBooking({...quickBooking, telefone: value});
                       }}
-                      className="w-full p-2 border rounded"
-                      placeholder="Apenas números (11987654321)"
+                      placeholder="11999999999"
                       maxLength="11"
+                      className="w-full p-2 border rounded"
                     />
                   </div>
                   <div className="bg-gray-50 p-3 rounded">
