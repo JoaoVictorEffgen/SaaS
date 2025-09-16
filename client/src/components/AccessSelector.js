@@ -2,9 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Building2, Users, ArrowRight, Calendar, Clock, Zap, Star, Crown,
-  Users2, X, ClipboardList, ChevronLeft, ChevronRight, Mail, Phone, MapPin, Facebook, Instagram, Twitter, Linkedin, Plus
+  Users2, X, ClipboardList, ChevronLeft, ChevronRight, Mail, Phone, MapPin, Facebook, Instagram, Twitter, Linkedin, Plus,
+  Heart, Navigation, Filter
 } from 'lucide-react';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
+import EmpresasProximas from './shared/EmpresasProximas';
+import EmpresasFavoritas from './shared/EmpresasFavoritas';
 
 const AccessSelector = () => {
   const [empresasDestaque, setEmpresasDestaque] = useState([]);
@@ -19,6 +22,11 @@ const AccessSelector = () => {
   const [showEmpresaModal, setShowEmpresaModal] = useState(false);
   const [showClienteModal, setShowClienteModal] = useState(false);
   const [showFuncionarioModal, setShowFuncionarioModal] = useState(false);
+  
+  // Estados para novas funcionalidades
+  const [activeSection, setActiveSection] = useState('destaque'); // 'destaque', 'proximas', 'favoritas'
+  const [allEmpresas, setAllEmpresas] = useState([]);
+  const [isClientLoggedIn, setIsClientLoggedIn] = useState(false);
   const [empresaForm, setEmpresaForm] = useState({ email: '', senha: '', nome: '', telefone: '', endereco: '' });
   const [clienteForm, setClienteForm] = useState({ 
     nome: '', 
@@ -46,7 +54,6 @@ const AccessSelector = () => {
     totalClientes: 0,
     satisfacao: 0
   });
-  const [isClientLoggedIn, setIsClientLoggedIn] = useState(false);
   
   const navigate = useNavigate();
   const { login, register } = useLocalAuth();
@@ -141,10 +148,14 @@ const AccessSelector = () => {
 
   const loadEmpresasDestaque = useCallback(() => {
     const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
+    
+    // Salvar todas as empresas para uso em outras seções
+    setAllEmpresas(empresas);
+    
     const empresasComAvaliacao = empresas.map(empresa => ({
       ...empresa,
-      avaliacao: 4.5 + Math.random() * 0.5, // Simular avaliação entre 4.5 e 5.0
-      totalAvaliacoes: Math.floor(Math.random() * 200) + 50
+      avaliacao: empresa.notaMedia || (4.5 + Math.random() * 0.5), // Usar nota real ou simular
+      totalAvaliacoes: empresa.totalAvaliacoes || Math.floor(Math.random() * 200) + 50
     }));
     
     const empresasOrdenadas = empresasComAvaliacao
@@ -201,7 +212,15 @@ const AccessSelector = () => {
     
     // Verificar se há um cliente logado
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-    setIsClientLoggedIn(currentUser && currentUser.tipo === 'cliente');
+    const clientLoggedIn = currentUser && currentUser.tipo === 'cliente';
+    setIsClientLoggedIn(clientLoggedIn);
+    
+    // Se cliente logado, mostrar favoritas por padrão
+    if (clientLoggedIn) {
+      setActiveSection('favoritas');
+    } else {
+      setActiveSection('destaque');
+    }
   }, [loadEmpresasDestaque, loadStats]);
 
   const openEmpresaModal = () => {
@@ -271,14 +290,17 @@ const AccessSelector = () => {
         setShowClienteModal(false);
         setIsClientLoggedIn(true); // Atualizar estado de login
         
+        // Mostrar favoritas após login
+        setActiveSection('favoritas');
+        
         // Verificar se há uma empresa pré-selecionada para agendamento
         const empresaSelecionada = localStorage.getItem('empresaSelecionada');
         if (empresaSelecionada) {
           // Ir direto para a tela de agendamento com a empresa pré-selecionada
           navigate('/cliente');
         } else {
-          // Ir para a tela de seleção de empresas
-          navigate('/cliente');
+          // Ficar na página atual para mostrar as favoritas
+          // navigate('/cliente'); // Comentado para ficar na página atual
         }
       } else {
         setClienteError(result.error || 'Erro no login/cadastro');
@@ -659,8 +681,57 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
         </div>
       </div>
 
-      {/* Empresas em Destaque - Carrossel */}
-      {empresasDestaque.length > 0 && (
+      {/* Navegação de Seções */}
+      {allEmpresas.length > 0 && (
+        <div className="py-8 px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex justify-center mb-8">
+              <div className="bg-white/90 backdrop-blur-sm rounded-xl p-2 shadow-lg border border-white/50">
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setActiveSection('destaque')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                      activeSection === 'destaque'
+                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Crown className="w-4 h-4" />
+                    <span className="font-medium">Destaque</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveSection('proximas')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                      activeSection === 'proximas'
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Navigation className="w-4 h-4" />
+                    <span className="font-medium">Próximas</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveSection('favoritas')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                      activeSection === 'favoritas'
+                        ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Heart className="w-4 h-4" />
+                    <span className="font-medium">Favoritas</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Conteúdo das Seções */}
+      {activeSection === 'destaque' && empresasDestaque.length > 0 && (
         <div className="py-12 md:py-16 px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-8 md:mb-12">
@@ -763,6 +834,24 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Seção de Empresas Próximas */}
+      {activeSection === 'proximas' && (
+        <div className="py-12 md:py-16 px-4">
+          <div className="max-w-6xl mx-auto">
+            <EmpresasProximas empresas={allEmpresas} radius={15} />
+          </div>
+        </div>
+      )}
+
+      {/* Seção de Empresas Favoritas */}
+      {activeSection === 'favoritas' && (
+        <div className="py-12 md:py-16 px-4">
+          <div className="max-w-6xl mx-auto">
+            <EmpresasFavoritas empresas={allEmpresas} />
           </div>
         </div>
       )}

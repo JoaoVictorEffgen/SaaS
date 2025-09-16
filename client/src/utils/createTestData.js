@@ -27,6 +27,8 @@ export const createTestData = () => {
       descricao_servico: 'Cortes modernos, barba, bigode e tratamentos estéticos masculinos',
       notaMedia: 4.8,
       totalAvaliacoes: 156,
+      latitude: -23.5505, // São Paulo - Centro
+      longitude: -46.6333,
       funcionarios: [],
       servicos: [
         {
@@ -53,10 +55,201 @@ export const createTestData = () => {
       ]
     };
 
-    // Adicionar empresa
-    const empresasAtualizadas = [...empresas, empresaTeste];
+    // Criar empresas adicionais para testar proximidade
+    const empresasAdicionais = [
+      {
+        id: 'emp_teste_002',
+        nome: 'Salão Beleza Total',
+        email: 'contato@beleza.com',
+        senha: '123456',
+        telefone: '11988776655',
+        endereco: 'Av. Paulista, 1000 - Bela Vista',
+        especializacao: 'Cabelo e Estética Feminina',
+        descricao_servico: 'Cortes, coloração, tratamentos capilares e estética',
+        notaMedia: 4.7,
+        totalAvaliacoes: 89,
+        latitude: -23.5615, // Próximo ao Centro (dentro de 15km)
+        longitude: -46.6565,
+        funcionarios: [],
+        servicos: [
+          {
+            id: 'serv_004',
+            nome: 'Corte Feminino',
+            preco: 35.00,
+            duracao: 45,
+            descricao: 'Corte moderno feminino'
+          },
+          {
+            id: 'serv_005',
+            nome: 'Coloração',
+            preco: 80.00,
+            duracao: 120,
+            descricao: 'Coloração completa'
+          }
+        ]
+      },
+      {
+        id: 'emp_teste_003',
+        nome: 'Clínica Odontológica Sorriso',
+        email: 'contato@sorriso.com',
+        senha: '123456',
+        telefone: '11977665544',
+        endereco: 'Rua Augusta, 500 - Consolação',
+        especializacao: 'Odontologia',
+        descricao_servico: 'Consultas, limpeza, clareamento e tratamentos odontológicos',
+        notaMedia: 4.9,
+        totalAvaliacoes: 234,
+        latitude: -23.5431, // Próximo ao Centro (dentro de 15km)
+        longitude: -46.6291,
+        funcionarios: [],
+        servicos: [
+          {
+            id: 'serv_006',
+            nome: 'Consulta Odontológica',
+            preco: 150.00,
+            duracao: 60,
+            descricao: 'Consulta completa com avaliação'
+          },
+          {
+            id: 'serv_007',
+            nome: 'Limpeza Dental',
+            preco: 120.00,
+            duracao: 45,
+            descricao: 'Profilaxia completa'
+          }
+        ]
+      },
+      {
+        id: 'emp_teste_004',
+        nome: 'Academia Fitness Pro',
+        email: 'contato@fitness.com',
+        senha: '123456',
+        telefone: '11966554433',
+        endereco: 'Rua Oscar Freire, 200 - Jardins',
+        especializacao: 'Academia e Personal Training',
+        descricao_servico: 'Musculação, aeróbica, personal training e avaliação física',
+        notaMedia: 4.6,
+        totalAvaliacoes: 167,
+        latitude: -23.5687, // Próximo ao Centro (dentro de 15km)
+        longitude: -46.6765,
+        funcionarios: [],
+        servicos: [
+          {
+            id: 'serv_008',
+            nome: 'Personal Training',
+            preco: 80.00,
+            duracao: 60,
+            descricao: 'Treino personalizado'
+          },
+          {
+            id: 'serv_009',
+            nome: 'Avaliação Física',
+            preco: 50.00,
+            duracao: 30,
+            descricao: 'Análise completa do condicionamento'
+          }
+        ]
+      },
+      {
+        id: 'emp_teste_005',
+        nome: 'Spa Relaxamento Total',
+        email: 'contato@spa.com',
+        senha: '123456',
+        telefone: '11955443322',
+        endereco: 'Av. Faria Lima, 1500 - Itaim Bibi',
+        especializacao: 'Spa e Bem-estar',
+        descricao_servico: 'Massagens, tratamentos faciais e corporais, relaxamento',
+        notaMedia: 4.8,
+        totalAvaliacoes: 98,
+        latitude: -23.5845, // Próximo ao Centro (dentro de 15km)
+        longitude: -46.6887,
+        funcionarios: [],
+        servicos: [
+          {
+            id: 'serv_010',
+            nome: 'Massagem Relaxante',
+            preco: 120.00,
+            duracao: 60,
+            descricao: 'Massagem terapêutica completa'
+          },
+          {
+            id: 'serv_011',
+            nome: 'Tratamento Facial',
+            preco: 80.00,
+            duracao: 45,
+            descricao: 'Limpeza e hidratação facial'
+          }
+        ]
+      },
+      {
+        id: 'emp_teste_006',
+        nome: 'Restaurante Sabor & Arte',
+        email: 'contato@sabor.com',
+        senha: '123456',
+        telefone: '11944332211',
+        endereco: 'Rua Bela Cintra, 800 - Jardins',
+        especializacao: 'Gastronomia',
+        descricao_servico: 'Almoço executivo, jantar romântico, eventos corporativos',
+        notaMedia: 4.7,
+        totalAvaliacoes: 145,
+        latitude: -23.5789, // Próximo ao Centro (dentro de 15km)
+        longitude: -46.6723,
+        funcionarios: [],
+        servicos: [
+          {
+            id: 'serv_012',
+            nome: 'Almoço Executivo',
+            preco: 45.00,
+            duracao: 60,
+            descricao: 'Menu executivo completo'
+          },
+          {
+            id: 'serv_013',
+            nome: 'Jantar Romântico',
+            preco: 120.00,
+            duracao: 120,
+            descricao: 'Menu especial para casais'
+          }
+        ]
+      },
+      {
+        id: 'emp_teste_007',
+        nome: 'Barbearia Moderna',
+        email: 'contato@moderna.com',
+        senha: '123456',
+        telefone: '11933221100',
+        endereco: 'Rua da Consolação, 1500 - Centro',
+        especializacao: 'Barbearia Premium',
+        descricao_servico: 'Cortes premium, barba, bigode e tratamentos masculinos',
+        notaMedia: 4.9,
+        totalAvaliacoes: 203,
+        latitude: -23.5456, // Próximo ao Centro (dentro de 15km)
+        longitude: -46.6345,
+        funcionarios: [],
+        servicos: [
+          {
+            id: 'serv_014',
+            nome: 'Corte Premium',
+            preco: 35.00,
+            duracao: 40,
+            descricao: 'Corte masculino premium'
+          },
+          {
+            id: 'serv_015',
+            nome: 'Barba Premium',
+            preco: 25.00,
+            duracao: 30,
+            descricao: 'Barba com navalha quente'
+          }
+        ]
+      }
+    ];
+
+    // Adicionar empresas
+    const empresasAtualizadas = [...empresas, empresaTeste, ...empresasAdicionais];
     localStorage.setItem('empresas', JSON.stringify(empresasAtualizadas));
     console.log('✅ Empresa de teste criada:', empresaTeste.nome);
+    console.log('✅ Empresas adicionais criadas:', empresasAdicionais.length);
   }
 
   // Criar funcionários de teste se não existirem
