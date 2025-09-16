@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   Building2, Users, ArrowRight, Calendar, Clock, Zap, Star, Crown,
   Users2, X, ClipboardList, ChevronLeft, ChevronRight, Mail, Phone, MapPin, Facebook, Instagram, Twitter, Linkedin, Plus
@@ -296,14 +296,24 @@ const AccessSelector = () => {
     setFuncionarioError('');
 
     try {
+      console.log('🔍 Debug - Tentando login do funcionário');
+      console.log('Empresa ID inserido:', funcionarioForm.empresaId);
+      console.log('CPF inserido:', funcionarioForm.cpf);
+
       const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
       const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
       
+      console.log('Empresas encontradas:', empresas.length);
+      console.log('Funcionários encontrados:', funcionarios.length);
+      
       const empresa = empresas.find(emp => emp.id === funcionarioForm.empresaId);
       const funcionario = funcionarios.find(func => 
-        func.empresa_id === funcionarioForm.empresaId && 
+        func.empresaId === funcionarioForm.empresaId && 
         func.cpf === funcionarioForm.cpf
       );
+
+      console.log('Empresa encontrada:', empresa ? empresa.nome : 'NÃO ENCONTRADA');
+      console.log('Funcionário encontrado:', funcionario ? funcionario.nome : 'NÃO ENCONTRADO');
 
       if (!empresa) {
         throw new Error('Empresa não encontrada');
@@ -314,16 +324,21 @@ const AccessSelector = () => {
       }
 
       // Simular login do funcionário
-      localStorage.setItem('currentUser', JSON.stringify({
+      const userData = {
         ...funcionario,
         tipo: 'funcionario',
-        empresa_nome: empresa.razaoSocial
-      }));
+        empresa_nome: empresa.nome
+      };
+      
+      console.log('💾 Salvando usuário no localStorage:', userData);
+      localStorage.setItem('currentUser', JSON.stringify(userData));
 
       setShowFuncionarioModal(false);
+      console.log('🚀 Redirecionando para /funcionario/agenda');
       navigate('/funcionario/agenda');
 
     } catch (error) {
+      console.error('❌ Erro no login:', error);
       setFuncionarioError(error.message);
     } finally {
       setFuncionarioLoading(false);
@@ -808,20 +823,44 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
               </div>
 
               <div className="flex items-center justify-between pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsLoginMode(!isLoginMode)}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  {isLoginMode ? 'Criar conta' : 'Já tenho conta'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={empresaLoading}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {empresaLoading ? 'Carregando...' : (isLoginMode ? 'Entrar' : 'Cadastrar')}
-                </button>
+                {isLoginMode ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsLoginMode(false)}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Criar conta
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={empresaLoading}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    >
+                      {empresaLoading ? 'Carregando...' : 'Entrar'}
+                    </button>
+                  </>
+                ) : (
+                  <div className="w-full space-y-3">
+                    <p className="text-sm text-gray-600 text-center">
+                      Para cadastrar sua empresa, preencha o formulário completo
+                    </p>
+                    <Link
+                      to="/empresa/cadastro"
+                      className="w-full block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center font-medium"
+                      onClick={() => setShowEmpresaModal(false)}
+                    >
+                      Ir para Cadastro Completo
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setIsLoginMode(true)}
+                      className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Já tenho conta - Fazer Login
+                    </button>
+                  </div>
+                )}
               </div>
             </form>
           </div>
@@ -948,21 +987,19 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Empresa
+                  ID da Empresa
                 </label>
-                <select
+                <input
+                  type="text"
                   value={funcionarioForm.empresaId}
                   onChange={(e) => setFuncionarioForm({ ...funcionarioForm, empresaId: e.target.value })}
+                  placeholder="Digite o ID da empresa"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   required
-                >
-                  <option value="">Selecione uma empresa</option>
-                  {JSON.parse(localStorage.getItem('empresas') || '[]').map(empresa => (
-                    <option key={empresa.id} value={empresa.id}>
-                      {empresa.razaoSocial}
-                    </option>
-                  ))}
-                </select>
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Exemplo: emp_teste_001
+                </p>
               </div>
 
               <div>
@@ -972,10 +1009,14 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                 <input
                   type="text"
                   value={funcionarioForm.cpf}
-                  onChange={(e) => setFuncionarioForm({ ...funcionarioForm, cpf: e.target.value })}
-                  placeholder="000.000.000-00"
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é número
+                    setFuncionarioForm({ ...funcionarioForm, cpf: value });
+                  }}
+                  placeholder="00000000000"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   required
+                  maxLength={11}
                 />
               </div>
 

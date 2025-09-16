@@ -19,7 +19,7 @@ import {
   Edit,
   Eye
 } from 'lucide-react';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency } from '../../utils/formatters';
 
 const CRMClientes = ({ userId, userPlan }) => {
   const [clientes, setClientes] = useState([]);

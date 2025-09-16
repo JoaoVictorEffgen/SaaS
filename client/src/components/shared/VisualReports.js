@@ -25,8 +25,8 @@ import {
   DollarSign,
   Clock
 } from 'lucide-react';
-import localStorageService from '../services/localStorageService';
-import { formatCurrency } from '../utils/formatters';
+import localStorageService from '../../services/localStorageService';
+import { formatCurrency } from '../../utils/formatters';
 
 const VisualReports = ({ filters, userId, userPlan }) => {
   const [chartData, setChartData] = useState({

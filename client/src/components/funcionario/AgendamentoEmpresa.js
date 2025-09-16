@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { MessageCircle } from 'lucide-react';
-import WhatsAppChat from './WhatsAppChat';
-import notificationService from '../services/notificationService';
+import WhatsAppChat from '../shared/WhatsAppChat';
+import notificationService from '../../services/notificationService';
 
 const AgendamentoEmpresa = () => {
   const { empresaId } = useParams();

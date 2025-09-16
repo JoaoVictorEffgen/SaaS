@@ -1,428 +1,430 @@
 import React, { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
-  Calendar, Clock, Phone, Mail, 
-  ArrowLeft, LogOut, Search, ChevronLeft, 
-  ChevronRight, CheckCircle, XCircle, AlertCircle,
-  Building2, ClipboardList, Home
+  Calendar, 
+  Clock, 
+  User, 
+  Home, 
+  Bell, 
+  CheckSquare, 
+  Coffee, 
+  Star, 
+  Edit, 
+  Save, 
+  X,
+  Settings,
+  BarChart3,
+  ClipboardList
 } from 'lucide-react';
-import localStorageService from '../services/localStorageService';
-import { formatDate, formatTime } from '../utils/formatters';
+import { useLocalAuth } from '../contexts/LocalAuthContext';
+import LoginStatusIndicator from '../components/shared/LoginStatusIndicator';
 
 const FuncionarioAgenda = () => {
   const navigate = useNavigate();
-  const [funcionario, setFuncionario] = useState(null);
-  const [empresa, setEmpresa] = useState(null);
+  const { user: currentUser } = useLocalAuth();
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('agenda');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingConfirmations, setPendingConfirmations] = useState([]);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({});
+  const [availability, setAvailability] = useState({});
+  const [breaks, setBreaks] = useState([]);
+
+  // Estados para agendamentos
   const [agendamentos, setAgendamentos] = useState([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'agendado', 'confirmado', 'cancelado', 'realizado'
-  const [searchTerm, setSearchTerm] = useState('');
+  const [agendamentosHoje, setAgendamentosHoje] = useState([]);
 
   useEffect(() => {
-    // Carregar dados do funcionário logado
-    const funcionarioData = localStorage.getItem('funcionarioLogado');
-    const empresaData = localStorage.getItem('empresaFuncionario');
-    
-    if (!funcionarioData || !empresaData) {
-      // Se não há dados, redirecionar para tela inicial
-      navigate('/');
-      return;
-    }
+    const loadData = async () => {
+      try {
+        if (!currentUser) {
+          navigate('/');
+          return;
+        }
 
-    const funcionarioObj = JSON.parse(funcionarioData);
-    const empresaObj = JSON.parse(empresaData);
-    
-    setFuncionario(funcionarioObj);
-    setEmpresa(empresaObj);
-    
-    // Carregar agendamentos do funcionário
-    const allAgendamentos = localStorageService.getAgendamentos();
-    const funcionarioAgendamentos = allAgendamentos.filter(agendamento => 
-      agendamento.empresaId === funcionarioObj.empresaId && 
-      agendamento.funcionarioId === funcionarioObj.id
-    );
-    
-    setAgendamentos(funcionarioAgendamentos);
-  }, [navigate]);
+        await Promise.all([
+          loadAgendamentos(),
+          loadProfileData(),
+          loadAvailability(),
+          loadBreaks(),
+          checkPendingConfirmations()
+        ]);
 
+        setLoading(false);
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        setLoading(false);
+      }
+    };
 
-  const handleLogout = () => {
-    localStorage.removeItem('funcionarioLogado');
-    localStorage.removeItem('empresaFuncionario');
-    navigate('/');
-  };
+    loadData();
+  }, [currentUser, navigate]);
 
-  const getAgendamentosDoDia = (date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return agendamentos.filter(agendamento => 
-      agendamento.dataAgendamento === dateStr
-    );
-  };
-
-  const getAgendamentosFiltrados = () => {
-    let filtered = agendamentos;
-    
-    // Filtrar por status
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(agendamento => agendamento.status === filterStatus);
-    }
-    
-    // Filtrar por termo de busca
-    if (searchTerm) {
-      filtered = filtered.filter(agendamento =>
-        agendamento.clienteNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        agendamento.servico.toLowerCase().includes(searchTerm.toLowerCase())
+  const loadAgendamentos = async () => {
+    try {
+      const agendamentosData = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+      const funcionarioAgendamentos = agendamentosData.filter(
+        agendamento => agendamento.funcionarioId === currentUser.id
       );
+      
+      setAgendamentos(funcionarioAgendamentos);
+
+      // Filtrar agendamentos de hoje
+      const hoje = new Date().toISOString().split('T')[0];
+      const hojeAgendamentos = funcionarioAgendamentos.filter(
+        agendamento => agendamento.data === hoje
+      );
+      setAgendamentosHoje(hojeAgendamentos);
+    } catch (error) {
+      console.error('Erro ao carregar agendamentos:', error);
     }
+  };
+
+  const loadProfileData = async () => {
+    try {
+      const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
+      const funcionario = funcionarios.find(f => f.id === currentUser.id);
+      
+      if (funcionario) {
+        setProfileData({
+          nome: funcionario.nome,
+          cpf: funcionario.cpf,
+          telefone: funcionario.telefone,
+          email: funcionario.email,
+          cargo: funcionario.cargo || 'Funcionário'
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error);
+    }
+  };
+
+  const loadAvailability = async () => {
+    try {
+      const availabilityData = localStorage.getItem(`availability_${currentUser.id}`);
+      if (availabilityData) {
+        setAvailability(JSON.parse(availabilityData));
+      } else {
+        // Valores padrão
+        setAvailability({
+          segunda: { inicio: '08:00', fim: '18:00', disponivel: true },
+          terca: { inicio: '08:00', fim: '18:00', disponivel: true },
+          quarta: { inicio: '08:00', fim: '18:00', disponivel: true },
+          quinta: { inicio: '08:00', fim: '18:00', disponivel: true },
+          sexta: { inicio: '08:00', fim: '18:00', disponivel: true },
+          sabado: { inicio: '08:00', fim: '14:00', disponivel: false },
+          domingo: { inicio: '08:00', fim: '14:00', disponivel: false }
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar disponibilidade:', error);
+    }
+  };
+
+  const loadBreaks = async () => {
+    try {
+      const breaksData = localStorage.getItem(`breaks_${currentUser.id}`);
+      if (breaksData) {
+        setBreaks(JSON.parse(breaksData));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar pausas:', error);
+    }
+  };
+
+  const checkPendingConfirmations = async () => {
+    try {
+      const hoje = new Date().toISOString().split('T')[0];
+      const pendentes = agendamentos.filter(
+        agendamento => agendamento.data === hoje && agendamento.status === 'pendente'
+      );
+      setPendingConfirmations(pendentes);
+      
+      if (pendentes.length > 0) {
+        addNotification(
+          'Confirmação Necessária',
+          `Você tem ${pendentes.length} agendamento(s) pendente(s) para confirmar hoje.`,
+          'warning'
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao verificar confirmações:', error);
+    }
+  };
+
+  const updateAgendamentoStatus = async (agendamentoId, novoStatus) => {
+    try {
+      const agendamentosData = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+      const agendamentosAtualizados = agendamentosData.map(agendamento => {
+        if (agendamento.id === agendamentoId) {
+          return { ...agendamento, status: novoStatus };
+        }
+        return agendamento;
+      });
+      
+      localStorage.setItem('agendamentos', JSON.stringify(agendamentosAtualizados));
+      await loadAgendamentos();
+      
+      addNotification(
+        'Status Atualizado',
+        `Agendamento ${novoStatus === 'confirmado' ? 'confirmado' : 'cancelado'} com sucesso.`,
+        'success'
+      );
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      addNotification('Erro', 'Erro ao atualizar status do agendamento.', 'error');
+    }
+  };
+
+  const confirmarTodosAgendamentos = async () => {
+    try {
+      const agendamentosData = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+      const agendamentosAtualizados = agendamentosData.map(agendamento => {
+        if (pendingConfirmations.some(p => p.id === agendamento.id)) {
+          return { ...agendamento, status: 'confirmado' };
+        }
+        return agendamento;
+      });
+      
+      localStorage.setItem('agendamentos', JSON.stringify(agendamentosAtualizados));
+      await loadAgendamentos();
+      
+      setPendingConfirmations([]);
+      setShowConfirmModal(false);
+      
+      addNotification(
+        'Agendamentos Confirmados',
+        'Todos os agendamentos do dia foram confirmados com sucesso.',
+        'success'
+      );
+    } catch (error) {
+      console.error('Erro ao confirmar agendamentos:', error);
+      addNotification('Erro', 'Erro ao confirmar agendamentos.', 'error');
+    }
+  };
+
+  const addNotification = (titulo, mensagem, tipo) => {
+    const novaNotificacao = {
+      id: Date.now(),
+      titulo,
+      mensagem,
+      tipo,
+      timestamp: new Date()
+    };
     
-    // Ordenar por data e hora
-    return filtered.sort((a, b) => {
-      const dateA = new Date(`${a.dataAgendamento}T${a.horaAgendamento}`);
-      const dateB = new Date(`${b.dataAgendamento}T${b.horaAgendamento}`);
-      return dateA - dateB;
-    });
+    setNotifications(prev => [novaNotificacao, ...prev.slice(0, 9)]);
+    
+    // Auto-remover após 5 segundos
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== novaNotificacao.id));
+    }, 5000);
+  };
+
+  const removeNotification = (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const saveProfileData = async () => {
+    try {
+      const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
+      const funcionariosAtualizados = funcionarios.map(funcionario => {
+        if (funcionario.id === currentUser.id) {
+          // Salvar apenas os campos editáveis (telefone e email)
+          return { 
+            ...funcionario, 
+            telefone: profileData.telefone,
+            email: profileData.email
+          };
+        }
+        return funcionario;
+      });
+      
+      localStorage.setItem('funcionarios', JSON.stringify(funcionariosAtualizados));
+      setIsEditingProfile(false);
+      
+      addNotification('Contato Atualizado', 'Telefone e email salvos com sucesso.', 'success');
+    } catch (error) {
+      console.error('Erro ao salvar perfil:', error);
+      addNotification('Erro', 'Erro ao salvar dados de contato.', 'error');
+    }
+  };
+
+  const saveAvailability = async () => {
+    try {
+      localStorage.setItem(`availability_${currentUser.id}`, JSON.stringify(availability));
+      addNotification('Horários Salvos', 'Disponibilidade salva com sucesso.', 'success');
+    } catch (error) {
+      console.error('Erro ao salvar disponibilidade:', error);
+      addNotification('Erro', 'Erro ao salvar horários.', 'error');
+    }
+  };
+
+  const addBreak = () => {
+    const novaPausa = {
+      id: Date.now(),
+      nome: '',
+      inicio: '12:00',
+      fim: '13:00',
+      dias: ['segunda', 'terca', 'quarta', 'quinta', 'sexta']
+    };
+    setBreaks(prev => [...prev, novaPausa]);
+  };
+
+  const removeBreak = (id) => {
+    setBreaks(prev => prev.filter(pausa => pausa.id !== id));
+  };
+
+  const updateBreak = (id, campo, valor) => {
+    setBreaks(prev => prev.map(pausa => {
+      if (pausa.id === id) {
+        return { ...pausa, [campo]: valor };
+      }
+      return pausa;
+    }));
+  };
+
+  const toggleBreakDay = (breakId, dia) => {
+    setBreaks(prev => prev.map(pausa => {
+      if (pausa.id === breakId) {
+        const dias = pausa.dias.includes(dia)
+          ? pausa.dias.filter(d => d !== dia)
+          : [...pausa.dias, dia];
+        return { ...pausa, dias };
+      }
+      return pausa;
+    }));
+  };
+
+  const saveBreaks = async () => {
+    try {
+      localStorage.setItem(`breaks_${currentUser.id}`, JSON.stringify(breaks));
+      addNotification('Pausas Salvas', 'Configuração de pausas salva com sucesso.', 'success');
+    } catch (error) {
+      console.error('Erro ao salvar pausas:', error);
+      addNotification('Erro', 'Erro ao salvar configuração de pausas.', 'error');
+    }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'agendado': return 'bg-blue-100 text-blue-800';
-      case 'confirmado': return 'bg-green-100 text-green-800';
-      case 'cancelado': return 'bg-red-100 text-red-800';
-      case 'realizado': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'confirmado': return 'text-green-600 bg-green-100';
+      case 'cancelado': return 'text-red-600 bg-red-100';
+      case 'realizado': return 'text-blue-600 bg-blue-100';
+      case 'pendente': return 'text-yellow-600 bg-yellow-100';
+      default: return 'text-gray-600 bg-gray-100';
     }
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusText = (status) => {
     switch (status) {
-      case 'agendado': return <Clock className="w-4 h-4" />;
-      case 'confirmado': return <CheckCircle className="w-4 h-4" />;
-      case 'cancelado': return <XCircle className="w-4 h-4" />;
-      case 'realizado': return <CheckCircle className="w-4 h-4" />;
-      default: return <AlertCircle className="w-4 h-4" />;
+      case 'confirmado': return 'Confirmado';
+      case 'cancelado': return 'Cancelado';
+      case 'realizado': return 'Realizado';
+      case 'pendente': return 'Pendente';
+      default: return 'Desconhecido';
     }
   };
 
-  const navigateMonth = (direction) => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() + direction);
-    setCurrentDate(newDate);
-  };
-
-  const navigateToToday = () => {
-    const today = new Date();
-    setCurrentDate(today);
-    setSelectedDate(today);
-  };
-
-  // Redirecionar se não estiver logado
-  if (!funcionario || !empresa) {
-    return <Navigate to="/" replace />;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando agenda...</p>
+        </div>
+      </div>
+    );
   }
 
-  const agendamentosFiltrados = getAgendamentosFiltrados();
-  const agendamentosDoDia = getAgendamentosDoDia(selectedDate);
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-blue-100 relative overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cyan-600/5 via-transparent to-blue-600/5"></div>
-        <div className="absolute top-20 right-10 w-72 h-72 bg-gradient-to-br from-cyan-400/10 to-blue-400/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-blue-400/10 to-cyan-400/10 rounded-full blur-3xl animate-pulse"></div>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-4">
+              <Calendar className="h-8 w-8 text-purple-600" />
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Área do Funcionário</h1>
+                <p className="text-sm text-gray-600">Bem-vindo, {currentUser?.nome}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              {pendingConfirmations.length > 0 && (
+                <button
+                  onClick={() => setShowConfirmModal(true)}
+                  className="flex items-center space-x-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
+                >
+                  <CheckSquare className="h-4 w-4" />
+                  <span>Confirmar Hoje ({pendingConfirmations.length})</span>
+                </button>
+              )}
+              
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <Bell className="h-6 w-6" />
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {notifications.length}
+                  </span>
+                )}
+              </button>
+              
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center space-x-2 text-purple-600 hover:text-purple-700 transition-colors"
+              >
+                <Home className="h-5 w-5" />
+                <span>Início</span>
+              </button>
+              
+              <LoginStatusIndicator />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="relative z-10">
-        {/* Header */}
-        <header className="bg-white/90 backdrop-blur-sm shadow-lg border-b border-white/20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-6">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
-                  <ClipboardList className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Minha Agenda</h1>
-                  <p className="text-sm text-gray-600">{funcionario.nome} - {empresa.nome}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={navigateToToday}
-                  className="flex items-center px-4 py-2 bg-cyan-50 text-cyan-600 rounded-xl hover:bg-cyan-100 transition-all duration-200 font-semibold"
-                >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Hoje
-                </button>
-                
-                <button
-                  onClick={() => navigate('/')}
-                  className="flex items-center px-4 py-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-all duration-200 font-semibold"
-                  title="Voltar à Página Inicial"
-                >
-                  <Home className="h-4 w-4 mr-2" />
-                  Início
-                </button>
-                
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors rounded-xl hover:bg-gray-50"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sair
-                </button>
-              </div>
-            </div>
+      {/* Notifications Panel */}
+      {showNotifications && (
+        <div className="fixed top-20 right-4 z-50 w-80 max-h-96 overflow-y-auto bg-white rounded-lg shadow-xl border border-gray-200">
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Notificações</h3>
           </div>
-        </header>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Calendário */}
-            <div className="lg:col-span-2">
-              <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6">
-                {/* Header do Calendário */}
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center space-x-4">
-                    <button
-                      onClick={() => navigateMonth(-1)}
-                      className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                    >
-                      <ChevronLeft className="w-5 h-5 text-gray-600" />
-                    </button>
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                    </h2>
-                    <button
-                      onClick={() => navigateMonth(1)}
-                      className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                    >
-                      <ChevronRight className="w-5 h-5 text-gray-600" />
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => navigate('/')}
-                    className="flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Voltar ao Início
-                  </button>
-                </div>
-
-                {/* Grid do Calendário */}
-                <div className="grid grid-cols-7 gap-2 mb-4">
-                  {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                    <div key={day} className="p-2 text-center text-sm font-semibold text-gray-600">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-7 gap-2">
-                  {Array.from({ length: 35 }, (_, i) => {
-                    const date = new Date(currentDate);
-                    date.setDate(1);
-                    date.setDate(date.getDate() - date.getDay() + i);
-                    
-                    const isCurrentMonth = date.getMonth() === currentDate.getMonth();
-                    const isToday = date.toDateString() === new Date().toDateString();
-                    const isSelected = date.toDateString() === selectedDate.toDateString();
-                    const dayAgendamentos = getAgendamentosDoDia(date);
-                    
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => setSelectedDate(date)}
-                        className={`
-                          p-2 h-16 rounded-xl transition-all duration-200 text-sm font-medium
-                          ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
-                          ${isToday ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white' : ''}
-                          ${isSelected && !isToday ? 'bg-cyan-100 text-cyan-800' : ''}
-                          ${!isSelected && !isToday && isCurrentMonth ? 'hover:bg-gray-100' : ''}
-                        `}
-                      >
-                        <div className="flex flex-col items-center">
-                          <span>{date.getDate()}</span>
-                          {dayAgendamentos.length > 0 && (
-                            <div className="flex space-x-1 mt-1">
-                              {dayAgendamentos.slice(0, 3).map((_, idx) => (
-                                <div
-                                  key={idx}
-                                  className={`w-1 h-1 rounded-full ${
-                                    isToday ? 'bg-white' : 'bg-cyan-500'
-                                  }`}
-                                />
-                              ))}
-                              {dayAgendamentos.length > 3 && (
-                                <span className={`text-xs ${isToday ? 'text-white' : 'text-cyan-600'}`}>
-                                  +{dayAgendamentos.length - 3}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Painel Lateral */}
-            <div className="space-y-6">
-              {/* Filtros e Busca */}
-              <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Filtros</h3>
-                
-                {/* Busca */}
-                <div className="relative mb-4">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Buscar por cliente ou serviço..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all duration-200"
-                  />
-                </div>
-
-                {/* Filtros de Status */}
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Status:</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { key: 'all', label: 'Todos', color: 'bg-gray-100 text-gray-800' },
-                      { key: 'agendado', label: 'Agendado', color: 'bg-blue-100 text-blue-800' },
-                      { key: 'confirmado', label: 'Confirmado', color: 'bg-green-100 text-green-800' },
-                      { key: 'cancelado', label: 'Cancelado', color: 'bg-red-100 text-red-800' },
-                      { key: 'realizado', label: 'Realizado', color: 'bg-purple-100 text-purple-800' }
-                    ].map(status => (
-                      <button
-                        key={status.key}
-                        onClick={() => setFilterStatus(status.key)}
-                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
-                          filterStatus === status.key
-                            ? status.color + ' ring-2 ring-cyan-500'
-                            : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        {status.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Agendamentos do Dia */}
-              <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">
-                  {selectedDate.toLocaleDateString('pt-BR', { 
-                    weekday: 'long', 
-                    day: 'numeric', 
-                    month: 'long' 
-                  })}
-                </h3>
-                
-                {agendamentosDoDia.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">Nenhum agendamento para este dia</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {agendamentosDoDia.map((agendamento, index) => (
-                      <div key={index} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-2">
-                            {getStatusIcon(agendamento.status)}
-                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(agendamento.status)}`}>
-                              {agendamento.status}
-                            </span>
-                          </div>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {formatTime(agendamento.horaAgendamento)}
-                          </span>
-                        </div>
-                        
-                        <h4 className="font-semibold text-gray-900 mb-1">{agendamento.clienteNome}</h4>
-                        <p className="text-sm text-gray-600 mb-2">{agendamento.servico}</p>
-                        
-                        {agendamento.observacoes && (
-                          <p className="text-xs text-gray-500 italic">
-                            "{agendamento.observacoes}"
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Lista de Todos os Agendamentos */}
-          <div className="mt-8 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-6">Todos os Agendamentos</h3>
-            
-            {agendamentosFiltrados.length === 0 ? (
-              <div className="text-center py-12">
-                <ClipboardList className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">Nenhum agendamento encontrado</h4>
-                <p className="text-gray-600">
-                  {searchTerm || filterStatus !== 'all' 
-                    ? 'Tente ajustar os filtros ou termo de busca.'
-                    : 'Você ainda não possui agendamentos.'
-                  }
-                </p>
-              </div>
+          <div className="p-4">
+            {notifications.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">Nenhuma notificação</p>
             ) : (
-              <div className="space-y-4">
-                {agendamentosFiltrados.map((agendamento, index) => (
-                  <div key={index} className="bg-gray-50 rounded-xl p-6 border border-gray-200 hover:shadow-md transition-all duration-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        {getStatusIcon(agendamento.status)}
-                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(agendamento.status)}`}>
-                          {agendamento.status}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-semibold text-gray-900">
-                          {formatDate(agendamento.dataAgendamento)}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {formatTime(agendamento.horaAgendamento)}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                {notifications.map(notification => (
+                  <div
+                    key={notification.id}
+                    className={`p-3 rounded-lg border-l-4 ${
+                      notification.tipo === 'success' ? 'border-green-500 bg-green-50' :
+                      notification.tipo === 'warning' ? 'border-yellow-500 bg-yellow-50' :
+                      notification.tipo === 'error' ? 'border-red-500 bg-red-50' :
+                      'border-blue-500 bg-blue-50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">{agendamento.clienteNome}</h4>
-                        <p className="text-gray-600 mb-2">{agendamento.servico}</p>
-                        {agendamento.observacoes && (
-                          <p className="text-sm text-gray-500 italic">
-                            "{agendamento.observacoes}"
-                          </p>
-                        )}
+                        <h4 className="font-medium text-gray-900">{notification.titulo}</h4>
+                        <p className="text-sm text-gray-600 mt-1">{notification.mensagem}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {notification.timestamp.toLocaleTimeString()}
+                        </p>
                       </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Phone className="w-4 h-4 mr-2" />
-                          {agendamento.clienteTelefone || 'Não informado'}
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Mail className="w-4 h-4 mr-2" />
-                          {agendamento.clienteEmail || 'Não informado'}
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Building2 className="w-4 h-4 mr-2" />
-                          {empresa.nome}
-                        </div>
-                      </div>
+                      <button
+                        onClick={() => removeNotification(notification.id)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -430,6 +432,603 @@ const FuncionarioAgenda = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Confirmar Agendamentos do Dia
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Você tem {pendingConfirmations.length} agendamento(s) pendente(s) para hoje.
+              Deseja confirmar todos?
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarTodosAgendamentos}
+                className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                Confirmar Todos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              {[
+                { id: 'agenda', label: 'Agenda', icon: Calendar },
+                { id: 'perfil', label: 'Perfil', icon: User },
+                { id: 'estatisticas', label: 'Estatísticas', icon: BarChart3 },
+                { id: 'horarios', label: 'Horários', icon: Clock }
+              ].map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
+                      activeTab === tab.id
+                        ? 'border-purple-500 text-purple-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'agenda' && (
+          <div className="space-y-6">
+            {/* Agendamentos de Hoje */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <Clock className="h-5 w-5 mr-2 text-purple-600" />
+                Agendamentos de Hoje
+              </h2>
+              
+              {agendamentosHoje.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Nenhum agendamento para hoje</p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {agendamentosHoje.map(agendamento => (
+                    <div key={agendamento.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">{agendamento.servicoNome}</h3>
+                          <p className="text-sm text-gray-600">Cliente: {agendamento.clienteNome}</p>
+                          <p className="text-sm text-gray-600">Horário: {agendamento.horario}</p>
+                          <div className="flex items-center space-x-2 mt-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(agendamento.status)}`}>
+                              {getStatusText(agendamento.status)}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {agendamento.status === 'pendente' && (
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => updateAgendamentoStatus(agendamento.id, 'confirmado')}
+                              className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors"
+                            >
+                              Confirmar
+                            </button>
+                            <button
+                              onClick={() => updateAgendamentoStatus(agendamento.id, 'cancelado')}
+                              className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
+                        
+                        {agendamento.status === 'confirmado' && (
+                          <button
+                            onClick={() => updateAgendamentoStatus(agendamento.id, 'realizado')}
+                            className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+                          >
+                            Marcar Realizado
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Lista de Todos os Agendamentos */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <ClipboardList className="h-5 w-5 mr-2 text-purple-600" />
+                Todos os Agendamentos
+              </h2>
+              
+              {agendamentos.length === 0 ? (
+                <div className="text-center py-8">
+                  <ClipboardList className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Nenhum agendamento encontrado</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Data
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Horário
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Cliente
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Serviço
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Ações
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {agendamentos.map(agendamento => (
+                        <tr key={agendamento.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(agendamento.data).toLocaleDateString('pt-BR')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {agendamento.horario}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {agendamento.clienteNome}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {agendamento.servicoNome}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(agendamento.status)}`}>
+                              {getStatusText(agendamento.status)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            {agendamento.status === 'pendente' && (
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => updateAgendamentoStatus(agendamento.id, 'confirmado')}
+                                  className="text-green-600 hover:text-green-900"
+                                >
+                                  Confirmar
+                                </button>
+                                <button
+                                  onClick={() => updateAgendamentoStatus(agendamento.id, 'cancelado')}
+                                  className="text-red-600 hover:text-red-900"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            )}
+                            {agendamento.status === 'confirmado' && (
+                              <button
+                                onClick={() => updateAgendamentoStatus(agendamento.id, 'realizado')}
+                                className="text-blue-600 hover:text-blue-900"
+                              >
+                                Marcar Realizado
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Aba Perfil */}
+        {activeTab === 'perfil' && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                <User className="h-5 w-5 mr-2 text-purple-600" />
+                Meu Perfil
+              </h2>
+              {!isEditingProfile ? (
+                <button
+                  onClick={() => setIsEditingProfile(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  <Edit className="h-4 w-4" />
+                  <span>Editar Contato</span>
+                </button>
+              ) : (
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setIsEditingProfile(false)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={saveProfileData}
+                    className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Save className="h-4 w-4" />
+                    <span>Salvar</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Campos preenchidos automaticamente pela empresa */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome Completo
+                </label>
+                <input
+                  type="text"
+                  value={profileData.nome || ''}
+                  disabled={true}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Definido pela empresa
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  CPF
+                </label>
+                <input
+                  type="text"
+                  value={profileData.cpf || ''}
+                  disabled={true}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Definido pela empresa
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cargo
+                </label>
+                <input
+                  type="text"
+                  value={profileData.cargo || ''}
+                  disabled={true}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Definido pela empresa
+                </p>
+              </div>
+
+              {/* Campos editáveis pelo funcionário */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Telefone *
+                </label>
+                <input
+                  type="text"
+                  value={profileData.telefone || ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é número
+                    setProfileData(prev => ({ ...prev, telefone: value }));
+                  }}
+                  disabled={!isEditingProfile}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100"
+                  maxLength={11}
+                  placeholder="11999999999"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Você pode alterar seu telefone
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={profileData.email || ''}
+                  onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
+                  disabled={!isEditingProfile}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100"
+                  placeholder="seu@email.com"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Você pode alterar seu email
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <h3 className="text-sm font-medium text-blue-900 mb-2">Informações Importantes</h3>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• Nome, CPF e cargo são definidos pela empresa</li>
+                <li>• Você pode alterar apenas telefone e email</li>
+                <li>• Seus horários de trabalho são gerenciados pela empresa</li>
+                <li>• Mantenha seus dados de contato sempre atualizados</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Aba Estatísticas */}
+        {activeTab === 'estatisticas' && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+              <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
+              Minhas Estatísticas
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-100">Agendamentos Realizados</p>
+                    <p className="text-3xl font-bold">
+                      {agendamentos.filter(a => a.status === 'realizado').length}
+                    </p>
+                  </div>
+                  <CheckSquare className="h-8 w-8 text-green-200" />
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-100">Taxa de Comparecimento</p>
+                    <p className="text-3xl font-bold">
+                      {agendamentos.length > 0 
+                        ? Math.round((agendamentos.filter(a => a.status === 'realizado').length / agendamentos.length) * 100)
+                        : 0}%
+                    </p>
+                  </div>
+                  <Star className="h-8 w-8 text-blue-200" />
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-100">Total de Clientes</p>
+                    <p className="text-3xl font-bold">
+                      {new Set(agendamentos.map(a => a.clienteId)).size}
+                    </p>
+                  </div>
+                  <User className="h-8 w-8 text-purple-200" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Avaliações dos Clientes</h3>
+              <p className="text-gray-600">
+                As avaliações dos clientes são gerenciadas pela empresa e ficam disponíveis 
+                no sistema de gestão. Você pode solicitar feedback direto aos clientes 
+                após a realização dos serviços.
+              </p>
+              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  💡 <strong>Dica:</strong> Sempre pergunte aos clientes como foi o atendimento 
+                  e se ficaram satisfeitos com o serviço prestado.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Aba Horários */}
+        {activeTab === 'horarios' && (
+          <div className="space-y-6">
+            {/* Disponibilidade */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                  <Clock className="h-5 w-5 mr-2 text-purple-600" />
+                  Minha Disponibilidade
+                </h2>
+                <button
+                  onClick={saveAvailability}
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>Salvar</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {Object.entries(availability).map(([dia, config]) => (
+                  <div key={dia} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-medium text-gray-900 capitalize">{dia}</h3>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={config.disponivel}
+                          onChange={(e) => setAvailability(prev => ({
+                            ...prev,
+                            [dia]: { ...prev[dia], disponivel: e.target.checked }
+                          }))}
+                          className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Disponível</span>
+                      </label>
+                    </div>
+                    
+                    {config.disponivel && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Início
+                          </label>
+                          <input
+                            type="time"
+                            value={config.inicio}
+                            onChange={(e) => setAvailability(prev => ({
+                              ...prev,
+                              [dia]: { ...prev[dia], inicio: e.target.value }
+                            }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Fim
+                          </label>
+                          <input
+                            type="time"
+                            value={config.fim}
+                            onChange={(e) => setAvailability(prev => ({
+                              ...prev,
+                              [dia]: { ...prev[dia], fim: e.target.value }
+                            }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Pausas e Intervalos */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                  <Coffee className="h-5 w-5 mr-2 text-purple-600" />
+                  Pausas e Intervalos
+                </h2>
+                <button
+                  onClick={addBreak}
+                  className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  <Coffee className="h-4 w-4" />
+                  <span>Adicionar Pausa</span>
+                </button>
+              </div>
+
+              {breaks.length === 0 ? (
+                <div className="text-center py-8">
+                  <Coffee className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Nenhuma pausa configurada</p>
+                  <p className="text-sm text-gray-400 mt-2">
+                    Adicione pausas para intervalos, almoço, café, etc.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {breaks.map(pausa => (
+                    <div key={pausa.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <input
+                          type="text"
+                          placeholder="Nome da pausa (ex: Almoço, Café)"
+                          value={pausa.nome}
+                          onChange={(e) => updateBreak(pausa.id, 'nome', e.target.value)}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                        <button
+                          onClick={() => removeBreak(pausa.id)}
+                          className="ml-3 p-2 text-red-600 hover:text-red-800 transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Início
+                          </label>
+                          <input
+                            type="time"
+                            value={pausa.inicio}
+                            onChange={(e) => updateBreak(pausa.id, 'inicio', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Fim
+                          </label>
+                          <input
+                            type="time"
+                            value={pausa.fim}
+                            onChange={(e) => updateBreak(pausa.id, 'fim', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Dias da Semana
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo'].map(dia => (
+                            <label key={dia} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={pausa.dias.includes(dia)}
+                                onChange={() => toggleBreakDay(pausa.id, dia)}
+                                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                              />
+                              <span className="ml-2 text-sm text-gray-700 capitalize">{dia}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={saveBreaks}
+                  className="flex items-center space-x-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>Salvar Pausas</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useLocalAuth } from '../contexts/LocalAuthContext';
+import { useLocalAuth } from '../../contexts/LocalAuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const ProtectedRoute = ({ children }) => {

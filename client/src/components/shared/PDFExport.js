@@ -13,7 +13,7 @@ import {
   AlertCircle,
   TrendingUp
 } from 'lucide-react';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency } from '../../utils/formatters';
 
 const PDFExport = ({ 
   filters, 

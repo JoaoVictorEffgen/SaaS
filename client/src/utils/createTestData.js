@@ -177,6 +177,56 @@ export const createTestData = () => {
   console.log('Funcionário 1 - Carlos Silva - CPF: 12345678901');
   console.log('Funcionário 2 - Pedro Santos - CPF: 98765432109');
   console.log('\n🔑 Para acessar a agenda do funcionário:');
+  // Criar alguns agendamentos concluídos para avaliação
+  const agendamentosConcluidos = [
+    {
+      id: 'agend_concluido_001',
+      empresa_id: empresaTeste.id,
+      funcionario_id: funcionariosTeste[0].id,
+      funcionario_nome: funcionariosTeste[0].nome,
+      cliente_id: 'cliente_teste_001',
+      cliente_nome: 'João Silva',
+      cliente_email: 'joao.silva@email.com',
+      servico_nome: 'Corte Masculino',
+      data: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 dias atrás
+      hora_inicio: '10:00',
+      hora_fim: '10:30',
+      status: 'concluido',
+      observacoes: 'Cliente satisfeito com o atendimento',
+      avaliado: false,
+      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'agend_concluido_002',
+      empresa_id: empresaTeste.id,
+      funcionario_id: funcionariosTeste[1].id,
+      funcionario_nome: funcionariosTeste[1].nome,
+      cliente_id: 'cliente_teste_002',
+      cliente_nome: 'Maria Santos',
+      cliente_email: 'maria.santos@email.com',
+      servico_nome: 'Barba Completa',
+      data: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 5 dias atrás
+      hora_inicio: '14:00',
+      hora_fim: '14:25',
+      status: 'concluido',
+      observacoes: 'Atendimento excelente',
+      avaliado: true,
+      dataAvaliacao: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  ];
+
+  // Adicionar agendamentos concluídos
+  agendamentos.push(...agendamentosConcluidos);
+  localStorage.setItem('agendamentos', JSON.stringify(agendamentos));
+
+  console.log('✅ Dados de teste criados com sucesso!');
+  console.log('📊 Resumo:');
+  console.log(`- ${empresas.length} empresas`);
+  console.log(`- ${funcionarios.length} funcionários`);
+  console.log(`- ${agendamentos.length} agendamentos`);
+  console.log(`- ${agendamentosConcluidos.length} agendamentos concluídos para avaliação`);
+  
   console.log('1. Vá para a tela inicial');
   console.log('2. Clique em "Área do Funcionário"');
   console.log('3. Digite:');

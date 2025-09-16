@@ -10,7 +10,7 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react';
-import localStorageService from '../services/localStorageService';
+import localStorageService from '../../services/localStorageService';
 
 const AdvancedFilters = ({ onFiltersChange, userId }) => {
   const [isOpen, setIsOpen] = useState(false);

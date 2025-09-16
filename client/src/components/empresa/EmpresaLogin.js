@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useLocalAuth } from '../contexts/LocalAuthContext';
+import { useLocalAuth } from '../../contexts/LocalAuthContext';
 
 const EmpresaLogin = () => {
   const navigate = useNavigate();

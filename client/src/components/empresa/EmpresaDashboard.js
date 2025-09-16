@@ -17,8 +17,8 @@ import {
   Edit3,
   Home
 } from 'lucide-react';
-import { useLocalAuth } from '../contexts/LocalAuthContext';
-import localStorageService from '../services/localStorageService';
+import { useLocalAuth } from '../../contexts/LocalAuthContext';
+import localStorageService from '../../services/localStorageService';
 
 const EmpresaDashboard = () => {
   const navigate = useNavigate();

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import ImageUpload from './ImageUpload';
+import ImageUpload from '../shared/ImageUpload';
 
 const EmpresaCadastro = () => {
   const navigate = useNavigate();
@@ -312,7 +312,7 @@ const EmpresaCadastro = () => {
             {/* Botões */}
             <div className="flex space-x-4 pt-6">
               <Link
-                to="/empresa/login"
+                to="/"
                 className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-center font-medium"
               >
                 Cancelar

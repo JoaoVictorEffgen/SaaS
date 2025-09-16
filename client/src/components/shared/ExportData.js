@@ -11,8 +11,8 @@ import {
   Package,
   ArrowLeft
 } from 'lucide-react';
-import exportService from '../services/exportService';
-import { useLocalAuth } from '../contexts/LocalAuthContext';
+import exportService from '../../services/exportService';
+import { useLocalAuth } from '../../contexts/LocalAuthContext';
 
 const ExportData = () => {
   const { user } = useLocalAuth();

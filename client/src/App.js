@@ -1,17 +1,18 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { LocalAuthProvider } from './contexts/LocalAuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute from './components/shared/ProtectedRoute';
 
 // Removido import automático de dados de teste
 
 // Componentes principais
 import AccessSelector from './components/AccessSelector';
-import EmpresaCadastro from './components/EmpresaCadastro';
-import EmpresaLogin from './components/EmpresaLogin';
-import EmpresaDashboard from './components/EmpresaDashboard';
-import SelecaoEmpresa from './components/SelecaoEmpresa';
-import AgendamentoEmpresa from './components/AgendamentoEmpresa';
+import EmpresaCadastro from './components/empresa/EmpresaCadastro';
+import EmpresaLogin from './components/empresa/EmpresaLogin';
+import EmpresaDashboard from './components/empresa/EmpresaDashboard';
+import SelecaoEmpresa from './components/funcionario/SelecaoEmpresa';
+import AgendamentoEmpresa from './components/funcionario/AgendamentoEmpresa';
+import ClienteAgendamentos from './components/cliente/ClienteAgendamentos';
 import FuncionarioAgenda from './pages/FuncionarioAgenda';
 
 // Páginas de gestão
@@ -20,9 +21,9 @@ import FuncionariosManagement from './pages/FuncionariosManagement';
 import CompanySettings from './pages/CompanySettings';
 
 // Componentes de dashboard
-import DashboardKPIs from './components/DashboardKPIs';
-import ExportData from './components/ExportData';
-import ClearData from './components/ClearData';
+import DashboardKPIs from './components/shared/DashboardKPIs';
+import ExportData from './components/shared/ExportData';
+import ClearData from './components/shared/ClearData';
 
 function App() {
   return (
@@ -51,6 +52,7 @@ function App() {
           {/* Rotas B2C (Clientes) */}
         <Route path="/cliente" element={<SelecaoEmpresa />} />
         <Route path="/cliente/empresa/:empresaId" element={<AgendamentoEmpresa />} />
+        <Route path="/cliente/agendamentos" element={<ClienteAgendamentos />} />
           
           {/* Rotas de Funcionários */}
         <Route path="/funcionario/agenda" element={<FuncionarioAgenda />} />

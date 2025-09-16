@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLocalAuth } from '../contexts/LocalAuthContext';
-import { User, Building2, ClipboardList, LogOut, LogIn, X, Home } from 'lucide-react';
+import { useLocalAuth } from '../../contexts/LocalAuthContext';
+import { User, Building2, ClipboardList, LogOut, LogIn, X, Home, Calendar } from 'lucide-react';
 
 const LoginStatusIndicator = () => {
   const { user, logout } = useLocalAuth();
@@ -269,6 +269,18 @@ const LoginStatusIndicator = () => {
           </div>
         </div>
       </div>
+
+      {/* Botão Meus Agendamentos (apenas para clientes) */}
+      {loginInfo.type === 'cliente' && (
+        <button
+          onClick={() => navigate('/cliente/agendamentos')}
+          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-1 font-semibold"
+          title="Ver Meus Agendamentos"
+        >
+          <Calendar className="w-4 h-4" />
+          <span className="text-sm font-bold">📅 MEUS AGENDAMENTOS</span>
+        </button>
+      )}
 
       {/* Botão Voltar ao Início */}
       <button

@@ -16,9 +16,9 @@ import {
   UserPlus,
   Eye
 } from 'lucide-react';
-import kpiService from '../services/kpiService';
-import { useLocalAuth } from '../contexts/LocalAuthContext';
-import { formatCurrency } from '../utils/formatters';
+import kpiService from '../../services/kpiService';
+import { useLocalAuth } from '../../contexts/LocalAuthContext';
+import { formatCurrency } from '../../utils/formatters';
 import AdvancedFilters from './AdvancedFilters';
 import VisualReports from './VisualReports';
 import PDFExport from './PDFExport';

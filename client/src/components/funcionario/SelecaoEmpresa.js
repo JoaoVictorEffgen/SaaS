@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import EmpresaCard from './EmpresaCard';
+import EmpresaCard from '../shared/EmpresaCard';
 import { 
   LogOut, Star, Crown, Award, Search, Clock, 
   Calendar, CheckCircle, XCircle, Filter,
   Building2, Home
 } from 'lucide-react';
-import { useLocalAuth } from '../contexts/LocalAuthContext';
-import localStorageService from '../services/localStorageService';
-import { formatDate, formatTime } from '../utils/formatters';
+import { useLocalAuth } from '../../contexts/LocalAuthContext';
+import localStorageService from '../../services/localStorageService';
+import { formatDate, formatTime } from '../../utils/formatters';
 
 const SelecaoEmpresa = () => {
   const { user, logout } = useLocalAuth();

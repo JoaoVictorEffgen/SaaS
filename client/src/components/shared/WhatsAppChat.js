@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MessageCircle, X, Send, Phone } from 'lucide-react';
-import { formatTime } from '../utils/formatters';
+import { formatTime } from '../../utils/formatters';
 
 const WhatsAppChat = ({ empresa, cliente, onClose }) => {
   const [messages, setMessages] = useState([]);
