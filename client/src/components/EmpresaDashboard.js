@@ -14,7 +14,8 @@ import {
   CheckCircle,
   ArrowRight,
   Sparkles,
-  Edit3
+  Edit3,
+  Home
 } from 'lucide-react';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
 import localStorageService from '../services/localStorageService';
@@ -168,6 +169,15 @@ const EmpresaDashboard = () => {
                 </p>
               </div>
             </div>
+            
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center px-4 py-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-xl transition-all duration-300 font-medium"
+              title="Voltar à Página Inicial"
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Início
+            </button>
             
             <button
               onClick={handleLogout}

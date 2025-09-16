@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
-import { User, Building2, ClipboardList, LogOut, LogIn, X } from 'lucide-react';
+import { User, Building2, ClipboardList, LogOut, LogIn, X, Home } from 'lucide-react';
 
 const LoginStatusIndicator = () => {
   const { user, logout } = useLocalAuth();
+  const navigate = useNavigate();
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const getLoginInfo = () => {
@@ -66,8 +68,8 @@ const LoginStatusIndicator = () => {
     localStorage.removeItem('funcionarioLogado');
     localStorage.removeItem('empresaFuncionario');
     localStorage.removeItem('currentUser');
-    // Recarregar a página para limpar o estado
-    window.location.reload();
+    // Navegar para a página inicial
+    window.location.href = '/';
   };
 
   const getIcon = (type) => {
@@ -112,20 +114,30 @@ const LoginStatusIndicator = () => {
   if (!loginInfo.isLoggedIn) {
     return (
       <div className="flex items-center space-x-3">
-        {/* Status offline */}
-        <div className="flex items-center space-x-2 text-gray-500">
-          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-          <span className="text-sm">Não logado</span>
+        {/* Status offline - Mais Destacado */}
+        <div className="flex items-center space-x-2 px-3 py-2 bg-red-50 border-2 border-red-200 rounded-lg shadow-lg">
+          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+          <span className="text-sm font-bold text-red-800">❌ OFFLINE</span>
         </div>
 
-        {/* Botão de Login */}
+        {/* Botão de Login - Mais Chamativo */}
         <button
           onClick={() => setShowLoginModal(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-sm"
+          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 font-semibold"
           title="Fazer Login"
         >
-          <LogIn className="w-4 h-4" />
-          <span className="text-sm font-medium">Login</span>
+          <LogIn className="w-5 h-5" />
+          <span className="text-sm font-bold">🔑 FAZER LOGIN</span>
+        </button>
+
+        {/* Botão Voltar ao Início */}
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center space-x-2 px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 font-semibold"
+          title="Voltar à Página Inicial"
+        >
+          <Home className="w-5 h-5" />
+          <span className="text-sm font-bold">🏠 INÍCIO</span>
         </button>
 
         {/* Modal de seleção de login */}
@@ -232,37 +244,50 @@ const LoginStatusIndicator = () => {
 
   return (
     <div className="flex items-center space-x-3">
-      {/* Indicador de status */}
-      <div className="flex items-center space-x-2">
-        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-        <span className="text-sm text-gray-600">Online</span>
+      {/* Indicador de status - Mais Destacado */}
+      <div className="flex items-center space-x-2 px-3 py-2 bg-green-50 border-2 border-green-200 rounded-lg shadow-lg">
+        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-lg"></div>
+        <span className="text-sm font-bold text-green-800">✅ ONLINE</span>
       </div>
 
-      {/* Informações do usuário */}
-      <div className="flex items-center space-x-2 px-3 py-2 rounded-lg border bg-white shadow-sm">
-        <div className="flex items-center space-x-2">
-          <div className={`p-1.5 rounded-md ${getTypeColor(loginInfo.type)}`}>
-            {getIcon(loginInfo.type)}
+      {/* Informações do usuário - Mais Visível */}
+      <div className="flex items-center space-x-3 px-4 py-3 rounded-xl border-2 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 shadow-lg">
+        <div className="flex items-center space-x-3">
+          <div className={`p-2 rounded-xl ${getTypeColor(loginInfo.type)} shadow-md`}>
+            <div className="text-xl">
+              {getIcon(loginInfo.type)}
+            </div>
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-gray-900">
+            <span className="text-base font-bold text-gray-900">
               {loginInfo.name}
             </span>
-            <span className="text-xs text-gray-500">
-              {getTypeLabel(loginInfo.type)} #{loginInfo.id}
+            <span className="text-xs font-medium text-gray-600">
+              {loginInfo.type === 'empresa' ? '🏢 Empresa' : 
+               loginInfo.type === 'cliente' ? '👤 Cliente' : '👨‍💼 Funcionário'} • ID: {loginInfo.id}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Botão de logout */}
+      {/* Botão Voltar ao Início */}
+      <button
+        onClick={() => navigate('/')}
+        className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-1 font-semibold"
+        title="Voltar à Página Inicial"
+      >
+        <Home className="w-4 h-4" />
+        <span className="text-sm font-bold">🏠 INÍCIO</span>
+      </button>
+
+      {/* Botão de logout - Mais Destacado */}
       <button
         onClick={handleLogout}
-        className="flex items-center space-x-1 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-200"
+        className="flex items-center space-x-2 px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 border border-red-200 hover:border-red-300 font-semibold"
         title="Sair"
       >
         <LogOut className="w-4 h-4" />
-        <span className="text-sm">Sair</span>
+        <span className="text-sm font-bold">🚪 SAIR</span>
       </button>
     </div>
   );

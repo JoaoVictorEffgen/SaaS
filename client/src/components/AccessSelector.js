@@ -1,18 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
-  Building2, Users, ArrowRight, Sparkles, Calendar, Clock, Zap, Star, Crown,
-  TrendingUp, Users2, Heart, Award, Shield, Globe, MapPin, 
-  ChevronRight, ChevronLeft, Facebook, Instagram, Twitter, Linkedin,
-  X, ClipboardList
+  Building2, Users, ArrowRight, Calendar, Clock, Zap, Star, Crown,
+  Users2, X, ClipboardList, ChevronLeft, ChevronRight, Mail, Phone, MapPin, Facebook, Instagram, Twitter, Linkedin, Plus
 } from 'lucide-react';
-import localStorageService from '../services/localStorageService';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
-// Removido import não utilizado
 
 const AccessSelector = () => {
   const [empresasDestaque, setEmpresasDestaque] = useState([]);
-  const [currentBenefit, setCurrentBenefit] = useState(0);
   const [stats, setStats] = useState({
     totalEmpresas: 0,
     totalAgendamentos: 0,
@@ -43,188 +38,214 @@ const AccessSelector = () => {
   const [empresaLoading, setEmpresaLoading] = useState(false);
   const [clienteLoading, setClienteLoading] = useState(false);
   const [funcionarioLoading, setFuncionarioLoading] = useState(false);
+  const [currentBenefit, setCurrentBenefit] = useState(0);
+  const [currentEmpresa, setCurrentEmpresa] = useState(0);
+  const [animatedStats, setAnimatedStats] = useState({
+    totalEmpresas: 0,
+    totalAgendamentos: 0,
+    totalClientes: 0,
+    satisfacao: 0
+  });
+  const [isClientLoggedIn, setIsClientLoggedIn] = useState(false);
   
   const navigate = useNavigate();
-  const { login, register, user } = useLocalAuth();
+  const { login, register } = useLocalAuth();
 
   const beneficios = [
     {
       icon: Clock,
       title: "Agendamento 24h",
-      description: "Disponível a qualquer hora",
-      color: "from-blue-500 to-blue-600",
-      bgColor: "from-blue-50 to-blue-100"
+      description: "Seus clientes podem agendar a qualquer hora do dia, todos os dias da semana.",
+      color: "from-blue-500 to-blue-600"
     },
     {
       icon: Zap,
       title: "Rápido & Fácil",
-      description: "Processo simplificado",
-      color: "from-green-500 to-green-600",
-      bgColor: "from-green-50 to-green-100"
+      description: "Interface intuitiva que permite agendamentos em poucos cliques.",
+      color: "from-green-500 to-green-600"
     },
     {
       icon: Calendar,
-      title: "Totalmente Organizado",
-      description: "Gestão profissional",
-      color: "from-purple-500 to-purple-600",
-      bgColor: "from-purple-50 to-purple-100"
+      title: "Organizado",
+      description: "Mantenha sua agenda sempre organizada com sincronização automática.",
+      color: "from-purple-500 to-purple-600"
     }
   ];
 
-  // Função para calcular estatísticas
-  const calculateStats = useCallback((empresas) => {
-    const totalEmpresas = empresas.length;
-    const totalAgendamentos = empresas.reduce((acc, empresa) => {
-      return acc + (empresa.totalAgendamentos || 0);
-    }, 0);
-    const totalClientes = empresas.reduce((acc, empresa) => {
-      return acc + (empresa.totalClientes || 0);
-    }, 0);
-    const satisfacao = empresas.length > 0 
-      ? empresas.reduce((acc, empresa) => acc + (empresa.notaMedia || 0), 0) / empresas.length 
-      : 0;
+  const nextBenefit = () => {
+    setCurrentBenefit((prev) => (prev + 1) % beneficios.length);
+  };
 
-    return {
-      totalEmpresas,
-      totalAgendamentos,
-      totalClientes,
-      satisfacao: Number(satisfacao.toFixed(1))
-    };
-  }, []);
+  const prevBenefit = () => {
+    setCurrentBenefit((prev) => (prev - 1 + beneficios.length) % beneficios.length);
+  };
 
-  // Função para carregar empresas em destaque
-  const loadFeaturedCompanies = useCallback(() => {
-    const empresas = localStorageService.getEmpresas();
-    const topEmpresas = empresas
-      .sort((a, b) => {
-        const notaA = a.notaMedia || 0;
-        const notaB = b.notaMedia || 0;
-        const avaliacoesA = a.totalAvaliacoes || 0;
-        const avaliacoesB = b.totalAvaliacoes || 0;
-        
-        if (notaA !== notaB) {
-          return notaB - notaA;
-        }
-        return avaliacoesB - avaliacoesA;
-      })
-      .slice(0, 3);
+  const nextEmpresa = () => {
+    setCurrentEmpresa((prev) => (prev + 1) % Math.min(empresasDestaque.length, 6));
+  };
+
+  const prevEmpresa = () => {
+    setCurrentEmpresa((prev) => (prev - 1 + Math.min(empresasDestaque.length, 6)) % Math.min(empresasDestaque.length, 6));
+  };
+
+  const handleAgendarEmpresa = (empresa) => {
+    // Verificar se o usuário está logado
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
     
-    setEmpresasDestaque(topEmpresas);
-    setStats(calculateStats(empresas));
-  }, [calculateStats]);
+    if (currentUser && currentUser.tipo === 'cliente') {
+      // Usuário já está logado como cliente - ir direto para agendamento
+      localStorage.setItem('empresaSelecionada', JSON.stringify(empresa));
+      navigate('/cliente');
+    } else {
+      // Usuário não está logado - abrir modal de login de cliente
+      localStorage.setItem('empresaSelecionada', JSON.stringify(empresa));
+      setShowClienteModal(true);
+      setIsClienteLoginMode(true); // Forçar modo de login
+    }
+  };
 
+  // Auto-rotate carousel
   useEffect(() => {
-    loadFeaturedCompanies();
-
-    // Auto-rotate benefits
     const interval = setInterval(() => {
       setCurrentBenefit((prev) => (prev + 1) % beneficios.length);
-    }, 3000);
-
+    }, 5000);
     return () => clearInterval(interval);
-  }, [loadFeaturedCompanies]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const nextBenefit = useCallback(() => {
-    setCurrentBenefit((prev) => (prev + 1) % beneficios.length);
   }, [beneficios.length]);
 
-  const prevBenefit = useCallback(() => {
-    setCurrentBenefit((prev) => (prev - 1 + beneficios.length) % beneficios.length);
-  }, [beneficios.length]);
+  // Auto-rotate empresas carousel
+  useEffect(() => {
+    if (empresasDestaque.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentEmpresa((prev) => (prev + 1) % Math.min(empresasDestaque.length, 6));
+      }, 4000);
+      return () => clearInterval(interval);
+    }
+  }, [empresasDestaque.length]);
 
-  // Funções dos modais
+  // Animate stats numbers
+  const animateNumber = (start, end, duration, setter) => {
+    const startTime = Date.now();
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      const current = Math.floor(start + (end - start) * easeOutQuart);
+      setter(current);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    animate();
+  };
+
+  const loadEmpresasDestaque = useCallback(() => {
+    const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
+    const empresasComAvaliacao = empresas.map(empresa => ({
+      ...empresa,
+      avaliacao: 4.5 + Math.random() * 0.5, // Simular avaliação entre 4.5 e 5.0
+      totalAvaliacoes: Math.floor(Math.random() * 200) + 50
+    }));
+    
+    const empresasOrdenadas = empresasComAvaliacao
+      .sort((a, b) => b.avaliacao - a.avaliacao)
+      .slice(0, 6); // Pegar as 6 primeiras
+    
+    setEmpresasDestaque(empresasOrdenadas);
+  }, []);
+
+  const loadStats = useCallback(() => {
+    const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
+    const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+    
+    let totalAgendamentos = 0;
+    let totalClientes = 0;
+    
+    empresas.forEach(empresa => {
+      const agendamentosEmpresa = agendamentos.filter(a => a.empresa_id === empresa.id);
+      totalAgendamentos += agendamentosEmpresa.length;
+      
+      const clientesUnicos = new Set(agendamentosEmpresa.map(a => a.cliente_email));
+      totalClientes += clientesUnicos.size;
+    });
+
+    const newStats = {
+      totalEmpresas: empresas.length,
+      totalAgendamentos,
+      totalClientes,
+      satisfacao: 4.8
+    };
+
+    setStats(newStats);
+
+    // Animate the numbers
+    setTimeout(() => {
+      animateNumber(0, newStats.totalEmpresas, 2000, (value) => 
+        setAnimatedStats(prev => ({ ...prev, totalEmpresas: value }))
+      );
+      animateNumber(0, newStats.totalAgendamentos, 2000, (value) => 
+        setAnimatedStats(prev => ({ ...prev, totalAgendamentos: value }))
+      );
+      animateNumber(0, newStats.totalClientes, 2000, (value) => 
+        setAnimatedStats(prev => ({ ...prev, totalClientes: value }))
+      );
+      animateNumber(0, newStats.satisfacao * 10, 2000, (value) => 
+        setAnimatedStats(prev => ({ ...prev, satisfacao: value / 10 }))
+      );
+    }, 500);
+  }, []);
+
+  useEffect(() => {
+    loadEmpresasDestaque();
+    loadStats();
+    
+    // Verificar se há um cliente logado
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    setIsClientLoggedIn(currentUser && currentUser.tipo === 'cliente');
+  }, [loadEmpresasDestaque, loadStats]);
+
   const openEmpresaModal = () => {
     setShowEmpresaModal(true);
-    setIsLoginMode(true);
-    setEmpresaForm({ email: '', senha: '', nome: '', telefone: '', endereco: '' });
     setEmpresaError('');
+    setEmpresaForm({ email: '', senha: '', nome: '', telefone: '', endereco: '' });
   };
 
   const openClienteModal = () => {
-    // Verificar se o cliente já está logado
-    const clienteLogado = localStorage.getItem('clienteLogado');
-    if (clienteLogado && user && user.tipo === 'cliente') {
-      // Se já estiver logado como cliente, ir direto para a seleção de empresas
-      navigate('/cliente');
-      return;
-    }
-    
     setShowClienteModal(true);
-    setIsClienteLoginMode(true);
-    setClienteForm({ nome: '', email: '', telefone: '', senha: '' });
     setClienteError('');
-  };
-
-
-  // Função para navegar para todas as empresas (se logado como cliente)
-  const handleVerTodasEmpresas = () => {
-    const clienteLogado = localStorage.getItem('clienteLogado');
-    if (clienteLogado && user && user.tipo === 'cliente') {
-      // Se já estiver logado como cliente, ir direto para a seleção de empresas
-      navigate('/cliente');
-    } else {
-      // Se não estiver logado, abrir modal de cliente
-      openClienteModal();
-    }
-  };
-
-  // Função para agendar em empresa específica
-  const handleAgendarEmpresa = (empresaId) => {
-    const clienteLogado = localStorage.getItem('clienteLogado');
-    if (clienteLogado && user && user.tipo === 'cliente') {
-      // Se já estiver logado como cliente, ir direto para a empresa
-      navigate(`/cliente/empresa/${empresaId}`);
-    } else {
-      // Se não estiver logado, abrir modal de cliente
-      openClienteModal();
-    }
+    setClienteForm({ nome: '', email: '', telefone: '', senha: '' });
   };
 
   const openFuncionarioModal = () => {
     setShowFuncionarioModal(true);
     setFuncionarioError('');
-  };
-
-  const closeModal = () => {
-    setShowEmpresaModal(false);
-    setShowClienteModal(false);
-    setShowFuncionarioModal(false);
-    setIsLoginMode(true);
-    setIsClienteLoginMode(true);
-    setEmpresaError('');
-    setClienteError('');
-    setFuncionarioError('');
+    setFuncionarioForm({ empresaId: '', cpf: '' });
   };
 
   const handleEmpresaSubmit = async (e) => {
     e.preventDefault();
-    setEmpresaError('');
     setEmpresaLoading(true);
-    
+    setEmpresaError('');
+
     try {
+      let result;
       if (isLoginMode) {
-        const result = await login(empresaForm.email, empresaForm.senha, 'empresa');
-        if (result.success) {
-          closeModal();
-          navigate('/empresa/dashboard');
-        } else {
-          setEmpresaError('Email ou senha incorretos. Verifique seus dados e tente novamente.');
-        }
+        result = await login(empresaForm.email, empresaForm.senha);
       } else {
-        const result = await register({
+        result = await register({
           ...empresaForm,
           tipo: 'empresa'
         });
-        if (result.success) {
-          closeModal();
-          navigate('/empresa/dashboard');
-        } else {
-          setEmpresaError(result.error || 'Erro ao criar conta. Verifique os dados e tente novamente.');
-        }
+      }
+
+      if (result.success) {
+        setShowEmpresaModal(false);
+        navigate('/empresa/dashboard');
+      } else {
+        setEmpresaError(result.error || 'Erro no login/cadastro');
       }
     } catch (error) {
-      console.error('Erro no login/cadastro:', error);
-      setEmpresaError('Ocorreu um erro inesperado. Tente novamente mais tarde.');
+      setEmpresaError(error.message);
     } finally {
       setEmpresaLoading(false);
     }
@@ -232,35 +253,38 @@ const AccessSelector = () => {
 
   const handleClienteSubmit = async (e) => {
     e.preventDefault();
-    setClienteError('');
     setClienteLoading(true);
-    
+    setClienteError('');
+
     try {
+      let result;
       if (isClienteLoginMode) {
-        // Login do cliente
-        const result = await login(clienteForm.email, clienteForm.senha, 'cliente');
-        if (result.success) {
-          closeModal();
-          navigate('/cliente');
-        } else {
-          setClienteError('Email ou senha incorretos. Verifique seus dados e tente novamente.');
-        }
+        result = await login(clienteForm.email, clienteForm.senha);
       } else {
-        // Cadastro do cliente
-        const result = await register({
+        result = await register({
           ...clienteForm,
           tipo: 'cliente'
         });
-        if (result.success) {
-          closeModal();
+      }
+
+      if (result.success) {
+        setShowClienteModal(false);
+        setIsClientLoggedIn(true); // Atualizar estado de login
+        
+        // Verificar se há uma empresa pré-selecionada para agendamento
+        const empresaSelecionada = localStorage.getItem('empresaSelecionada');
+        if (empresaSelecionada) {
+          // Ir direto para a tela de agendamento com a empresa pré-selecionada
           navigate('/cliente');
         } else {
-          setClienteError(result.error || 'Erro ao criar conta. Verifique os dados e tente novamente.');
+          // Ir para a tela de seleção de empresas
+          navigate('/cliente');
         }
+      } else {
+        setClienteError(result.error || 'Erro no login/cadastro');
       }
     } catch (error) {
-      console.error('Erro no login/cadastro do cliente:', error);
-      setClienteError('Ocorreu um erro inesperado. Tente novamente mais tarde.');
+      setClienteError(error.message);
     } finally {
       setClienteLoading(false);
     }
@@ -268,35 +292,35 @@ const AccessSelector = () => {
 
   const handleFuncionarioSubmit = async (e) => {
     e.preventDefault();
-    setFuncionarioError('');
     setFuncionarioLoading(true);
+    setFuncionarioError('');
 
     try {
-      // Validar se a empresa existe
-      const empresas = localStorageService.getEmpresas();
-      const empresa = empresas.find(emp => emp.id === funcionarioForm.empresaId);
-      
-      if (!empresa) {
-        throw new Error('Empresa não encontrada. Verifique o ID da empresa.');
-      }
-
-      // Validar se o funcionário existe na empresa
+      const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
       const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
+      
+      const empresa = empresas.find(emp => emp.id === funcionarioForm.empresaId);
       const funcionario = funcionarios.find(func => 
-        func.empresaId === funcionarioForm.empresaId && 
-        func.cpf === funcionarioForm.cpf.replace(/[^\d]/g, '')
+        func.empresa_id === funcionarioForm.empresaId && 
+        func.cpf === funcionarioForm.cpf
       );
 
-      if (!funcionario) {
-        throw new Error('Funcionário não encontrado nesta empresa. Verifique o CPF.');
+      if (!empresa) {
+        throw new Error('Empresa não encontrada');
       }
 
-      // Salvar dados do funcionário logado
-      localStorage.setItem('funcionarioLogado', JSON.stringify(funcionario));
-      localStorage.setItem('empresaFuncionario', JSON.stringify(empresa));
+      if (!funcionario) {
+        throw new Error('Funcionário não encontrado nesta empresa');
+      }
 
-      // Fechar modal e navegar
-      closeModal();
+      // Simular login do funcionário
+      localStorage.setItem('currentUser', JSON.stringify({
+        ...funcionario,
+        tipo: 'funcionario',
+        empresa_nome: empresa.razaoSocial
+      }));
+
+      setShowFuncionarioModal(false);
       navigate('/funcionario/agenda');
 
     } catch (error) {
@@ -332,17 +356,11 @@ const AccessSelector = () => {
                 Revolucione sua agenda com tecnologia de ponta. 
                 <span className="font-semibold text-white"> Rápido, seguro e intuitivo.</span>
               </p>
-              <div className="flex items-center justify-center gap-2 mt-6 text-blue-200">
-                <Sparkles className="w-5 h-5 animate-spin" />
-                <span className="text-base md:text-lg font-medium">A solução completa para sua empresa</span>
-                <Sparkles className="w-5 h-5 animate-spin" />
-              </div>
               
               {/* Botão para criar dados de teste */}
               <div className="mt-8">
                 <button
                   onClick={() => {
-                    // Executar criação de dados de teste
                     import('../utils/createTestData').then(module => {
                       module.createTestData();
                     });
@@ -358,221 +376,357 @@ const AccessSelector = () => {
           </div>
         </div>
 
-        {/* Stats Section */}
-        <div className="py-12 md:py-16 px-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-8 md:mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Números que Impressionam</h2>
-              <p className="text-base md:text-lg text-gray-600">Confiança de milhares de usuários em todo o país</p>
+      {/* Banner de Status de Login */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center space-x-4">
+            {isClientLoggedIn ? (
+              <div className="flex items-center space-x-3 bg-white/20 backdrop-blur-sm rounded-xl px-6 py-3 border border-white/30">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+                <span className="text-white font-bold text-lg">🎉 VOCÊ ESTÁ LOGADO!</span>
+                <span className="text-blue-100 text-sm">Acesse suas funcionalidades completas</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-3 bg-white/20 backdrop-blur-sm rounded-xl px-6 py-3 border border-white/30">
+                <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse shadow-lg"></div>
+                <span className="text-white font-bold text-lg">🔓 FAÇA LOGIN</span>
+                <span className="text-blue-100 text-sm">Para acessar todas as funcionalidades</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Section */}
+      <div className="py-8 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Números que Impressionam</h2>
+            <p className="text-gray-600">Confiança de milhares de usuários em todo o país</p>
+          </div>
+          
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-white/50 text-center group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl mb-3 group-hover:rotate-12 transition-transform duration-500">
+                <Building2 className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-3xl font-bold text-gray-900 mb-1 animate-pulse">
+                {animatedStats.totalEmpresas.toLocaleString()}
+              </div>
+              <div className="text-gray-600 text-sm">Empresas Ativas</div>
             </div>
             
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-              <div className="bg-white/90 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-8 border border-white/50 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 text-center group">
-                <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl md:rounded-2xl mb-3 md:mb-4 shadow-lg group-hover:shadow-xl group-hover:rotate-12 transition-all duration-500">
-                  <Building2 className="w-6 h-6 md:w-8 md:h-8 text-white" />
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-white/50 text-center group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl mb-3 group-hover:rotate-12 transition-transform duration-500">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-3xl font-bold text-gray-900 mb-1 animate-pulse">
+                {animatedStats.totalAgendamentos.toLocaleString()}
+              </div>
+              <div className="text-gray-600 text-sm">Agendamentos</div>
+            </div>
+            
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-white/50 text-center group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl mb-3 group-hover:rotate-12 transition-transform duration-500">
+                <Users2 className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-3xl font-bold text-gray-900 mb-1 animate-pulse">
+                {animatedStats.totalClientes.toLocaleString()}
+              </div>
+              <div className="text-gray-600 text-sm">Clientes Satisfeitos</div>
+            </div>
+            
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-white/50 text-center group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl mb-3 group-hover:rotate-12 transition-transform duration-500">
+                <Star className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-3xl font-bold text-gray-900 mb-1 animate-pulse">
+                {animatedStats.satisfacao.toFixed(1)}★
+              </div>
+              <div className="text-gray-600 text-sm">Satisfação</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Action Cards */}
+      <div className="py-8 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Como você quer usar o AgendaPro?</h2>
+            <p className="text-gray-600">Escolha sua experiência personalizada</p>
+          </div>
+          
+          <div className="grid lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+            {/* Empresa Card */}
+            <button onClick={openEmpresaModal} className="group block w-full">
+              <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl hover:shadow-3xl transition-all duration-700 hover:-translate-y-4 hover:scale-105 border-2 border-blue-800 relative overflow-hidden h-full">
+                <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-br from-blue-800/10 to-blue-900/10 rounded-full -translate-y-12 md:-translate-y-16 translate-x-12 md:translate-x-16"></div>
+                <div className="relative z-10 h-full flex flex-col">
+                  <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-blue-800 rounded-xl md:rounded-2xl mb-4 md:mb-6 shadow-xl group-hover:shadow-2xl group-hover:rotate-12 transition-all duration-500">
+                    <Building2 className="w-8 h-8 md:w-10 md:h-10 text-white" />
+                  </div>
+                  <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 md:mb-3 group-hover:text-blue-800 transition-colors duration-300">
+                    Área da Empresa
+                  </h3>
+                  <p className="text-gray-600 text-base md:text-lg mb-4 md:mb-6 leading-relaxed flex-grow">
+                    Gerencie suas agendas, funcionários e clientes com ferramentas profissionais
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-6">
+                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-blue-800">
+                      <Building2 className="w-3 h-3 md:w-4 md:h-4" />
+                      <span>Seguro</span>
+                    </div>
+                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-blue-800">
+                      <Calendar className="w-3 h-3 md:w-4 md:h-4" />
+                      <span>Analytics</span>
+                    </div>
+                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-blue-800">
+                      <Users className="w-3 h-3 md:w-4 md:h-4" />
+                      <span>Multi-usuário</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center text-blue-800 font-semibold group-hover:text-blue-900 transition-colors duration-300">
+                    <span className="text-sm md:text-base">Acessar Dashboard</span>
+                    <ArrowRight className="w-4 h-4 md:w-5 md:h-5 ml-1 md:ml-2 group-hover:translate-x-2 transition-transform duration-300" />
+                  </div>
                 </div>
-                <div className="text-2xl md:text-4xl font-bold text-gray-900 mb-1 md:mb-2">{stats.totalEmpresas}</div>
-                <div className="text-gray-600 font-medium text-sm md:text-base">Empresas Ativas</div>
+              </div>
+            </button>
+
+            {/* Cliente Card */}
+            <button onClick={openClienteModal} className="group block w-full">
+              <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl hover:shadow-3xl transition-all duration-700 hover:-translate-y-4 hover:scale-105 border-2 border-green-300 relative overflow-hidden h-full">
+                <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-br from-green-300/10 to-green-400/10 rounded-full -translate-y-12 md:-translate-y-16 translate-x-12 md:translate-x-16"></div>
+                <div className="relative z-10 h-full flex flex-col">
+                  <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-green-300 rounded-xl md:rounded-2xl mb-4 md:mb-6 shadow-xl group-hover:shadow-2xl group-hover:rotate-12 transition-all duration-500">
+                    <Users className="w-8 h-8 md:w-10 md:h-10 text-white" />
+                  </div>
+                  <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 md:mb-3 group-hover:text-green-300 transition-colors duration-300">
+                    Agendar Serviço
+                  </h3>
+                  <p className="text-gray-600 text-base md:text-lg mb-4 md:mb-6 leading-relaxed flex-grow">
+                    Encontre e agende serviços com as melhores empresas da sua região
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-6">
+Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-green-300">
+                      <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                      <span>24/7</span>
+                    </div>
+                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-green-300">
+                      <Calendar className="w-3 h-3 md:w-4 md:h-4" />
+                      <span>Online</span>
+                    </div>
+                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-green-300">
+                      <Star className="w-3 h-3 md:w-4 md:h-4" />
+                      <span>Avaliadas</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center text-green-300 font-semibold group-hover:text-green-400 transition-colors duration-300">
+                    <span className="text-sm md:text-base">Buscar Empresas</span>
+                    <ArrowRight className="w-4 h-4 md:w-5 md:h-5 ml-1 md:ml-2 group-hover:translate-x-2 transition-transform duration-300" />
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            {/* Funcionário Card */}
+            <button onClick={openFuncionarioModal} className="group block w-full">
+              <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl hover:shadow-3xl transition-all duration-700 hover:-translate-y-4 hover:scale-105 border-2 border-blue-300 relative overflow-hidden h-full">
+                <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-br from-blue-300/10 to-blue-400/10 rounded-full -translate-y-12 md:-translate-y-16 translate-x-12 md:translate-x-16"></div>
+                <div className="relative z-10 h-full flex flex-col">
+                  <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-blue-300 rounded-xl md:rounded-2xl mb-4 md:mb-6 shadow-xl group-hover:shadow-2xl group-hover:rotate-12 transition-all duration-500">
+                    <ClipboardList className="w-8 h-8 md:w-10 md:h-10 text-white" />
+                  </div>
+                  <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 md:mb-3 group-hover:text-blue-300 transition-colors duration-300">
+                    Área do Funcionário
+                  </h3>
+                  <p className="text-gray-600 text-base md:text-lg mb-4 md:mb-6 leading-relaxed flex-grow">
+                    Visualize sua agenda e horários de trabalho em tempo real
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-6">
+                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-blue-300">
+                      <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                      <span>Tempo Real</span>
+                    </div>
+                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-blue-300">
+                      <Calendar className="w-3 h-3 md:w-4 md:h-4" />
+                      <span>Agenda</span>
+                    </div>
+                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-blue-300">
+                      <Users className="w-3 h-3 md:w-4 md:h-4" />
+                      <span>Equipe</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center text-blue-300 font-semibold group-hover:text-blue-400 transition-colors duration-300">
+                    <span className="text-sm md:text-base">Acessar Agenda</span>
+                    <ArrowRight className="w-4 h-4 md:w-5 md:h-5 ml-1 md:ml-2 group-hover:translate-x-2 transition-transform duration-300" />
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Benefits Carousel */}
+      <div className="py-12 md:py-16 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8 md:mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Por que usar o AgendaPro?</h2>
+            <p className="text-base md:text-lg text-gray-600">Recursos que fazem a diferença no seu dia a dia</p>
+          </div>
+          
+          <div className="relative max-w-4xl mx-auto">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-2xl border border-white/50">
+              <div className="flex items-center justify-center gap-4 md:gap-8">
+                <button 
+                  onClick={prevBenefit}
+                  className="p-2 md:p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
+                  aria-label="Benefício anterior"
+                >
+                  <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-600" />
+                </button>
+                
+                <div className="flex-1 text-center">
+                  <div className={`inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br ${beneficios[currentBenefit].color} rounded-xl md:rounded-2xl mb-4 md:mb-6 shadow-xl mx-auto`}>
+                    {React.createElement(beneficios[currentBenefit].icon, { className: "w-8 h-8 md:w-10 md:h-10 text-white" })}
+                  </div>
+                  <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 md:mb-3">
+                    {beneficios[currentBenefit].title}
+                  </h3>
+                  <p className="text-base md:text-lg text-gray-600 max-w-md mx-auto">
+                    {beneficios[currentBenefit].description}
+                  </p>
+                </div>
+                
+                <button 
+                  onClick={nextBenefit}
+                  className="p-2 md:p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
+                  aria-label="Próximo benefício"
+                >
+                  <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-gray-600" />
+                </button>
               </div>
               
-              <div className="bg-white/90 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-8 border border-white/50 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 text-center group">
-                <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-xl md:rounded-2xl mb-3 md:mb-4 shadow-lg group-hover:shadow-xl group-hover:rotate-12 transition-all duration-500">
-                  <Calendar className="w-6 h-6 md:w-8 md:h-8 text-white" />
-                </div>
-                <div className="text-2xl md:text-4xl font-bold text-gray-900 mb-1 md:mb-2">{stats.totalAgendamentos}</div>
-                <div className="text-gray-600 font-medium text-sm md:text-base">Agendamentos</div>
-              </div>
-              
-              <div className="bg-white/90 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-8 border border-white/50 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 text-center group">
-                <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl md:rounded-2xl mb-3 md:mb-4 shadow-lg group-hover:shadow-xl group-hover:rotate-12 transition-all duration-500">
-                  <Users2 className="w-6 h-6 md:w-8 md:h-8 text-white" />
-                </div>
-                <div className="text-2xl md:text-4xl font-bold text-gray-900 mb-1 md:mb-2">{stats.totalClientes}</div>
-                <div className="text-gray-600 font-medium text-sm md:text-base">Clientes Satisfeitos</div>
-              </div>
-              
-              <div className="bg-white/90 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-8 border border-white/50 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 text-center group">
-                <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl md:rounded-2xl mb-3 md:mb-4 shadow-lg group-hover:shadow-xl group-hover:rotate-12 transition-all duration-500">
-                  <Star className="w-6 h-6 md:w-8 md:h-8 text-white" />
-                </div>
-                <div className="text-2xl md:text-4xl font-bold text-gray-900 mb-1 md:mb-2">{stats.satisfacao}</div>
-                <div className="text-gray-600 font-medium text-sm md:text-base">Satisfação</div>
+              <div className="flex justify-center gap-2 mt-6 md:mt-8">
+                {beneficios.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentBenefit(index)}
+                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                      index === currentBenefit 
+                        ? 'bg-blue-600 scale-125' 
+                        : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
+                    aria-label={`Ir para benefício ${index + 1}`}
+                  />
+                ))}
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Main Action Cards */}
-        <div className="py-12 md:py-16 px-4 bg-white/50">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-8 md:mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Como você quer usar o AgendaPro?</h2>
-              <p className="text-base md:text-lg text-gray-600">Escolha sua experiência personalizada</p>
-            </div>
-            
-            <div className="grid lg:grid-cols-3 gap-6 md:gap-8 max-w-7xl mx-auto">
-              {/* Empresa Card */}
-              <button onClick={openEmpresaModal} className="group block w-full">
-                <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl hover:shadow-3xl transition-all duration-700 hover:-translate-y-4 hover:scale-105 border border-blue-100 relative overflow-hidden h-full">
-                  <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full -translate-y-12 md:-translate-y-16 translate-x-12 md:translate-x-16"></div>
-                  <div className="relative z-10 h-full flex flex-col">
-                    <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl md:rounded-2xl mb-4 md:mb-6 shadow-xl group-hover:shadow-2xl group-hover:rotate-12 transition-all duration-500">
-                      <Building2 className="w-8 h-8 md:w-10 md:h-10 text-white" />
-                    </div>
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 md:mb-3 group-hover:text-blue-600 transition-colors duration-300">
-                      Área da Empresa
-                    </h3>
-                    <p className="text-gray-600 text-base md:text-lg mb-4 md:mb-6 leading-relaxed flex-grow">
-                      Gerencie suas agendas, funcionários e clientes com ferramentas profissionais
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-6">
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-blue-600">
-                        <Shield className="w-3 h-3 md:w-4 md:h-4" />
-                        <span>Seguro</span>
-                      </div>
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-blue-600">
-                        <TrendingUp className="w-3 h-3 md:w-4 md:h-4" />
-                        <span>Analytics</span>
-                      </div>
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-blue-600">
-                        <Users className="w-3 h-3 md:w-4 md:h-4" />
-                        <span>Multi-usuário</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center text-blue-600 font-semibold group-hover:text-blue-700 transition-colors duration-300">
-                      <span className="text-sm md:text-base">Acessar Dashboard</span>
-                      <ArrowRight className="w-4 h-4 md:w-5 md:h-5 ml-1 md:ml-2 group-hover:translate-x-2 transition-transform duration-300" />
-                    </div>
-                  </div>
-                </div>
-              </button>
-
-              {/* Cliente Card */}
-              <button onClick={openClienteModal} className="group block w-full">
-                <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl hover:shadow-3xl transition-all duration-700 hover:-translate-y-4 hover:scale-105 border border-green-100 relative overflow-hidden h-full">
-                  <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-br from-green-500/10 to-teal-500/10 rounded-full -translate-y-12 md:-translate-y-16 translate-x-12 md:translate-x-16"></div>
-                  <div className="relative z-10 h-full flex flex-col">
-                    <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-green-500 to-green-600 rounded-xl md:rounded-2xl mb-4 md:mb-6 shadow-xl group-hover:shadow-2xl group-hover:rotate-12 transition-all duration-500">
-                      <Users className="w-8 h-8 md:w-10 md:h-10 text-white" />
-                    </div>
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 md:mb-3 group-hover:text-green-600 transition-colors duration-300">
-                      Agendar Serviço
-                    </h3>
-                    <p className="text-gray-600 text-base md:text-lg mb-4 md:mb-6 leading-relaxed flex-grow">
-                      Encontre e agende serviços com as melhores empresas da sua região
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-6">
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-green-600">
-                        <Clock className="w-3 h-3 md:w-4 md:h-4" />
-                        <span>24/7</span>
-                      </div>
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-green-600">
-                        <Globe className="w-3 h-3 md:w-4 md:h-4" />
-                        <span>Online</span>
-                      </div>
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-green-600">
-                        <Star className="w-3 h-3 md:w-4 md:h-4" />
-                        <span>Avaliadas</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center text-green-600 font-semibold group-hover:text-green-700 transition-colors duration-300">
-                      <span className="text-sm md:text-base">Buscar Empresas</span>
-                      <ArrowRight className="w-4 h-4 md:w-5 md:h-5 ml-1 md:ml-2 group-hover:translate-x-2 transition-transform duration-300" />
-                    </div>
-                  </div>
-                </div>
-              </button>
-
-              {/* Funcionário Card */}
-              <button onClick={openFuncionarioModal} className="group block w-full">
-                <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl hover:shadow-3xl transition-all duration-700 hover:-translate-y-4 hover:scale-105 border border-cyan-100 relative overflow-hidden h-full">
-                  <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-full -translate-y-12 md:-translate-y-16 translate-x-12 md:translate-x-16"></div>
-                  <div className="relative z-10 h-full flex flex-col">
-                    <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl md:rounded-2xl mb-4 md:mb-6 shadow-xl group-hover:shadow-2xl group-hover:rotate-12 transition-all duration-500">
-                      <ClipboardList className="w-8 h-8 md:w-10 md:h-10 text-white" />
-                    </div>
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 md:mb-3 group-hover:text-cyan-600 transition-colors duration-300">
-                      Área do Funcionário
-                    </h3>
-                    <p className="text-gray-600 text-base md:text-lg mb-4 md:mb-6 leading-relaxed flex-grow">
-                      Visualize sua agenda e horários de trabalho em tempo real
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-6">
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-cyan-600">
-                        <Calendar className="w-3 h-3 md:w-4 md:h-4" />
-                        <span>Agenda</span>
-                      </div>
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-cyan-600">
-                        <Clock className="w-3 h-3 md:w-4 md:h-4" />
-                        <span>Horários</span>
-                      </div>
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-cyan-600">
-                        <Users className="w-3 h-3 md:w-4 md:h-4" />
-                        <span>Clientes</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center text-cyan-600 font-semibold group-hover:text-cyan-700 transition-colors duration-300">
-                      <span className="text-sm md:text-base">Ver Agenda</span>
-                      <ArrowRight className="w-4 h-4 md:w-5 md:h-5 ml-1 md:ml-2 group-hover:translate-x-2 transition-transform duration-300" />
-                    </div>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Benefits Carousel */}
+      {/* Empresas em Destaque - Carrossel */}
+      {empresasDestaque.length > 0 && (
         <div className="py-12 md:py-16 px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-8 md:mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Por que usar o AgendaPro?</h2>
-              <p className="text-base md:text-lg text-gray-600">Recursos que fazem a diferença no seu dia a dia</p>
+              <div className="flex items-center justify-center gap-2 md:gap-3 mb-3 md:mb-4">
+                <Crown className="h-6 w-6 md:h-8 md:w-8 text-yellow-500 animate-pulse" />
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Empresas em Destaque</h2>
+                <Crown className="h-6 w-6 md:h-8 md:w-8 text-yellow-500 animate-pulse" />
+              </div>
+              <p className="text-base md:text-lg text-gray-600">As melhores avaliadas pelos nossos clientes</p>
             </div>
             
-            <div className="relative max-w-4xl mx-auto">
-              <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-2xl border border-white/50">
+            <div className="relative max-w-5xl mx-auto">
+              <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-2xl border border-white/50 overflow-hidden">
                 <div className="flex items-center justify-center gap-4 md:gap-8">
                   <button 
-                    onClick={prevBenefit}
-                    className="p-2 md:p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
-                    aria-label="Benefício anterior"
+                    onClick={prevEmpresa}
+                    className="p-2 md:p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-300 hover:scale-110"
+                    aria-label="Empresa anterior"
                   >
                     <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-600" />
                   </button>
                   
                   <div className="flex-1 text-center">
-                    <div className={`inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br ${beneficios[currentBenefit].color} rounded-xl md:rounded-2xl mb-4 md:mb-6 shadow-xl mx-auto`}>
-                      {React.createElement(beneficios[currentBenefit].icon, { className: "w-8 h-8 md:w-10 md:h-10 text-white" })}
+                    <div className="flex items-center justify-center gap-4 md:gap-6 mb-4 md:mb-6">
+                      <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl">
+                        <span className="text-white font-bold text-xl md:text-2xl">
+                          {empresasDestaque[currentEmpresa]?.razaoSocial ? empresasDestaque[currentEmpresa].razaoSocial.charAt(0) : 'E'}
+                        </span>
+                      </div>
+                      <div className="text-left">
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
+                          {empresasDestaque[currentEmpresa]?.razaoSocial || 'Empresa'}
+                        </h3>
+                        <p className="text-base md:text-lg text-gray-600">
+                          {empresasDestaque[currentEmpresa]?.especializacao || 'Serviços'}
+                        </p>
+                      </div>
                     </div>
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 md:mb-3">
-                      {beneficios[currentBenefit].title}
-                    </h3>
-                    <p className="text-base md:text-lg text-gray-600 max-w-md mx-auto">
-                      {beneficios[currentBenefit].description}
-                    </p>
+                    
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      <Star className="h-5 w-5 md:h-6 md:w-6 text-yellow-500 fill-current" />
+                      <span className="text-lg md:text-xl font-bold text-gray-900">
+                        {empresasDestaque[currentEmpresa]?.avaliacao.toFixed(1) || '4.8'}
+                      </span>
+                      <span className="text-sm md:text-base text-gray-600">
+                        ({empresasDestaque[currentEmpresa]?.totalAvaliacoes || '150'} avaliações)
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-center gap-2 mb-4">
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <Star 
+                          key={i} 
+                          className={`h-4 w-4 md:h-5 md:w-5 ${
+                            i < Math.floor(empresasDestaque[currentEmpresa]?.avaliacao || 4.8) 
+                              ? 'text-yellow-500 fill-current' 
+                              : 'text-gray-300'
+                          }`} 
+                        />
+                      ))}
+                    </div>
+                    
+                    {/* Botão de Agendamento */}
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600 mb-3">
+                        Gostou desta empresa? Agende seu serviço agora!
+                      </p>
+                      <button
+                        onClick={() => handleAgendarEmpresa(empresasDestaque[currentEmpresa])}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:-translate-y-1"
+                      >
+                        <Plus className="w-5 h-5" />
+                        {isClientLoggedIn ? 'Agendar Agora' : 'Fazer Login e Agendar'}
+                      </button>
+                    </div>
                   </div>
                   
                   <button 
-                    onClick={nextBenefit}
-                    className="p-2 md:p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
-                    aria-label="Próximo benefício"
+                    onClick={nextEmpresa}
+                    className="p-2 md:p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-300 hover:scale-110"
+                    aria-label="Próxima empresa"
                   >
                     <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-gray-600" />
                   </button>
                 </div>
                 
                 <div className="flex justify-center gap-2 mt-6 md:mt-8">
-                  {beneficios.map((_, index) => (
+                  {Array.from({ length: Math.min(empresasDestaque.length, 6) }, (_, index) => (
                     <button
                       key={index}
-                      onClick={() => setCurrentBenefit(index)}
-                      className={`w-2 h-2 md:w-3 md:h-3 rounded-full transition-all duration-300 ${
-                        index === currentBenefit 
-                          ? 'bg-blue-600 w-6 md:w-8' 
+                      onClick={() => setCurrentEmpresa(index)}
+                      className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                        index === currentEmpresa 
+                          ? 'bg-yellow-500 scale-125' 
                           : 'bg-gray-300 hover:bg-gray-400'
                       }`}
-                      aria-label={`Ir para benefício ${index + 1}`}
+                      aria-label={`Ir para empresa ${index + 1}`}
                     />
                   ))}
                 </div>
@@ -580,600 +734,336 @@ const AccessSelector = () => {
             </div>
           </div>
         </div>
+      )}
 
-        {/* Empresas em Destaque */}
-        {empresasDestaque.length > 0 && (
-          <div className="py-12 md:py-16 px-4 bg-white/50">
-            <div className="max-w-6xl mx-auto">
-              <div className="text-center mb-8 md:mb-12">
-                <div className="flex items-center justify-center gap-2 md:gap-3 mb-3 md:mb-4">
-                  <Crown className="h-6 w-6 md:h-8 md:w-8 text-yellow-500" />
-                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Empresas em Destaque</h2>
-                  <Crown className="h-6 w-6 md:h-8 md:w-8 text-yellow-500" />
-                </div>
-                <p className="text-base md:text-lg text-gray-600">As melhores avaliadas pelos nossos clientes</p>
-              </div>
-              
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                {empresasDestaque.map((empresa, index) => (
-                  <div key={empresa.id} className="bg-white rounded-xl md:rounded-2xl p-5 md:p-6 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-white/50 group">
-                    <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
-                      <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:rotate-12 transition-all duration-500">
-                        <span className="text-white font-bold text-lg md:text-xl">
-                          {(empresa.nome || 'E').charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-gray-900 text-base md:text-lg mb-1 truncate">{empresa.nome}</h4>
-                        <p className="text-gray-600 text-sm md:text-base truncate">{empresa.especializacao}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 mb-3 md:mb-4">
-                      <div className="flex">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className={`h-3 w-3 md:h-4 md:w-4 ${i < Math.floor(empresa.notaMedia || 0) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />
-                        ))}
-                      </div>
-                      <span className="text-sm md:text-base font-semibold text-gray-700">
-                        {empresa.notaMedia ? empresa.notaMedia.toFixed(1) : 'N/A'}
-                      </span>
-                      <span className="text-xs md:text-sm text-gray-500">
-                        ({empresa.totalAvaliacoes || 0} avaliações)
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 mb-3 md:mb-4 text-sm text-gray-600">
-                      <MapPin className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                      <span className="truncate">{empresa.endereco || 'Localização não informada'}</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Award className="h-3 w-3 md:h-4 md:w-4 text-yellow-500 flex-shrink-0" />
-                        <span className="text-xs md:text-sm font-medium text-yellow-600">Empresa Destaque</span>
-                      </div>
-                      <button
-                        onClick={() => handleAgendarEmpresa(empresa.id)}
-                        className="inline-flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 text-xs md:text-sm font-medium"
-                      >
-                        Agendar
-                        <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="text-center mt-6 md:mt-8">
-                <button
-                  onClick={handleVerTodasEmpresas}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl"
-                >
-                  Ver todas as empresas
-                  <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modern Footer */}
-        <footer className="bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 text-white py-12 md:py-16 px-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid md:grid-cols-4 gap-6 md:gap-8 mb-6 md:mb-8">
-              <div className="md:col-span-2">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                    <Calendar className="w-5 h-5 md:w-6 md:h-6 text-white" />
-                  </div>
-                  <h3 className="text-xl md:text-2xl font-bold">AgendaPro</h3>
-                </div>
-                <p className="text-gray-300 text-sm md:text-lg mb-4 md:mb-6 max-w-md">
-                  A plataforma mais completa para gestão de agendamentos online. 
-                  Simplifique sua vida profissional.
-                </p>
-                <div className="flex flex-wrap items-center gap-3 md:gap-4">
-                  <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
-                    <Shield className="h-3 w-3 md:h-4 md:w-4 text-green-400" />
-                    <span>100% Seguro</span>
-                  </div>
-                  <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
-                    <Globe className="h-3 w-3 md:h-4 md:w-4 text-blue-400" />
-                    <span>Disponível 24/7</span>
-                  </div>
-                  <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
-                    <Award className="h-3 w-3 md:h-4 md:w-4 text-yellow-400" />
-                    <span>Melhor Avaliado</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Links Rápidos</h4>
-                <div className="space-y-2">
-                  <Link to="/empresa/login" className="block text-gray-300 hover:text-white transition-colors duration-300 text-sm md:text-base">
-                    Área da Empresa
-                  </Link>
-                  <Link to="/" className="block text-gray-300 hover:text-white transition-colors duration-300 text-sm md:text-base">
-                    Agendar Serviço
-                  </Link>
-                  <button className="block text-gray-300 hover:text-white transition-colors duration-300 text-sm md:text-base">
-                    Sobre Nós
-                  </button>
-                  <button className="block text-gray-300 hover:text-white transition-colors duration-300 text-sm md:text-base">
-                    Contato
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Redes Sociais</h4>
-                <div className="flex gap-3 md:gap-4">
-                  <button className="w-8 h-8 md:w-10 md:h-10 bg-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-700 transition-colors duration-300">
-                    <Facebook className="h-4 w-4 md:h-5 md:w-5" />
-                  </button>
-                  <button className="w-8 h-8 md:w-10 md:h-10 bg-pink-600 rounded-lg flex items-center justify-center hover:bg-pink-700 transition-colors duration-300">
-                    <Instagram className="h-4 w-4 md:h-5 md:w-5" />
-                  </button>
-                  <button className="w-8 h-8 md:w-10 md:h-10 bg-blue-500 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-colors duration-300">
-                    <Twitter className="h-4 w-4 md:h-5 md:w-5" />
-                  </button>
-                  <button className="w-8 h-8 md:w-10 md:h-10 bg-blue-700 rounded-lg flex items-center justify-center hover:bg-blue-800 transition-colors duration-300">
-                    <Linkedin className="h-4 w-4 md:h-5 md:w-5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="border-t border-gray-700 pt-6 md:pt-8 text-center">
-              <p className="text-gray-400 text-sm md:text-base">
-                © 2024 AgendaPro. Desenvolvido com 
-                <Heart className="inline h-3 w-3 md:h-4 md:w-4 text-red-500 mx-1 animate-pulse" /> 
-                para simplificar sua vida.
-              </p>
-            </div>
-          </div>
-        </footer>
-      </div>
-
-      {/* Modal da Empresa - Versão Renovada */}
+      {/* Modal da Empresa */}
       {showEmpresaModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-            {/* Header do Modal */}
-            <div className="relative bg-gradient-to-r from-blue-500 to-indigo-600 rounded-t-3xl p-6 text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                    <Building2 className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold">
-                      {isLoginMode ? 'Login Empresa' : 'Cadastro Empresa'}
-                    </h2>
-                    <p className="text-blue-100 text-sm">
-                      {isLoginMode ? 'Acesse sua conta' : 'Crie sua conta empresarial'}
-                    </p>
-                  </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {isLoginMode ? 'Login Empresa' : 'Cadastro Empresa'}
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    {isLoginMode ? 'Acesse sua conta' : 'Crie sua conta empresarial'}
+                  </p>
                 </div>
-                <button 
-                  onClick={closeModal}
-                  className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+                <button
+                  onClick={() => setShowEmpresaModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
             </div>
 
-            {/* Conteúdo do Modal */}
-            <div className="p-6">
-              {/* Alerta de Erro */}
+            <form onSubmit={handleEmpresaSubmit} className="p-6 space-y-4">
               {empresaError && (
-                <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-xl animate-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-red-800 font-medium">{empresaError}</p>
-                    </div>
-                  </div>
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {empresaError}
                 </div>
               )}
 
-              {/* Formulário */}
-              <form onSubmit={handleEmpresaSubmit} className="space-y-5">
-                {/* Nome da Empresa (apenas no cadastro) */}
-                {!isLoginMode && (
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      Nome da Empresa
-                    </label>
-                    <input
-                      type="text"
-                      required={!isLoginMode}
-                      value={empresaForm.nome}
-                      onChange={(e) => setEmpresaForm({...empresaForm, nome: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                      placeholder="Digite o nome da sua empresa"
-                    />
-                  </div>
-                )}
-
-                {/* Telefone (apenas no cadastro) */}
-                {!isLoginMode && (
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      Telefone
-                    </label>
-                    <input
-                      type="tel"
-                      required={!isLoginMode}
-                      value={empresaForm.telefone}
-                      onChange={(e) => setEmpresaForm({...empresaForm, telefone: e.target.value.replace(/[^\d]/g, '')})}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                      placeholder="(11) 99999-9999"
-                      maxLength="11"
-                    />
-                  </div>
-                )}
-
-                {/* Endereço (apenas no cadastro) */}
-                {!isLoginMode && (
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      Endereço
-                    </label>
-                    <input
-                      type="text"
-                      required={!isLoginMode}
-                      value={empresaForm.endereco}
-                      onChange={(e) => setEmpresaForm({...empresaForm, endereco: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                      placeholder="Endereço da empresa"
-                    />
-                  </div>
-                )}
-                
-                {/* Email */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    E-mail
+              {!isLoginMode && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nome da Empresa
                   </label>
                   <input
-                    type="email"
-                    required
-                    value={empresaForm.email}
-                    onChange={(e) => setEmpresaForm({...empresaForm, email: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                    placeholder="seu@email.com"
+                    type="text"
+                    value={empresaForm.nome}
+                    onChange={(e) => setEmpresaForm({ ...empresaForm, nome: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required={!isLoginMode}
                   />
                 </div>
-                
-                {/* Senha */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Senha
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={empresaForm.senha}
-                    onChange={(e) => setEmpresaForm({...empresaForm, senha: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                    placeholder="Digite sua senha"
-                  />
-                </div>
+              )}
 
-                {/* Botão de Submit */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  E-mail
+                </label>
+                <input
+                  type="email"
+                  value={empresaForm.email}
+                  onChange={(e) => setEmpresaForm({ ...empresaForm, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Senha
+                </label>
+                <input
+                  type="password"
+                  value={empresaForm.senha}
+                  onChange={(e) => setEmpresaForm({ ...empresaForm, senha: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsLoginMode(!isLoginMode)}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  {isLoginMode ? 'Criar conta' : 'Já tenho conta'}
+                </button>
                 <button
                   type="submit"
                   disabled={empresaLoading}
-                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 px-4 rounded-xl hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                  {empresaLoading ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      {isLoginMode ? 'Entrando...' : 'Cadastrando...'}
-                    </div>
-                  ) : (
-                    isLoginMode ? 'Entrar' : 'Cadastrar e Continuar'
-                  )}
-                </button>
-              </form>
-
-              {/* Alternar entre Login e Cadastro */}
-              <div className="mt-6 text-center">
-                <button
-                  onClick={() => {
-                    setIsLoginMode(!isLoginMode);
-                    setEmpresaError('');
-                    setEmpresaForm({ email: '', senha: '', nome: '', telefone: '', endereco: '' });
-                  }}
-                  className="text-blue-600 hover:text-blue-700 text-sm font-semibold transition-colors"
-                >
-                  {isLoginMode ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Faça login'}
+                  {empresaLoading ? 'Carregando...' : (isLoginMode ? 'Entrar' : 'Cadastrar')}
                 </button>
               </div>
-
-              {/* Informação adicional para login */}
-              {isLoginMode && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-200">
-                  <p className="text-sm text-blue-800 text-center">
-                    🏢 Acesse sua área empresarial e gerencie seus agendamentos
-                  </p>
-                </div>
-              )}
-            </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Modal do Cliente - Versão Renovada */}
+      {/* Modal do Cliente */}
       {showClienteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-            {/* Header do Modal */}
-            <div className="relative bg-gradient-to-r from-green-500 to-emerald-600 rounded-t-3xl p-6 text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                    <Users className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold">
-                      {isClienteLoginMode ? 'Login Cliente' : 'Cadastro Cliente'}
-                    </h2>
-                    <p className="text-green-100 text-sm">
-                      {isClienteLoginMode ? 'Acesse sua conta' : 'Crie sua conta'}
-                    </p>
-                  </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {isClienteLoginMode ? 'Login Cliente' : 'Cadastro Cliente'}
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    {isClienteLoginMode ? 'Acesse sua conta' : 'Crie sua conta de cliente'}
+                  </p>
                 </div>
-                <button 
-                  onClick={closeModal}
-                  className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+                <button
+                  onClick={() => setShowClienteModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
             </div>
 
-            {/* Conteúdo do Modal */}
-            <div className="p-6">
-              {/* Alerta de Erro */}
+            <form onSubmit={handleClienteSubmit} className="p-6 space-y-4">
               {clienteError && (
-                <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-xl animate-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-red-800 font-medium">{clienteError}</p>
-                    </div>
-                  </div>
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {clienteError}
                 </div>
               )}
 
-              {/* Formulário */}
-              <form onSubmit={handleClienteSubmit} className="space-y-5">
-                {/* Nome (apenas no cadastro) */}
-                {!isClienteLoginMode && (
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      Nome Completo
-                    </label>
-                    <input
-                      type="text"
-                      required={!isClienteLoginMode}
-                      value={clienteForm.nome}
-                      onChange={(e) => setClienteForm({...clienteForm, nome: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                      placeholder="Digite seu nome completo"
-                    />
-                  </div>
-                )}
-                
-                {/* Email */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    E-mail
+              {!isClienteLoginMode && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nome Completo
                   </label>
                   <input
-                    type="email"
-                    required
-                    value={clienteForm.email}
-                    onChange={(e) => setClienteForm({...clienteForm, email: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                    placeholder="seu@email.com"
+                    type="text"
+                    value={clienteForm.nome}
+                    onChange={(e) => setClienteForm({ ...clienteForm, nome: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    required={!isClienteLoginMode}
                   />
                 </div>
+              )}
 
-                {/* Telefone (apenas no cadastro) */}
-                {!isClienteLoginMode && (
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      Telefone
-                    </label>
-                    <input
-                      type="tel"
-                      required={!isClienteLoginMode}
-                      value={clienteForm.telefone}
-                      onChange={(e) => setClienteForm({...clienteForm, telefone: e.target.value.replace(/[^\d]/g, '')})}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                      placeholder="(11) 99999-9999"
-                      maxLength="11"
-                    />
-                  </div>
-                )}
-                
-                {/* Senha */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Senha
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={clienteForm.senha}
-                    onChange={(e) => setClienteForm({...clienteForm, senha: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                    placeholder="Digite sua senha"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  E-mail
+                </label>
+                <input
+                  type="email"
+                  value={clienteForm.email}
+                  onChange={(e) => setClienteForm({ ...clienteForm, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  required
+                />
+              </div>
 
-                {/* Botão de Submit */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Senha
+                </label>
+                <input
+                  type="password"
+                  value={clienteForm.senha}
+                  onChange={(e) => setClienteForm({ ...clienteForm, senha: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsClienteLoginMode(!isClienteLoginMode)}
+                  className="text-sm text-green-600 hover:text-green-700 font-medium"
+                >
+                  {isClienteLoginMode ? 'Criar conta' : 'Já tenho conta'}
+                </button>
                 <button
                   type="submit"
                   disabled={clienteLoading}
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-4 rounded-xl hover:from-green-600 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
                 >
-                  {clienteLoading ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      {isClienteLoginMode ? 'Entrando...' : 'Cadastrando...'}
-                    </div>
-                  ) : (
-                    isClienteLoginMode ? 'Entrar' : 'Cadastrar e Continuar'
-                  )}
-                </button>
-              </form>
-
-              {/* Alternar entre Login e Cadastro */}
-              <div className="mt-6 text-center">
-                <button
-                  onClick={() => {
-                    setIsClienteLoginMode(!isClienteLoginMode);
-                    setClienteError('');
-                    setClienteForm({ nome: '', email: '', telefone: '', senha: '' });
-                  }}
-                  className="text-green-600 hover:text-green-700 text-sm font-semibold transition-colors"
-                >
-                  {isClienteLoginMode ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Faça login'}
+                  {clienteLoading ? 'Carregando...' : (isClienteLoginMode ? 'Entrar' : 'Cadastrar')}
                 </button>
               </div>
-
-              {/* Informação adicional para login */}
-              {isClienteLoginMode && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-200">
-                  <p className="text-sm text-blue-800 text-center">
-                    💡 Faça login para acessar seu histórico de agendamentos
-                  </p>
-                </div>
-              )}
-            </div>
+            </form>
           </div>
         </div>
       )}
 
       {/* Modal do Funcionário */}
       {showFuncionarioModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-            {/* Header do Modal */}
-            <div className="relative bg-gradient-to-r from-cyan-500 to-blue-600 rounded-t-3xl p-6 text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                    <ClipboardList className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold">Acesso Funcionário</h2>
-                    <p className="text-cyan-100 text-sm">Visualize sua agenda pessoal</p>
-                  </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Acesso Funcionário</h2>
+                  <p className="text-sm text-gray-600">Entre com seus dados de funcionário</p>
                 </div>
-                <button 
-                  onClick={closeModal}
-                  className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+                <button
+                  onClick={() => setShowFuncionarioModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
             </div>
-            
-            {/* Conteúdo do Modal */}
-            <div className="p-6">
-              {/* Alerta de Erro */}
+
+            <form onSubmit={handleFuncionarioSubmit} className="p-6 space-y-4">
               {funcionarioError && (
-                <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-xl animate-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-red-800 font-medium">{funcionarioError}</p>
-                    </div>
-                  </div>
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {funcionarioError}
                 </div>
               )}
-              
-              {/* Formulário */}
-              <form onSubmit={handleFuncionarioSubmit} className="space-y-5">
-                {/* ID da Empresa */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    ID da Empresa
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={funcionarioForm.empresaId}
-                    onChange={(e) => setFuncionarioForm({...funcionarioForm, empresaId: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                    placeholder="Digite o ID da empresa"
-                  />
-                  <p className="text-xs text-gray-500">Pergunte ao seu gestor pelo ID da empresa</p>
-                </div>
-                
-                {/* CPF */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    CPF
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={funcionarioForm.cpf}
-                    onChange={(e) => setFuncionarioForm({...funcionarioForm, cpf: e.target.value.replace(/[^\d]/g, '')})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                    placeholder="000.000.000-00"
-                    maxLength="11"
-                  />
-                </div>
-                
-                {/* Botão de Submit */}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Empresa
+                </label>
+                <select
+                  value={funcionarioForm.empresaId}
+                  onChange={(e) => setFuncionarioForm({ ...funcionarioForm, empresaId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Selecione uma empresa</option>
+                  {JSON.parse(localStorage.getItem('empresas') || '[]').map(empresa => (
+                    <option key={empresa.id} value={empresa.id}>
+                      {empresa.razaoSocial}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  CPF
+                </label>
+                <input
+                  type="text"
+                  value={funcionarioForm.cpf}
+                  onChange={(e) => setFuncionarioForm({ ...funcionarioForm, cpf: e.target.value })}
+                  placeholder="000.000.000-00"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div className="pt-4">
                 <button
                   type="submit"
                   disabled={funcionarioLoading}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-3 px-4 rounded-xl hover:from-cyan-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 transition-all duration-200 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-6 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50 transition-colors"
                 >
-                  {funcionarioLoading ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      Acessando...
-                    </div>
-                  ) : (
-                    'Acessar Agenda'
-                  )}
+                  {funcionarioLoading ? 'Carregando...' : 'Acessar Agenda'}
                 </button>
-              </form>
-              
-              {/* Informação adicional */}
-              <div className="mt-6 p-3 bg-cyan-50 rounded-xl border border-cyan-200">
-                <p className="text-sm text-cyan-800 text-center">
-                  📋 Acesse sua agenda pessoal e visualize todos os seus agendamentos
-                </p>
+              </div>
+
+              <div className="text-center text-sm text-gray-600">
+                📋 Acesse sua agenda pessoal e visualize todos os seus agendamentos
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modern Footer */}
+      <footer className="bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 text-white py-12 md:py-16 px-4 mt-16">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-6 md:gap-8 mb-6 md:mb-8">
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <Calendar className="w-6 h-6 md:w-7 md:h-7 text-white" />
+                </div>
+                <h3 className="text-xl md:text-2xl font-bold">AgendaPro</h3>
+              </div>
+              <p className="text-gray-300 text-sm md:text-base mb-4 leading-relaxed max-w-md">
+                Revolucione sua agenda com tecnologia de ponta. 
+                <span className="font-semibold text-white"> Rápido, seguro e intuitivo.</span>
+              </p>
+              <div className="flex items-center gap-4">
+                <a href="#" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors duration-300">
+                  <Facebook className="w-5 h-5 text-white" />
+                </a>
+                <a href="#" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors duration-300">
+                  <Instagram className="w-5 h-5 text-white" />
+                </a>
+                <a href="#" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors duration-300">
+                  <Twitter className="w-5 h-5 text-white" />
+                </a>
+                <a href="#" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors duration-300">
+                  <Linkedin className="w-5 h-5 text-white" />
+                </a>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="text-lg font-semibold mb-4 text-white">Produto</h4>
+              <ul className="space-y-2 text-sm text-gray-300">
+                <li><a href="#" className="hover:text-white transition-colors duration-300">Recursos</a></li>
+                <li><a href="#" className="hover:text-white transition-colors duration-300">Preços</a></li>
+                <li><a href="#" className="hover:text-white transition-colors duration-300">Integrações</a></li>
+                <li><a href="#" className="hover:text-white transition-colors duration-300">API</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="text-lg font-semibold mb-4 text-white">Suporte</h4>
+              <ul className="space-y-2 text-sm text-gray-300">
+                <li><a href="#" className="hover:text-white transition-colors duration-300">Central de Ajuda</a></li>
+                <li><a href="#" className="hover:text-white transition-colors duration-300">Documentação</a></li>
+                <li><a href="#" className="hover:text-white transition-colors duration-300">Comunidade</a></li>
+                <li><a href="#" className="hover:text-white transition-colors duration-300">Status</a></li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="border-t border-white/10 pt-6 md:pt-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-gray-300">
+                © 2024 AgendaPro. Todos os direitos reservados.
+              </div>
+              <div className="flex items-center gap-6 text-sm text-gray-300">
+                <a href="#" className="hover:text-white transition-colors duration-300">Política de Privacidade</a>
+                <a href="#" className="hover:text-white transition-colors duration-300">Termos de Uso</a>
+                <a href="#" className="hover:text-white transition-colors duration-300">Cookies</a>
               </div>
             </div>
           </div>
         </div>
-      )}
+      </footer>
+      </div>
     </div>
   );
 };

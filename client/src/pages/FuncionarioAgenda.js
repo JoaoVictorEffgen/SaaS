@@ -4,7 +4,7 @@ import {
   Calendar, Clock, Phone, Mail, 
   ArrowLeft, LogOut, Search, ChevronLeft, 
   ChevronRight, CheckCircle, XCircle, AlertCircle,
-  Building2, ClipboardList
+  Building2, ClipboardList, Home
 } from 'lucide-react';
 import localStorageService from '../services/localStorageService';
 import { formatDate, formatTime } from '../utils/formatters';
@@ -155,6 +155,15 @@ const FuncionarioAgenda = () => {
                 >
                   <Calendar className="h-4 w-4 mr-2" />
                   Hoje
+                </button>
+                
+                <button
+                  onClick={() => navigate('/')}
+                  className="flex items-center px-4 py-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-all duration-200 font-semibold"
+                  title="Voltar à Página Inicial"
+                >
+                  <Home className="h-4 w-4 mr-2" />
+                  Início
                 </button>
                 
                 <button

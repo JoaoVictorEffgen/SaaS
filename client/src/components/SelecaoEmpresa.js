@@ -4,7 +4,7 @@ import EmpresaCard from './EmpresaCard';
 import { 
   LogOut, Star, Crown, Award, Search, Clock, 
   Calendar, CheckCircle, XCircle, Filter,
-  Building2
+  Building2, Home
 } from 'lucide-react';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
 import localStorageService from '../services/localStorageService';
@@ -108,9 +108,6 @@ const SelecaoEmpresa = () => {
     
     // Navegar para tela inicial
     navigate('/', { replace: true });
-    
-    // Forçar refresh para garantir limpeza completa
-    window.location.reload();
   };
 
   // Redirecionar se não estiver logado
@@ -155,6 +152,15 @@ const SelecaoEmpresa = () => {
                 >
                   <Clock className="h-4 w-4 mr-2" />
                   HISTÓRICO
+                </button>
+                
+                <button
+                  onClick={() => navigate('/')}
+                  className="flex items-center px-4 py-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-all duration-200 font-semibold"
+                  title="Voltar à Página Inicial"
+                >
+                  <Home className="h-4 w-4 mr-2" />
+                  INÍCIO
                 </button>
                 
                 <button
