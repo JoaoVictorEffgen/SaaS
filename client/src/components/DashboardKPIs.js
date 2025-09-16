@@ -10,11 +10,19 @@ import {
   Star,
   BarChart3,
   RefreshCw,
-  ArrowLeft
+  ArrowLeft,
+  Filter,
+  FileText,
+  UserPlus,
+  Eye
 } from 'lucide-react';
 import kpiService from '../services/kpiService';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
 import { formatCurrency } from '../utils/formatters';
+import AdvancedFilters from './AdvancedFilters';
+import VisualReports from './VisualReports';
+import PDFExport from './PDFExport';
+import CRMClientes from './CRMClientes';
 
 const DashboardKPIs = () => {
   const { user } = useLocalAuth();
@@ -22,6 +30,11 @@ const DashboardKPIs = () => {
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState('30d');
+  const [filters, setFilters] = useState({});
+  const [activeTab, setActiveTab] = useState('overview'); // overview, reports, crm, export
+  const [agendamentos, setAgendamentos] = useState([]);
+  const [funcionarios, setFuncionarios] = useState([]);
+  const [servicos, setServicos] = useState([]);
 
 
   const loadKPIs = useCallback(() => {
@@ -37,9 +50,26 @@ const DashboardKPIs = () => {
     }
   }, [user?.id, periodo]);
 
+  const loadData = useCallback(() => {
+    if (!user?.id) return;
+    
+    const agendamentosData = JSON.parse(localStorage.getItem(`agendamentos_${user.id}`) || '[]');
+    const funcionariosData = JSON.parse(localStorage.getItem(`funcionarios_${user.id}`) || '[]');
+    const servicosData = JSON.parse(localStorage.getItem(`servicos_${user.id}`) || '[]');
+    
+    setAgendamentos(agendamentosData);
+    setFuncionarios(funcionariosData);
+    setServicos(servicosData);
+  }, [user?.id]);
+
   useEffect(() => {
     loadKPIs();
-  }, [loadKPIs]);
+    loadData();
+  }, [loadKPIs, loadData]);
+
+  const handleFiltersChange = (newFilters) => {
+    setFilters(newFilters);
+  };
 
   // Usar formatação do utils/formatters.js
 
@@ -83,12 +113,16 @@ const DashboardKPIs = () => {
   return (
     <div className="space-y-6">
       {/* Header com controles */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Dashboard KPIs</h2>
-          <p className="text-gray-600">Métricas e indicadores de performance</p>
+          <h2 className="text-2xl font-bold text-gray-900">Dashboard Avançado</h2>
+          <p className="text-gray-600">Métricas, relatórios visuais e gestão de clientes</p>
         </div>
         <div className="flex space-x-4">
+          <AdvancedFilters 
+            onFiltersChange={handleFiltersChange} 
+            userId={user?.id}
+          />
           <select
             value={periodo}
             onChange={(e) => setPeriodo(e.target.value)}
@@ -109,6 +143,34 @@ const DashboardKPIs = () => {
         </div>
       </div>
 
+      {/* Tabs de Navegação */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          {[
+            { id: 'overview', label: 'Visão Geral', icon: BarChart3 },
+            { id: 'reports', label: 'Relatórios Visuais', icon: TrendingUp },
+            { id: 'crm', label: 'CRM Clientes', icon: UserPlus },
+            { id: 'export', label: 'Exportar PDF', icon: FileText }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center ${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Icon className="h-4 w-4 mr-2" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
       {/* Botão Voltar - Discreto */}
       <div className="mb-4">
         <button
@@ -120,8 +182,11 @@ const DashboardKPIs = () => {
         </button>
       </div>
 
-      {/* Cards principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Conteúdo das Tabs */}
+      {activeTab === 'overview' && (
+        <>
+          {/* Cards principais */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total de Agendamentos */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
@@ -313,6 +378,35 @@ const DashboardKPIs = () => {
             </div>
           </div>
         </div>
+      )}
+        </>
+      )}
+
+      {activeTab === 'reports' && (
+        <VisualReports 
+          filters={filters}
+          userId={user?.id}
+          userPlan={user?.plano}
+        />
+      )}
+
+      {activeTab === 'crm' && (
+        <CRMClientes 
+          userId={user?.id}
+          userPlan={user?.plano}
+        />
+      )}
+
+      {activeTab === 'export' && (
+        <PDFExport 
+          filters={filters}
+          userId={user?.id}
+          userPlan={user?.plano}
+          agendamentos={agendamentos}
+          funcionarios={funcionarios}
+          servicos={servicos}
+          kpis={kpis}
+        />
       )}
     </div>
   );

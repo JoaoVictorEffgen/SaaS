@@ -18,14 +18,13 @@ Sistema completo de agendamento online para profissionais e empresas, desenvolvi
 
 ### 📝 Sistema de Agendamentos
 - Agendamento direto pelos clientes
-- **Duas modalidades de agendamento:**
-  - 🚀 **Agendamento Rápido** (sem cadastro)
-  - 👑 **Agendamento Premium** (com conta e benefícios)
+- **Cadastro obrigatório** para todos os agendamentos
+- **Sistema completo** com conta e benefícios
 
 ### 🌐 Agenda Pública
 - Link público para clientes agendarem
 - Interface profissional e responsiva
-- Sistema híbrido de conversão
+- Sistema completo de cadastro
 
 ### 📊 Dashboard Completo
 - Estatísticas em tempo real
@@ -69,11 +68,16 @@ npm start
 ### 🎯 Funcionalidades Atuais
 - ✅ **Sistema completo de autenticação** (Empresa, Cliente, Funcionário)
 - ✅ **Dashboard empresarial** com gestão de agendamentos
+- ✅ **Dashboard avançado** com filtros, gráficos e CRM
 - ✅ **Agenda pública** para clientes agendarem
 - ✅ **Sistema de funcionários** com visualização de agenda
 - ✅ **Interface responsiva** e moderna
 - ✅ **Gerenciamento de serviços** e funcionários
 - ✅ **Sistema de KPIs** e relatórios básicos
+- ✅ **Filtros avançados** (funcionário, serviço, período)
+- ✅ **Relatórios visuais** com gráficos interativos
+- ✅ **Exportação em PDF** para reuniões gerenciais
+- ✅ **CRM de clientes** com análise de relacionamento
 
 ## 📱 Funcionalidades por Plano
 
@@ -81,6 +85,11 @@ npm start
 |----------------|------|-----|----------|
 | Agendas | 1 | 5 | Ilimitadas |
 | Agendamentos/mês | 10 | 100 | Ilimitados |
+| Dashboard Básico | ✅ | ✅ | ✅ |
+| Filtros Avançados | ❌ | ✅ | ✅ |
+| Relatórios Visuais | ❌ | ✅ | ✅ |
+| Exportação PDF | ❌ | ✅ | ✅ |
+| CRM de Clientes | ❌ | ✅ | ✅ |
 | WhatsApp | ❌ | ✅ | ✅ |
 | Relatórios | ❌ | ✅ | ✅ |
 | Multi-usuário | ❌ | ❌ | ✅ |
@@ -94,24 +103,20 @@ npm start
 - **Agenda Pública:** `/agenda/:userId`
 - **Preços:** `/pricing`
 
-## 🎯 Sistema Híbrido de Agendamento
+## 🎯 Sistema de Agendamento
 
-### 🚀 Agendamento Rápido
-- Cliente agenda em 30 segundos
-- Sem necessidade de cadastro
-- Ideal para primeira consulta
-- Conversão máxima
-
-### 👑 Agendamento Premium
-- Cliente cria conta + agenda
-- Acesso a funcionalidades premium
+### 📝 Agendamento Completo
+- **Cadastro obrigatório** para todos os clientes
+- Cliente cria conta antes de agendar
+- Acesso a funcionalidades completas
 - Histórico de consultas
 - Lembretes automáticos
 - Cancelamentos online
+- Gestão completa de perfil
 
 ## 📈 Vantagens do Sistema
 
-- ✅ **Conversão máxima** - Duas opções para todos os clientes
+- ✅ **Gestão completa** - Todos os clientes cadastrados
 - ✅ **Fidelização automática** - Benefícios para usuários cadastrados
 - ✅ **Interface profissional** - Experiência premium para clientes
 - ✅ **Sistema escalável** - Pronto para crescimento

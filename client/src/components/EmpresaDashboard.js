@@ -286,8 +286,8 @@ const EmpresaDashboard = () => {
                 <ArrowRight className="h-5 w-5 text-purple-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all duration-300" />
               </div>
               <div className="text-left">
-                <h3 className="text-lg font-bold text-gray-900 mb-1">KPIs</h3>
-                <p className="text-sm text-gray-600">Métricas e indicadores</p>
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Dashboard Avançado</h3>
+                <p className="text-sm text-gray-600">KPIs, gráficos e CRM</p>
               </div>
             </button>
 
