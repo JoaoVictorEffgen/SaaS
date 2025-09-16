@@ -68,8 +68,12 @@ const LoginStatusIndicator = () => {
     localStorage.removeItem('funcionarioLogado');
     localStorage.removeItem('empresaFuncionario');
     localStorage.removeItem('currentUser');
-    // Navegar para a página inicial
-    window.location.href = '/';
+    // Navegar para a página inicial com gradiente
+    navigate('/');
+    // Forçar scroll para o topo para mostrar o gradiente
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }, 100);
   };
 
   const getIcon = (type) => {

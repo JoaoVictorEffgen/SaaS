@@ -323,19 +323,35 @@ const AccessSelector = () => {
         throw new Error('Funcionário não encontrado nesta empresa');
       }
 
-      // Simular login do funcionário
+      // Criar dados do usuário funcionário
       const userData = {
         ...funcionario,
         tipo: 'funcionario',
-        empresa_nome: empresa.nome
+        empresa_nome: empresa.nome,
+        email: funcionario.email || `funcionario_${funcionario.cpf}@empresa.com`, // Email fictício se não existir
+        plano: 'business' // Funcionários têm acesso business
       };
       
       console.log('💾 Salvando usuário no localStorage:', userData);
+      
+      // Limpar qualquer usuário anterior
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('clienteLogado');
+      localStorage.removeItem('empresaLogada');
+      
+      // Salvar novo usuário
       localStorage.setItem('currentUser', JSON.stringify(userData));
 
+      // Forçar atualização do contexto
+      window.dispatchEvent(new Event('storage'));
+
       setShowFuncionarioModal(false);
-      console.log('🚀 Redirecionando para /funcionario/agenda');
-      navigate('/funcionario/agenda');
+      
+      // Aguardar um pouco para garantir que o contexto seja atualizado
+      setTimeout(() => {
+        console.log('🚀 Redirecionando para /funcionario/agenda');
+        navigate('/funcionario/agenda');
+      }, 100);
 
     } catch (error) {
       console.error('❌ Erro no login:', error);

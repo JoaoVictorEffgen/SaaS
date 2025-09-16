@@ -34,26 +34,49 @@ export const LocalAuthProvider = ({ children }) => {
 
   // Verificar se usuário está logado ao carregar
   useEffect(() => {
-    try {
-      const currentUser = localStorageService.getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-        setSubscription({
-          plano: currentUser.plano,
-          status: 'ativo',
-          recursos: {
-            whatsapp: currentUser.plano !== 'free',
-            relatorios: currentUser.plano !== 'free',
-            multiusuario: currentUser.plano === 'business'
-          }
-        });
+    const loadUser = () => {
+      try {
+        const currentUser = localStorageService.getCurrentUser();
+        if (currentUser) {
+          console.log('🔄 LocalAuthContext - Carregando usuário:', currentUser);
+          setUser(currentUser);
+          setSubscription({
+            plano: currentUser.plano || 'business',
+            status: 'ativo',
+            recursos: {
+              whatsapp: (currentUser.plano || 'business') !== 'free',
+              relatorios: (currentUser.plano || 'business') !== 'free',
+              multiusuario: (currentUser.plano || 'business') === 'business'
+            }
+          });
+        } else {
+          setUser(null);
+          setSubscription(null);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+        setUser(null);
+        setSubscription(null);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Erro ao carregar usuário:', error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    // Carregar usuário inicial
+    loadUser();
+
+    // Escutar mudanças no localStorage
+    const handleStorageChange = () => {
+      console.log('🔄 Storage change detected, reloading user...');
+      loadUser();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   // Login
