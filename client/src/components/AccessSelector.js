@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Building2, Users, ArrowRight, Calendar, Clock, Zap, Star, Crown,
-  Users2, X, ClipboardList, ChevronLeft, ChevronRight, Mail, Phone, MapPin, Facebook, Instagram, Twitter, Linkedin, Plus,
-  Heart, Navigation, Filter
+  Users2, X, ClipboardList, ChevronLeft, ChevronRight, Facebook, Instagram, Twitter, Linkedin, Plus,
+  Heart, Navigation
 } from 'lucide-react';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
 import EmpresasProximas from './shared/EmpresasProximas';
@@ -11,12 +11,6 @@ import EmpresasFavoritas from './shared/EmpresasFavoritas';
 
 const AccessSelector = () => {
   const [empresasDestaque, setEmpresasDestaque] = useState([]);
-  const [stats, setStats] = useState({
-    totalEmpresas: 0,
-    totalAgendamentos: 0,
-    totalClientes: 0,
-    satisfacao: 0
-  });
   
   // Estados dos modais
   const [showEmpresaModal, setShowEmpresaModal] = useState(false);
@@ -180,27 +174,18 @@ const AccessSelector = () => {
       totalClientes += clientesUnicos.size;
     });
 
-    const newStats = {
-      totalEmpresas: empresas.length,
-      totalAgendamentos,
-      totalClientes,
-      satisfacao: 4.8
-    };
-
-    setStats(newStats);
-
     // Animate the numbers
     setTimeout(() => {
-      animateNumber(0, newStats.totalEmpresas, 2000, (value) => 
+      animateNumber(0, empresas.length, 2000, (value) => 
         setAnimatedStats(prev => ({ ...prev, totalEmpresas: value }))
       );
-      animateNumber(0, newStats.totalAgendamentos, 2000, (value) => 
+      animateNumber(0, totalAgendamentos, 2000, (value) => 
         setAnimatedStats(prev => ({ ...prev, totalAgendamentos: value }))
       );
-      animateNumber(0, newStats.totalClientes, 2000, (value) => 
+      animateNumber(0, totalClientes, 2000, (value) => 
         setAnimatedStats(prev => ({ ...prev, totalClientes: value }))
       );
-      animateNumber(0, newStats.satisfacao * 10, 2000, (value) => 
+      animateNumber(0, 4.8 * 10, 2000, (value) => 
         setAnimatedStats(prev => ({ ...prev, satisfacao: value / 10 }))
       );
     }, 500);

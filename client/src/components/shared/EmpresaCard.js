@@ -1,26 +1,14 @@
 import React from 'react';
 import { Clock, Phone, Mail, Users, Star, MessageCircle } from 'lucide-react';
+import { formatWhatsAppLink, formatHorario, getDiasTrabalho } from '../../utils/formatters';
 
 const EmpresaCard = ({ empresa, onSelect, showWhatsApp = true }) => {
-  const formatHorario = (empresa) => {
-    if (!empresa.horario_inicio || !empresa.horario_fim) return 'Não informado';
-    return `${empresa.horario_inicio} - ${empresa.horario_fim}`;
-  };
-
-  const getDiasTrabalho = (empresa) => {
-    if (!empresa.dias_funcionamento || empresa.dias_funcionamento.length === 0) return 'Não informado';
-    if (empresa.dias_funcionamento.length === 7) return 'Todos os dias';
-    if (empresa.dias_funcionamento.length === 5 && empresa.dias_funcionamento.every(d => d >= 1 && d <= 5)) return 'Segunda a Sexta';
-    
-    const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    return empresa.dias_funcionamento.map(d => diasSemana[d]).join(', ');
-  };
 
   const handleWhatsAppClick = () => {
     if (empresa.whatsapp_contato) {
-      const phone = empresa.whatsapp_contato.replace(/\D/g, '');
       const message = `Olá! Gostaria de agendar um serviço com ${empresa.nome || empresa.empresa}.`;
-      window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
+      const whatsappLink = formatWhatsAppLink(empresa.whatsapp_contato, message);
+      window.open(whatsappLink, '_blank');
     }
   };
 

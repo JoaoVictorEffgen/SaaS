@@ -9,8 +9,7 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Home,
-  LogOut
+  Home
 } from 'lucide-react';
 import { useLocalAuth } from '../../contexts/LocalAuthContext';
 import LoginStatusIndicator from '../shared/LoginStatusIndicator';
@@ -128,10 +127,6 @@ const ClienteAgendamentos = () => {
     setShowAvaliacaoModal(true);
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
 
   const handleGoHome = () => {
     navigate('/');

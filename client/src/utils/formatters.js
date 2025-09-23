@@ -124,3 +124,17 @@ export const formatFileSize = (bytes) => {
   
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
+
+export const formatHorario = (empresa) => {
+  if (!empresa.horario_inicio || !empresa.horario_fim) return 'Não informado';
+  return `${empresa.horario_inicio} - ${empresa.horario_fim}`;
+};
+
+export const getDiasTrabalho = (empresa) => {
+  if (!empresa.dias_funcionamento || empresa.dias_funcionamento.length === 0) return 'Não informado';
+  if (empresa.dias_funcionamento.length === 7) return 'Todos os dias';
+  if (empresa.dias_funcionamento.length === 5 && empresa.dias_funcionamento.every(d => d >= 1 && d <= 5)) return 'Segunda a Sexta';
+  
+  const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  return empresa.dias_funcionamento.map(d => diasSemana[d]).join(', ');
+};

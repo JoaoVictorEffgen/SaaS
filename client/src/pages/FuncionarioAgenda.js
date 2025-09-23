@@ -12,7 +12,6 @@ import {
   Edit, 
   Save, 
   X,
-  Settings,
   BarChart3,
   ClipboardList
 } from 'lucide-react';

@@ -3,8 +3,8 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import EmpresaCard from '../shared/EmpresaCard';
 import { 
   LogOut, Star, Crown, Award, Search, Clock, 
-  Calendar, CheckCircle, XCircle, Filter,
-  Building2, Home, Heart, Navigation
+  CheckCircle, XCircle,
+  Building2, Home, Heart
 } from 'lucide-react';
 import { useLocalAuth } from '../../contexts/LocalAuthContext';
 import localStorageService from '../../services/localStorageService';
@@ -23,7 +23,7 @@ const SelecaoEmpresa = () => {
   // Estados para pesquisa e filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredEmpresas, setFilteredEmpresas] = useState([]);
-  const [historyFilter, setHistoryFilter] = useState('all'); // 'all', 'agendados', 'cancelados'
+  const [historyFilter] = useState('all'); // 'all', 'agendados', 'cancelados'
   const [clienteHistory, setClienteHistory] = useState([]);
   const [activeTab, setActiveTab] = useState('todas'); // 'todas', 'favoritas', 'historico'
 
@@ -35,16 +35,20 @@ const SelecaoEmpresa = () => {
 
   // Carregar histórico do cliente
   const loadClienteHistory = () => {
-    if (user && user.id) {
-      const agendamentos = localStorageService.getAgendamentosByUser(user.id);
+    if (user && user.email) {
+      // Buscar agendamentos pelo email do cliente (que é mais confiável)
+      const todosAgendamentos = localStorageService.getAgendamentos();
+      const agendamentosDoCliente = todosAgendamentos.filter(agendamento => 
+        agendamento.clienteEmail === user.email
+      );
       
       // Criar histórico com ações (agendamento/cancelamento)
-      const history = agendamentos
+      const history = agendamentosDoCliente
         .map(agendamento => ({
           ...agendamento,
           tipo: agendamento.status === 'cancelado' ? 'cancelado' : 'agendado',
           dataAcao: agendamento.status === 'cancelado' ? agendamento.dataCancelamento : agendamento.dataAgendamento,
-          empresaNome: empresas.find(e => e.id === agendamento.empresaId)?.nome || 'Empresa não encontrada'
+          empresaNome: empresas.find(e => e.id === (agendamento.empresa_id || agendamento.empresaId))?.nome || 'Empresa não encontrada'
         }))
         .sort((a, b) => new Date(b.dataAcao) - new Date(a.dataAcao))
         .slice(0, 15); // Últimas 15 ações
@@ -108,6 +112,27 @@ const SelecaoEmpresa = () => {
     // Carregar histórico do cliente
     loadClienteHistory();
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Adicionar listener para atualizar favoritos e histórico quando houver mudanças
+  useEffect(() => {
+    const handleStorageChange = () => {
+      loadEmpresasFavoritas();
+      loadClienteHistory();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Também escutar mudanças no localStorage local
+    const interval = setInterval(() => {
+      loadEmpresasFavoritas();
+      loadClienteHistory();
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleLogout = () => {
     // Limpar todos os dados do cliente
