@@ -37,7 +37,7 @@ export const LocalAuthProvider = ({ children }) => {
     const loadUser = () => {
       try {
         const currentUser = localStorageService.getCurrentUser();
-        if (currentUser) {
+        if (currentUser && currentUser.id) {
           console.log('🔄 LocalAuthContext - Carregando usuário:', currentUser);
           setUser(currentUser);
           setSubscription({
@@ -50,6 +50,7 @@ export const LocalAuthProvider = ({ children }) => {
             }
           });
         } else {
+          console.log('🔄 LocalAuthContext - Nenhum usuário válido encontrado');
           setUser(null);
           setSubscription(null);
         }
@@ -80,11 +81,11 @@ export const LocalAuthProvider = ({ children }) => {
   }, []);
 
   // Login
-  const login = async (email, senha) => {
+  const login = async (identifier, senha, tipo = null) => {
     try {
       setLoading(true);
-      console.log('LocalAuthContext - Tentando login com:', email);
-      const result = localStorageService.login(email, senha);
+      console.log('LocalAuthContext - Tentando login com:', identifier, 'tipo:', tipo);
+      const result = localStorageService.login(identifier, senha);
       console.log('LocalAuthContext - Resultado do login:', result);
       
       if (result) {
@@ -155,10 +156,6 @@ export const LocalAuthProvider = ({ children }) => {
       setUser(null);
       setSubscription(null);
       setLoading(false);
-      
-      // Limpar qualquer dado adicional que possa existir
-      localStorage.removeItem('clienteLogado');
-      localStorage.removeItem('empresaLogada');
       
       console.log('Logout realizado com sucesso');
     } catch (error) {

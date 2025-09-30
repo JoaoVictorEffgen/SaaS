@@ -307,8 +307,11 @@ class LocalStorageService {
   }
 
   // Autenticação
-  login(email, senha) {
-    const user = this.getUserByEmail(email);
+  login(identifier, senha) {
+    // Buscar por email ou CNPJ
+    const users = this.getUsers();
+    const user = users.find(u => u.email === identifier || u.cnpj === identifier);
+    
     if (user && user.senha === senha) {
       const token = this.generateToken(user.id);
       localStorage.setItem('currentUser', JSON.stringify(user));
@@ -319,10 +322,16 @@ class LocalStorageService {
   }
 
   logout() {
+    // Limpar todos os dados de autenticação
     localStorage.removeItem('currentUser');
     localStorage.removeItem('authToken');
     localStorage.removeItem('clienteLogado');
     localStorage.removeItem('empresaLogada');
+    localStorage.removeItem('funcionarioLogado');
+    localStorage.removeItem('empresaFuncionario');
+    
+    // Disparar evento para notificar outros componentes
+    window.dispatchEvent(new Event('storage'));
   }
 
   getCurrentUser() {

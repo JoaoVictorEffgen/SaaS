@@ -14,31 +14,21 @@ const AccessSelector = () => {
   
   // Estados dos modais
   const [showEmpresaModal, setShowEmpresaModal] = useState(false);
-  const [showClienteModal, setShowClienteModal] = useState(false);
   const [showFuncionarioModal, setShowFuncionarioModal] = useState(false);
   
   // Estados para novas funcionalidades
   const [activeSection, setActiveSection] = useState('destaque'); // 'destaque', 'proximas', 'favoritas'
   const [allEmpresas, setAllEmpresas] = useState([]);
   const [isClientLoggedIn, setIsClientLoggedIn] = useState(false);
-  const [empresaForm, setEmpresaForm] = useState({ email: '', senha: '', nome: '', telefone: '', endereco: '' });
-  const [clienteForm, setClienteForm] = useState({ 
-    nome: '', 
-    email: '', 
-    telefone: '', 
-    senha: '' 
-  });
+  const [empresaForm, setEmpresaForm] = useState({ email: '', senha: '', nome: '', telefone: '', endereco: '', cnpj: '' });
   const [funcionarioForm, setFuncionarioForm] = useState({ 
     empresaId: '', 
     cpf: '' 
   });
   const [isLoginMode, setIsLoginMode] = useState(true);
-  const [isClienteLoginMode, setIsClienteLoginMode] = useState(true);
   const [empresaError, setEmpresaError] = useState('');
-  const [clienteError, setClienteError] = useState('');
   const [funcionarioError, setFuncionarioError] = useState('');
   const [empresaLoading, setEmpresaLoading] = useState(false);
-  const [clienteLoading, setClienteLoading] = useState(false);
   const [funcionarioLoading, setFuncionarioLoading] = useState(false);
   const [currentBenefit, setCurrentBenefit] = useState(0);
   const [currentEmpresa, setCurrentEmpresa] = useState(0);
@@ -48,6 +38,7 @@ const AccessSelector = () => {
     totalClientes: 0,
     satisfacao: 0
   });
+
   
   const navigate = useNavigate();
   const { login, register } = useLocalAuth();
@@ -98,10 +89,9 @@ const AccessSelector = () => {
       localStorage.setItem('empresaSelecionada', JSON.stringify(empresa));
       navigate('/cliente');
     } else {
-      // Usuário não está logado - abrir modal de login de cliente
+      // Usuário não está logado - redirecionar para página de cliente
       localStorage.setItem('empresaSelecionada', JSON.stringify(empresa));
-      setShowClienteModal(true);
-      setIsClienteLoginMode(true); // Forçar modo de login
+      navigate('/cliente');
     }
   };
 
@@ -191,6 +181,7 @@ const AccessSelector = () => {
     }, 500);
   }, []);
 
+
   useEffect(() => {
     loadEmpresasDestaque();
     loadStats();
@@ -211,14 +202,9 @@ const AccessSelector = () => {
   const openEmpresaModal = () => {
     setShowEmpresaModal(true);
     setEmpresaError('');
-    setEmpresaForm({ email: '', senha: '', nome: '', telefone: '', endereco: '' });
+    setEmpresaForm({ email: '', senha: '', nome: '', telefone: '', endereco: '', cnpj: '' });
   };
 
-  const openClienteModal = () => {
-    setShowClienteModal(true);
-    setClienteError('');
-    setClienteForm({ nome: '', email: '', telefone: '', senha: '' });
-  };
 
   const openFuncionarioModal = () => {
     setShowFuncionarioModal(true);
@@ -234,7 +220,9 @@ const AccessSelector = () => {
     try {
       let result;
       if (isLoginMode) {
-        result = await login(empresaForm.email, empresaForm.senha);
+        // Para login, usar email ou CNPJ
+        const loginIdentifier = empresaForm.email || empresaForm.cnpj;
+        result = await login(loginIdentifier, empresaForm.senha, 'empresa');
       } else {
         result = await register({
           ...empresaForm,
@@ -255,47 +243,6 @@ const AccessSelector = () => {
     }
   };
 
-  const handleClienteSubmit = async (e) => {
-    e.preventDefault();
-    setClienteLoading(true);
-    setClienteError('');
-
-    try {
-      let result;
-      if (isClienteLoginMode) {
-        result = await login(clienteForm.email, clienteForm.senha);
-      } else {
-        result = await register({
-          ...clienteForm,
-          tipo: 'cliente'
-        });
-      }
-
-      if (result.success) {
-        setShowClienteModal(false);
-        setIsClientLoggedIn(true); // Atualizar estado de login
-        
-        // Mostrar favoritas após login
-        setActiveSection('favoritas');
-        
-        // Verificar se há uma empresa pré-selecionada para agendamento
-        const empresaSelecionada = localStorage.getItem('empresaSelecionada');
-        if (empresaSelecionada) {
-          // Ir direto para a tela de agendamento com a empresa pré-selecionada
-          navigate('/cliente');
-        } else {
-          // Ficar na página atual para mostrar as favoritas
-          // navigate('/cliente'); // Comentado para ficar na página atual
-        }
-      } else {
-        setClienteError(result.error || 'Erro no login/cadastro');
-      }
-    } catch (error) {
-      setClienteError(error.message);
-    } finally {
-      setClienteLoading(false);
-    }
-  };
 
   const handleFuncionarioSubmit = async (e) => {
     e.preventDefault();
@@ -303,7 +250,6 @@ const AccessSelector = () => {
     setFuncionarioError('');
 
     try {
-      console.log('🔍 Debug - Tentando login do funcionário');
       console.log('Empresa ID inserido:', funcionarioForm.empresaId);
       console.log('CPF inserido:', funcionarioForm.cpf);
 
@@ -395,21 +341,6 @@ const AccessSelector = () => {
                 <span className="font-semibold text-white"> Rápido, seguro e intuitivo.</span>
               </p>
               
-              {/* Botão para criar dados de teste */}
-              <div className="mt-8">
-                <button
-                  onClick={() => {
-                    import('../utils/createTestData').then(module => {
-                      module.createTestData();
-                    });
-                    alert('✅ Dados de teste criados!\n\n📋 Dados para teste:\nEmpresa ID: emp_teste_001\nFuncionário 1: Carlos Silva - CPF: 12345678901\nFuncionário 2: Pedro Santos - CPF: 98765432109\n\n🔑 Use estes dados para acessar a agenda do funcionário!');
-                  }}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl border border-white/30"
-                >
-                  <ClipboardList className="w-5 h-5" />
-                  Criar Dados de Teste
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -533,7 +464,7 @@ const AccessSelector = () => {
             </button>
 
             {/* Cliente Card */}
-            <button onClick={openClienteModal} className="group block w-full">
+            <Link to="/cliente" className="group block w-full">
               <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl hover:shadow-3xl transition-all duration-700 hover:-translate-y-4 hover:scale-105 border-2 border-green-300 relative overflow-hidden h-full">
                 <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-br from-green-300/10 to-green-400/10 rounded-full -translate-y-12 md:-translate-y-16 translate-x-12 md:translate-x-16"></div>
                 <div className="relative z-10 h-full flex flex-col">
@@ -566,7 +497,7 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                   </div>
                 </div>
               </div>
-            </button>
+            </Link>
 
             {/* Funcionário Card */}
             <button onClick={openFuncionarioModal} className="group block w-full">
@@ -665,6 +596,7 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
           </div>
         </div>
       </div>
+
 
       {/* Navegação de Seções */}
       {allEmpresas.length > 0 && (
@@ -888,13 +820,26 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  E-mail
+                  {isLoginMode ? 'E-mail ou CNPJ' : 'E-mail'}
                 </label>
                 <input
-                  type="email"
-                  value={empresaForm.email}
-                  onChange={(e) => setEmpresaForm({ ...empresaForm, email: e.target.value })}
+                  type={isLoginMode ? 'text' : 'email'}
+                  value={isLoginMode ? (empresaForm.email || empresaForm.cnpj) : empresaForm.email}
+                  onChange={(e) => {
+                    if (isLoginMode) {
+                      const value = e.target.value;
+                      // Se contém @, é email, senão é CNPJ
+                      if (value.includes('@')) {
+                        setEmpresaForm({ ...empresaForm, email: value, cnpj: '' });
+                      } else {
+                        setEmpresaForm({ ...empresaForm, cnpj: value, email: '' });
+                      }
+                    } else {
+                      setEmpresaForm({ ...empresaForm, email: e.target.value });
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={isLoginMode ? 'Digite seu e-mail ou CNPJ' : 'empresa@exemplo.com'}
                   required
                 />
               </div>
@@ -957,97 +902,6 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
         </div>
       )}
 
-      {/* Modal do Cliente */}
-      {showClienteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {isClienteLoginMode ? 'Login Cliente' : 'Cadastro Cliente'}
-                  </h2>
-                  <p className="text-sm text-gray-600">
-                    {isClienteLoginMode ? 'Acesse sua conta' : 'Crie sua conta de cliente'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowClienteModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="h-5 w-5 text-gray-500" />
-                </button>
-              </div>
-            </div>
-
-            <form onSubmit={handleClienteSubmit} className="p-6 space-y-4">
-              {clienteError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                  {clienteError}
-                </div>
-              )}
-
-              {!isClienteLoginMode && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nome Completo
-                  </label>
-                  <input
-                    type="text"
-                    value={clienteForm.nome}
-                    onChange={(e) => setClienteForm({ ...clienteForm, nome: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    required={!isClienteLoginMode}
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  E-mail
-                </label>
-                <input
-                  type="email"
-                  value={clienteForm.email}
-                  onChange={(e) => setClienteForm({ ...clienteForm, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Senha
-                </label>
-                <input
-                  type="password"
-                  value={clienteForm.senha}
-                  onChange={(e) => setClienteForm({ ...clienteForm, senha: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsClienteLoginMode(!isClienteLoginMode)}
-                  className="text-sm text-green-600 hover:text-green-700 font-medium"
-                >
-                  {isClienteLoginMode ? 'Criar conta' : 'Já tenho conta'}
-                </button>
-                <button
-                  type="submit"
-                  disabled={clienteLoading}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-                >
-                  {clienteLoading ? 'Carregando...' : (isClienteLoginMode ? 'Entrar' : 'Cadastrar')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Modal do Funcionário */}
       {showFuncionarioModal && (

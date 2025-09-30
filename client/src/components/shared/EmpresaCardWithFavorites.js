@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Star, Heart, MapPin, Clock, Users, Calendar, CheckCircle } from 'lucide-react';
 import { isFavorite, toggleFavorite } from '../../services/favoritesService';
 import { formatDistance } from '../../utils/geolocation';
@@ -10,6 +10,7 @@ const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }
   const [isFavorited, setIsFavorited] = useState(false);
   const [agendamentoStatus, setAgendamentoStatus] = useState(null);
   const { user: currentUser } = useLocalAuth();
+  const navigate = useNavigate();
 
   const checkAgendamentoStatus = useCallback(() => {
     if (!currentUser || currentUser.tipo !== 'cliente') {
@@ -47,6 +48,26 @@ const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }
     e.stopPropagation();
     const newStatus = toggleFavorite(empresa.id);
     setIsFavorited(newStatus);
+  };
+
+  const handleBookingClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Se já tem agendamento confirmado, não permitir novo agendamento
+    if (agendamentoStatus === 'confirmado') {
+      return;
+    }
+    
+    // Se tem agendamento pendente, mostrar mensagem ou permitir visualizar
+    if (agendamentoStatus === 'agendado') {
+      // Aqui você pode implementar uma lógica para visualizar o agendamento existente
+      alert('Você já tem um agendamento pendente com esta empresa.');
+      return;
+    }
+    
+    // Redirecionar para a página de agendamento
+    navigate(`/cliente/empresa/${empresa.id}`);
   };
 
   const renderStars = (rating) => {
@@ -186,14 +207,14 @@ const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }
         </div>
 
         {/* Botão de agendar */}
-        <Link 
-          to={`/cliente/empresa/${empresa.id}`}
+        <button 
+          onClick={handleBookingClick}
           className={`w-full py-3 px-4 rounded-lg font-semibold text-center transition-all duration-200 flex items-center justify-center space-x-2 ${
             agendamentoStatus === 'confirmado' 
-              ? 'bg-green-600 text-white hover:bg-green-700'
+              ? 'bg-green-600 text-white hover:bg-green-700 cursor-default'
               : agendamentoStatus === 'agendado'
-              ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-              : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700'
+              ? 'bg-yellow-600 text-white hover:bg-yellow-700 cursor-pointer'
+              : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 cursor-pointer'
           }`}
         >
           {agendamentoStatus === 'confirmado' ? (
@@ -212,7 +233,7 @@ const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }
               <span>Agendar Serviço</span>
             </>
           )}
-        </Link>
+        </button>
 
         {/* Badge de favorito */}
         {isFavorited && (
@@ -221,6 +242,7 @@ const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }
           </div>
         )}
       </div>
+
     </div>
   );
 };

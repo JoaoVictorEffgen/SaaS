@@ -166,7 +166,7 @@ const AgendamentoEmpresa = () => {
     const empresaFimMinutos = empresaFimHora * 60 + empresaFimMinuto;
     
     // Gerar horários de 30 em 30 minutos
-    for (let minutos = empresaInicioMinutos; minutos <= empresaFimMinutos - 30; minutos += 30) {
+    for (let minutos = empresaInicioMinutos; minutos < empresaFimMinutos; minutos += 30) {
       const hora = Math.floor(minutos / 60);
       const minuto = minutos % 60;
       const horarioString = `${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
@@ -273,7 +273,7 @@ const AgendamentoEmpresa = () => {
     
     // Verificar conflitos de horário
     const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
-    const duracaoTotal = quickBooking.servicos.reduce((sum, s) => sum + s.duracao, 0);
+    const duracaoTotal = quickBooking.servicos.reduce((sum, s) => sum + (parseInt(s.duracao) || 0), 0);
     
     const conflito = agendamentos.find(ag => {
       if (ag.funcionario_id !== quickBooking.funcionario_id || ag.data !== quickBooking.data) {
@@ -361,23 +361,37 @@ const AgendamentoEmpresa = () => {
     setShowQuickBooking(false);
   };
 
-  if (!empresa) return <div>Empresa não encontrada</div>;
+  if (!empresa) return (
+    <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 flex items-center justify-center">
+      <div className="text-center p-8">
+        <div className="text-6xl mb-4">❌</div>
+        <h1 className="text-2xl font-bold text-red-600 mb-2">Empresa não encontrada</h1>
+        <p className="text-gray-600">ID da empresa: {empresaId}</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">🏢 {empresa.razaoSocial}</h1>
-          <p className="text-gray-600">Escolha o funcionário e serviços para seu agendamento</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header Moderno */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-6 shadow-lg">
+            <span className="text-2xl">🏢</span>
+          </div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-3">
+            {empresa.razaoSocial}
+          </h1>
+          <p className="text-xl text-gray-600 mb-6">Agende seu serviço de forma rápida e fácil</p>
           
-          {/* Botão WhatsApp */}
+          {/* Botão WhatsApp Moderno */}
           {empresa.whatsapp_contato && (
-            <div className="mt-4">
+            <div className="inline-flex">
               <button
                 onClick={() => setShowWhatsAppChat(true)}
-                className="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-300 font-semibold"
               >
-                <MessageCircle className="h-4 w-4 mr-2" />
+                <MessageCircle className="h-5 w-5 mr-2" />
                 Conversar via WhatsApp
               </button>
             </div>
@@ -386,21 +400,30 @@ const AgendamentoEmpresa = () => {
 
         {/* Fluxo de Agendamento - Passo 1: Data */}
         {bookingStep === 'date' && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">📅 Escolha a Data</h2>
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full mb-4">
+                <span className="text-2xl">📅</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Escolha a Data</h2>
+              <p className="text-gray-600">Selecione o dia para seu agendamento</p>
+            </div>
+            
             <div className="max-w-md mx-auto">
-              <input
-                type="date"
-                value={quickBooking.data}
-                onChange={(e) => {
-                  setQuickBooking({...quickBooking, data: e.target.value});
-                  setBookingStep('time');
-                }}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full p-4 border-2 border-gray-200 rounded-lg text-center text-lg font-semibold focus:border-blue-500 focus:outline-none"
-                required
-              />
-              <p className="text-sm text-gray-500 mt-2 text-center">
+              <div className="relative">
+                <input
+                  type="date"
+                  value={quickBooking.data}
+                  onChange={(e) => {
+                    setQuickBooking({...quickBooking, data: e.target.value});
+                    setBookingStep('time');
+                  }}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full p-6 border-2 border-gray-200 rounded-xl text-center text-xl font-semibold focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all duration-200"
+                  required
+                />
+              </div>
+              <p className="text-sm text-gray-500 mt-4 text-center">
                 Selecione a data para continuar
               </p>
             </div>
@@ -409,51 +432,67 @@ const AgendamentoEmpresa = () => {
 
         {/* Fluxo de Agendamento - Passo 2: Horário */}
         {bookingStep === 'time' && quickBooking.data && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">🕐 Escolha o Horário</h2>
-              <button
-                onClick={() => setBookingStep('date')}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                ← Alterar Data
-              </button>
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full mb-4">
+                <span className="text-2xl">🕐</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Escolha o Horário</h2>
+              <p className="text-gray-600">Horários disponíveis para {quickBooking.data}</p>
             </div>
-            <div className="max-w-md mx-auto">
-              <select
-                value={quickBooking.hora}
-                onChange={(e) => {
-                  setQuickBooking({...quickBooking, hora: e.target.value});
-                  setBookingStep('employee');
-                }}
-                className="w-full p-4 border-2 border-gray-200 rounded-lg text-center text-lg font-semibold focus:border-blue-500 focus:outline-none"
-                required
-              >
-                <option value="">Selecione um horário</option>
-                {gerarHorariosDisponiveis().map(horario => (
-                  <option key={horario} value={horario}>
-                    {horario}
-                  </option>
-                ))}
-              </select>
-              <p className="text-sm text-gray-500 mt-2 text-center">
+            
+            <div className="max-w-lg mx-auto">
+              <div className="relative">
+                <select
+                  value={quickBooking.hora}
+                  onChange={(e) => {
+                    setQuickBooking({...quickBooking, hora: e.target.value});
+                    setBookingStep('employee');
+                  }}
+                  className="w-full p-6 border-2 border-gray-200 rounded-xl text-center text-xl font-semibold focus:border-green-500 focus:outline-none focus:ring-4 focus:ring-green-100 transition-all duration-200 appearance-none bg-white"
+                  required
+                >
+                  <option value="">Selecione um horário</option>
+                  {gerarHorariosDisponiveis().map(horario => (
+                    <option key={horario} value={horario}>
+                      {horario}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-6 pointer-events-none">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 mt-4 text-center">
                 Horários de {empresa.horario_inicio} às {empresa.horario_fim}
               </p>
+              
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => setBookingStep('date')}
+                  className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Alterar Data
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* Fluxo de Agendamento - Passo 3: Funcionário Disponível */}
         {bookingStep === 'employee' && quickBooking.data && quickBooking.hora && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">👤 Funcionários Disponíveis</h2>
-              <button
-                onClick={() => setBookingStep('time')}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                ← Alterar Horário
-              </button>
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full mb-4">
+                <span className="text-2xl">👤</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Escolha o Funcionário</h2>
+              <p className="text-gray-600">Profissionais disponíveis em {quickBooking.hora}</p>
             </div>
             
             {(() => {
@@ -485,7 +524,7 @@ const AgendamentoEmpresa = () => {
               }
 
               return (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {funcionariosDisponiveis.map((funcionario) => (
                     <button
                       key={funcionario.id}
@@ -493,20 +532,25 @@ const AgendamentoEmpresa = () => {
                         setQuickBooking({...quickBooking, funcionario_id: funcionario.id});
                         setBookingStep('services');
                       }}
-                      className="p-4 border-2 rounded-lg text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
+                      className="group p-6 border-2 border-gray-200 rounded-2xl text-left transition-all duration-300 hover:border-purple-300 hover:bg-gradient-to-br hover:from-purple-50 hover:to-indigo-50 hover:shadow-lg hover:-translate-y-1"
                     >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                          <span className="text-white font-bold">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-14 h-14 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+                          <span className="text-white font-bold text-lg">
                             {funcionario.nome.charAt(0).toUpperCase()}
                           </span>
                         </div>
-                        <div>
-                          <h3 className="font-medium text-gray-900">{funcionario.nome}</h3>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 text-lg mb-1">{funcionario.nome}</h3>
                           {funcionario.especializacao && (
-                            <p className="text-sm text-gray-600">{funcionario.especializacao}</p>
+                            <p className="text-sm text-gray-600 mb-2">{funcionario.especializacao}</p>
                           )}
-                          <p className="text-xs text-green-600 font-medium">✓ Disponível</p>
+                          <div className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Disponível
+                          </div>
                         </div>
                       </div>
                     </button>
@@ -514,32 +558,42 @@ const AgendamentoEmpresa = () => {
                 </div>
               );
             })()}
+            
+            <div className="mt-8 text-center">
+              <button
+                onClick={() => setBookingStep('time')}
+                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium transition-colors"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Alterar Horário
+              </button>
+            </div>
           </div>
         )}
 
         {/* Fluxo de Agendamento - Passo 4: Serviços */}
         {bookingStep === 'services' && quickBooking.funcionario_id && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">🛠️ Escolha os Serviços</h2>
-              <button
-                onClick={() => setBookingStep('employee')}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                ← Alterar Funcionário
-              </button>
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-orange-500 to-red-600 rounded-full mb-4">
+                <span className="text-2xl">🛠️</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Escolha os Serviços</h2>
+              <p className="text-gray-600">Selecione os serviços que deseja agendar</p>
             </div>
             
             {servicos.length > 0 ? (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                   {servicos.map((servico) => (
                     <label
                       key={servico.id}
-                      className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                      className={`group p-6 border-2 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
                         quickBooking.servicos.some(s => s.id === servico.id)
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-red-50 shadow-md'
+                          : 'border-gray-200 hover:border-orange-300 hover:bg-gradient-to-br hover:from-orange-50 hover:to-red-50'
                       }`}
                     >
                       <input
@@ -561,15 +615,33 @@ const AgendamentoEmpresa = () => {
                         className="sr-only"
                       />
                       <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium text-gray-900">{servico.nome}</h3>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 text-lg mb-2">{servico.nome}</h3>
                           {servico.descricao && (
-                            <p className="text-sm text-gray-600 mt-1">{servico.descricao}</p>
+                            <p className="text-sm text-gray-600 mb-3">{servico.descricao}</p>
                           )}
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                              quickBooking.servicos.some(s => s.id === servico.id)
+                                ? 'border-orange-500 bg-orange-500'
+                                : 'border-gray-300 group-hover:border-orange-400'
+                            }`}>
+                              {quickBooking.servicos.some(s => s.id === servico.id) && (
+                                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-sm text-gray-500">
+                              {quickBooking.servicos.some(s => s.id === servico.id) ? 'Selecionado' : 'Clique para selecionar'}
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold text-green-600">R$ {servico.preco}</p>
-                          <p className="text-sm text-gray-500">{servico.duracao} min</p>
+                        <div className="text-right ml-4">
+                          <p className="font-bold text-orange-600 text-xl">R$ {servico.preco}</p>
+                          <p className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            {parseInt(servico.duracao) || 0} min
+                          </p>
                         </div>
                       </div>
                     </label>
@@ -577,22 +649,29 @@ const AgendamentoEmpresa = () => {
                 </div>
                 
                 {quickBooking.servicos.length > 0 && (
-                  <div className="mb-6 p-4 bg-green-50 rounded-lg">
-                    <h3 className="font-semibold text-gray-900 mb-2">📋 Serviços Selecionados:</h3>
-                    <div className="space-y-2">
+                  <div className="mb-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-200">
+                    <h3 className="font-bold text-gray-900 mb-4 text-lg">📋 Resumo do Agendamento</h3>
+                    <div className="space-y-3">
                       {quickBooking.servicos.map((servico) => (
-                        <div key={servico.id} className="flex justify-between text-sm">
-                          <span>{servico.nome}</span>
-                          <span>R$ {servico.preco} ({servico.duracao} min)</span>
+                        <div key={servico.id} className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm">
+                          <span className="font-medium text-gray-900">{servico.nome}</span>
+                          <div className="text-right">
+                            <span className="font-bold text-green-600">R$ {servico.preco}</span>
+                            <span className="text-sm text-gray-500 ml-2">({parseInt(servico.duracao) || 0} min)</span>
+                          </div>
                         </div>
                       ))}
                     </div>
-                    <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between font-bold">
-                      <span>Total:</span>
-                      <span>
-                        R$ {quickBooking.servicos.reduce((sum, s) => sum + parseFloat(s.preco), 0).toFixed(2)} 
-                        ({quickBooking.servicos.reduce((sum, s) => sum + s.duracao, 0)} min)
-                      </span>
+                    <div className="mt-4 pt-4 border-t border-green-200 flex justify-between items-center">
+                      <span className="font-bold text-lg text-gray-900">Total:</span>
+                      <div className="text-right">
+                        <div className="font-bold text-2xl text-green-600">
+                          R$ {quickBooking.servicos.reduce((sum, s) => sum + parseFloat(s.preco), 0).toFixed(2)}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {quickBooking.servicos.reduce((sum, s) => sum + (parseInt(s.duracao) || 0), 0)} minutos
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -602,9 +681,12 @@ const AgendamentoEmpresa = () => {
                   <div className="text-center">
                     <button
                       onClick={() => setShowQuickBooking(true)}
-                      className="px-8 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-lg"
+                      className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-300 font-bold text-lg"
                     >
-                      🚀 Finalizar Agendamento
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Finalizar Agendamento
                     </button>
                   </div>
                 )}
@@ -620,6 +702,18 @@ const AgendamentoEmpresa = () => {
                 </p>
               </div>
             )}
+            
+            <div className="mt-8 text-center">
+              <button
+                onClick={() => setBookingStep('employee')}
+                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium transition-colors"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Alterar Funcionário
+              </button>
+            </div>
           </div>
         )}
 
@@ -739,12 +833,16 @@ const AgendamentoEmpresa = () => {
           </div>
         )}
 
-        <div className="text-center mt-8 space-x-4">
-          <Link to="/cliente" className="text-blue-600 hover:text-blue-800 font-medium">
-            ← Voltar à seleção de empresas
-          </Link>
-          <Link to={`/debug-empresa/${empresaId}`} className="text-gray-500 hover:text-gray-700 text-sm">
-            🔍 Debug Empresa
+        {/* Footer Moderno */}
+        <div className="text-center mt-12 space-y-4">
+          <Link 
+            to="/cliente" 
+            className="inline-flex items-center px-6 py-3 bg-white text-blue-600 hover:text-blue-800 font-semibold rounded-full border-2 border-blue-200 hover:border-blue-300 shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Voltar à seleção de empresas
           </Link>
         </div>
       </div>

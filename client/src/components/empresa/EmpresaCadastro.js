@@ -21,6 +21,7 @@ const EmpresaCadastro = () => {
     razaoSocial: '',
     cnpj: '',
     email: '',
+    senha: '',
     telefone: '',
     endereco: '',
     especializacao: '',
@@ -69,6 +70,8 @@ const EmpresaCadastro = () => {
     if (!formData.razaoSocial.trim()) validationErrors.razaoSocial = 'Razão social é obrigatória';
     if (!formData.cnpj.trim()) validationErrors.cnpj = 'CNPJ é obrigatório';
     if (!formData.email.trim()) validationErrors.email = 'Email é obrigatório';
+    if (!formData.senha.trim()) validationErrors.senha = 'Senha é obrigatória';
+    if (formData.senha.length < 6) validationErrors.senha = 'Senha deve ter pelo menos 6 caracteres';
     if (!formData.telefone.trim()) validationErrors.telefone = 'Telefone é obrigatório';
     if (!formData.especializacao.trim()) validationErrors.especializacao = 'Especialização é obrigatória';
     if (!formData.horario_inicio) validationErrors.horario_inicio = 'Horário de início é obrigatório';
@@ -94,8 +97,11 @@ const EmpresaCadastro = () => {
       const novaEmpresa = {
         id: Date.now().toString(),
         nome: formData.razaoSocial,
+        cnpj: formData.cnpj,
         email: formData.email,
+        senha: formData.senha,
         telefone: formData.telefone,
+        endereco: formData.endereco,
         whatsapp_contato: formData.whatsapp_contato,
         especializacao: formData.especializacao,
         descricao_servico: formData.descricao_servico,
@@ -192,6 +198,18 @@ const EmpresaCadastro = () => {
                   />
                   {errors.telefone && <p className="text-red-500 text-sm mt-1">{errors.telefone}</p>}
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Senha *</label>
+                <input
+                  type="password"
+                  value={formData.senha}
+                  onChange={(e) => setFormData({...formData, senha: e.target.value})}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Mínimo 6 caracteres"
+                />
+                {errors.senha && <p className="text-red-500 text-sm mt-1">{errors.senha}</p>}
               </div>
 
               <div>

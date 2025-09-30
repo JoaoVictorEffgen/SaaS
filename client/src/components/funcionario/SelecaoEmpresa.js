@@ -23,7 +23,6 @@ const SelecaoEmpresa = () => {
   // Estados para pesquisa e filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredEmpresas, setFilteredEmpresas] = useState([]);
-  const [historyFilter] = useState('all'); // 'all', 'agendados', 'cancelados'
   const [clienteHistory, setClienteHistory] = useState([]);
   const [activeTab, setActiveTab] = useState('todas'); // 'todas', 'favoritas', 'historico'
 
@@ -135,11 +134,6 @@ const SelecaoEmpresa = () => {
   }, []);
 
   const handleLogout = () => {
-    // Limpar todos os dados do cliente
-    localStorage.removeItem('clienteLogado');
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('authToken');
-    
     // Executar logout do contexto
     logout();
     
@@ -152,11 +146,6 @@ const SelecaoEmpresa = () => {
     return <Navigate to="/" replace />;
   }
 
-  // Filtrar histórico baseado no filtro selecionado
-  const filteredHistory = clienteHistory.filter(item => {
-    if (historyFilter === 'all') return true;
-    return item.tipo === historyFilter;
-  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">

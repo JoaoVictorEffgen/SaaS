@@ -62,12 +62,6 @@ const LoginStatusIndicator = () => {
 
   const handleLogout = () => {
     logout();
-    // Limpar todos os dados de login
-    localStorage.removeItem('clienteLogado');
-    localStorage.removeItem('empresaLogada');
-    localStorage.removeItem('funcionarioLogado');
-    localStorage.removeItem('empresaFuncionario');
-    localStorage.removeItem('currentUser');
     // Navegar para a página inicial com gradiente
     navigate('/');
     // Forçar scroll para o topo para mostrar o gradiente
@@ -89,18 +83,6 @@ const LoginStatusIndicator = () => {
     }
   };
 
-  const getTypeLabel = (type) => {
-    switch (type) {
-      case 'empresa':
-        return 'Empresa';
-      case 'cliente':
-        return 'Cliente';
-      case 'funcionario':
-        return 'Funcionário';
-      default:
-        return 'Usuário';
-    }
-  };
 
   const getTypeColor = (type) => {
     switch (type) {
