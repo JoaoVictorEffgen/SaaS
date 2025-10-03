@@ -584,12 +584,16 @@ const AgendamentoEmpresa = () => {
                         }
                       }}
                       disabled={!isDisponivel}
+                      style={{ 
+                        cursor: isDisponivel ? 'pointer' : 'not-allowed',
+                        pointerEvents: isDisponivel ? 'auto' : 'none'
+                      }}
                       className={`px-4 py-3 rounded-xl border-2 text-center font-medium transition-all ${
                         isSelecionado
                           ? 'bg-blue-500 text-white border-blue-500'
                           : isDisponivel
-                          ? 'bg-green-50 text-green-700 border-green-200 hover:border-green-400 hover:bg-green-100'
-                          : 'bg-red-50 text-red-400 border-red-200 cursor-not-allowed'
+                          ? 'bg-green-50 text-green-700 border-green-200 hover:border-green-400 hover:bg-green-100 cursor-pointer'
+                          : 'bg-red-50 text-red-400 border-red-200 cursor-not-allowed opacity-60'
                       }`}
                       title={
                         isDisponivel 
