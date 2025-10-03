@@ -54,6 +54,9 @@ const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }
     e.preventDefault();
     e.stopPropagation();
     
+    // A verificação de login já foi feita antes de chegar nesta tela
+    // Se o usuário chegou aqui, ele já está logado como cliente
+    
     // Se já tem agendamento confirmado, não permitir novo agendamento
     if (agendamentoStatus === 'confirmado') {
       return;

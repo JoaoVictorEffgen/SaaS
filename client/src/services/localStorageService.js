@@ -19,11 +19,11 @@ class LocalStorageService {
         },
         {
           id: '2',
-          nome: 'João Silva',
-          email: 'joao@exemplo.com',
+          nome: 'Maria Santos',
+          email: 'maria@empresa.com',
           senha: '123456',
           plano: 'free',
-          empresa: 'Consultoria Silva',
+          empresa: 'Consultoria Santos',
           especializacao: 'Consultoria'
         }
       ];
@@ -307,31 +307,87 @@ class LocalStorageService {
   }
 
   // Autenticação
-  login(identifier, senha) {
-    // Buscar por email ou CNPJ
-    const users = this.getUsers();
-    const user = users.find(u => u.email === identifier || u.cnpj === identifier);
-    
-    if (user && user.senha === senha) {
-      const token = this.generateToken(user.id);
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      localStorage.setItem('authToken', token);
-      return { user, token };
+  login(identifier, senha, tipo = null) {
+    if (tipo === 'cliente') {
+      // Buscar clientes
+      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
+      const cliente = clientes.find(c => 
+        (c.email === identifier || c.whatsapp === identifier) && 
+        c.senha === senha
+      );
+      
+      if (cliente) {
+        const userData = {
+          id: cliente.id,
+          nome: cliente.nome,
+          email: cliente.email,
+          whatsapp: cliente.whatsapp,
+          tipo: 'cliente',
+          plano: 'free'
+        };
+        
+        const token = this.generateToken(cliente.id);
+        // Salvar o objeto cliente completo, não apenas userData
+        localStorage.setItem('currentUser', JSON.stringify(cliente));
+        localStorage.setItem('authToken', token);
+        return { user: cliente, token };
+      }
+    } else {
+      // Buscar por email ou CNPJ (empresas)
+      const users = this.getUsers();
+      const user = users.find(u => u.email === identifier || u.cnpj === identifier);
+      
+      if (user && user.senha === senha) {
+        const token = this.generateToken(user.id);
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        localStorage.setItem('authToken', token);
+        return { user, token };
+      }
     }
+    
     return null;
   }
 
   logout() {
-    // Limpar todos os dados de autenticação
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('clienteLogado');
-    localStorage.removeItem('empresaLogada');
-    localStorage.removeItem('funcionarioLogado');
-    localStorage.removeItem('empresaFuncionario');
-    
-    // Disparar evento para notificar outros componentes
-    window.dispatchEvent(new Event('storage'));
+    try {
+      console.log('🧹 Iniciando logout - limpando dados...');
+      
+      // Limpar todos os dados de autenticação
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('clienteLogado');
+      localStorage.removeItem('empresaLogada');
+      localStorage.removeItem('funcionarioLogado');
+      localStorage.removeItem('empresaFuncionario');
+      
+      // Limpar dados de sessão e cache
+      localStorage.removeItem('userSession');
+      localStorage.removeItem('userPreferences');
+      localStorage.removeItem('lastLogin');
+      localStorage.removeItem('sessionTimeout');
+      
+      // Limpar dados específicos de componentes que podem estar em cache
+      localStorage.removeItem('empresaSelecionada');
+      localStorage.removeItem('agendamentoTemp');
+      localStorage.removeItem('formularioTemp');
+      
+      // Limpar sessionStorage também
+      sessionStorage.clear();
+      
+      console.log('✅ Logout concluído - todos os dados limpos');
+      
+      // Disparar evento para notificar outros componentes
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('logout'));
+      
+      // NÃO fazer reload automático - deixar para os componentes controlarem a navegação
+      
+    } catch (error) {
+      console.error('❌ Erro durante logout:', error);
+      // Mesmo com erro, tentar limpar o essencial
+      localStorage.clear();
+      sessionStorage.clear();
+    }
   }
 
   getCurrentUser() {

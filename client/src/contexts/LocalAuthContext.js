@@ -37,8 +37,8 @@ export const LocalAuthProvider = ({ children }) => {
     const loadUser = () => {
       try {
         const currentUser = localStorageService.getCurrentUser();
+        
         if (currentUser && currentUser.id) {
-          console.log('🔄 LocalAuthContext - Carregando usuário:', currentUser);
           setUser(currentUser);
           setSubscription({
             plano: currentUser.plano || 'business',
@@ -50,7 +50,6 @@ export const LocalAuthProvider = ({ children }) => {
             }
           });
         } else {
-          console.log('🔄 LocalAuthContext - Nenhum usuário válido encontrado');
           setUser(null);
           setSubscription(null);
         }
@@ -147,23 +146,30 @@ export const LocalAuthProvider = ({ children }) => {
   };
 
   // Logout
-  const logout = () => {
+  const logout = async () => {
     try {
-      // Limpar localStorage
-      localStorageService.logout();
+      console.log('🚪 Iniciando logout do contexto...');
       
-      // Limpar estados do contexto
+      // Limpar estados do contexto primeiro
       setUser(null);
       setSubscription(null);
-      setLoading(false);
+      setLoading(true);
       
-      console.log('Logout realizado com sucesso');
+      // Limpar localStorage (sem reload automático)
+      localStorageService.logout();
+      
+      console.log('✅ Logout do contexto realizado com sucesso');
+      
     } catch (error) {
-      console.error('Erro durante logout:', error);
+      console.error('❌ Erro durante logout do contexto:', error);
       // Mesmo com erro, limpar os estados
       setUser(null);
       setSubscription(null);
       setLoading(false);
+      
+      // Forçar limpeza completa
+      localStorage.clear();
+      sessionStorage.clear();
     }
   };
 

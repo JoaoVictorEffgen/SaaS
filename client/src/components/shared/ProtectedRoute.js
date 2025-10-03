@@ -10,7 +10,9 @@ const ProtectedRoute = ({ children }) => {
 
   useEffect(() => {
     // Se não está carregando e não há usuário, redirecionar para tela inicial
+    console.log('🔍 ProtectedRoute Debug:', { loading, user, userTipo: user?.tipo });
     if (!loading && !user) {
+      console.log('❌ ProtectedRoute: Redirecionando para /');
       navigate('/');
     }
   }, [loading, user, navigate]);

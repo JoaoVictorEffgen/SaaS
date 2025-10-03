@@ -133,18 +133,26 @@ const SelecaoEmpresa = () => {
     };
   }, []);
 
-  const handleLogout = () => {
-    // Executar logout do contexto
-    logout();
-    
-    // Navegar para tela inicial
-    navigate('/', { replace: true });
+  const handleLogout = async () => {
+    try {
+      console.log('🚪 SelecaoEmpresa - Iniciando logout...');
+      
+      // Executar logout (limpeza completa sem reload)
+      await logout();
+      
+      // Navegar para a tela de login
+      navigate('/', { replace: true });
+      
+      console.log('✅ SelecaoEmpresa - Logout concluído e navegação realizada');
+      
+    } catch (error) {
+      console.error('❌ Erro no logout do SelecaoEmpresa:', error);
+      // Fallback: navegar para login
+      navigate('/', { replace: true });
+    }
   };
 
-  // Redirecionar se não estiver logado
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
+  // Permitir acesso mesmo sem login - usuário pode ver empresas
 
 
   return (
@@ -166,8 +174,12 @@ const SelecaoEmpresa = () => {
                   <Building2 className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Olá, {user.nome}!</h1>
-                  <p className="text-sm text-gray-600">Escolha uma empresa para agendar seus serviços</p>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {user ? `Olá, ${user.nome}!` : 'Escolha uma empresa para agendar seus serviços'}
+                  </h1>
+                  <p className="text-sm text-gray-600">
+                    {user ? 'Escolha uma empresa para agendar seus serviços' : 'Faça login para agendar ou explore as empresas disponíveis'}
+                  </p>
                 </div>
               </div>
               
@@ -307,7 +319,12 @@ const SelecaoEmpresa = () => {
                           key={empresa.id} 
                           empresa={empresa} 
                           onSelect={(empresa) => {
-                            window.location.href = `/cliente/empresa/${empresa.id}`;
+                            // Verificar se o usuário está logado
+                            if (!user || user.tipo !== 'cliente') {
+                              alert('Você precisa fazer login para agendar um serviço.');
+                              return;
+                            }
+                            navigate(`/cliente/empresa/${empresa.id}`);
                           }}
                         />
                       ))}

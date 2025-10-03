@@ -15,17 +15,39 @@ const AccessSelector = () => {
   // Estados dos modais
   const [showEmpresaModal, setShowEmpresaModal] = useState(false);
   const [showFuncionarioModal, setShowFuncionarioModal] = useState(false);
+  const [showClienteModal, setShowClienteModal] = useState(false);
+  
+  // Debug: verificar estado do modal
+  useEffect(() => {
+    console.log('🔍 Estado do modal cliente:', showClienteModal);
+  }, [showClienteModal]);
+  
+  // Estados do formulário de cliente
+  const [clienteForm, setClienteForm] = useState({ 
+    nome: '', 
+    sobrenome: '', 
+    email: '', 
+    senha: '', 
+    confirmarSenha: '',
+    whatsapp: '' 
+  });
+  const [clienteError, setClienteError] = useState('');
+  const [isCadastroMode, setIsCadastroMode] = useState(false);
+  const [codigoConfirmacao, setCodigoConfirmacao] = useState('');
+  const [codigoEnviado, setCodigoEnviado] = useState(false);
+  const [clienteLoading, setClienteLoading] = useState(false);
+  const [metodoVerificacao, setMetodoVerificacao] = useState('whatsapp'); // 'whatsapp' ou 'sms'
+  const [codigosGerados, setCodigosGerados] = useState({ whatsapp: '', sms: '' });
   
   // Estados para novas funcionalidades
   const [activeSection, setActiveSection] = useState('destaque'); // 'destaque', 'proximas', 'favoritas'
   const [allEmpresas, setAllEmpresas] = useState([]);
   const [isClientLoggedIn, setIsClientLoggedIn] = useState(false);
-  const [empresaForm, setEmpresaForm] = useState({ email: '', senha: '', nome: '', telefone: '', endereco: '', cnpj: '' });
+  const [empresaForm, setEmpresaForm] = useState({ email: '', senha: '', confirmarSenha: '', nome: '', telefone: '', endereco: '', cnpj: '' });
   const [funcionarioForm, setFuncionarioForm] = useState({ 
     empresaId: '', 
     cpf: '' 
   });
-  const [isLoginMode, setIsLoginMode] = useState(true);
   const [empresaError, setEmpresaError] = useState('');
   const [funcionarioError, setFuncionarioError] = useState('');
   const [empresaLoading, setEmpresaLoading] = useState(false);
@@ -38,10 +60,11 @@ const AccessSelector = () => {
     totalClientes: 0,
     satisfacao: 0
   });
+  
 
   
   const navigate = useNavigate();
-  const { login, register } = useLocalAuth();
+  const { login, register, user } = useLocalAuth();
 
   const beneficios = [
     {
@@ -81,18 +104,28 @@ const AccessSelector = () => {
   };
 
   const handleAgendarEmpresa = (empresa) => {
-    // Verificar se o usuário está logado
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    // Salvar empresa selecionada
+    localStorage.setItem('empresaSelecionada', JSON.stringify(empresa));
     
-    if (currentUser && currentUser.tipo === 'cliente') {
-      // Usuário já está logado como cliente - ir direto para agendamento
-      localStorage.setItem('empresaSelecionada', JSON.stringify(empresa));
-      navigate('/cliente');
-    } else {
-      // Usuário não está logado - redirecionar para página de cliente
-      localStorage.setItem('empresaSelecionada', JSON.stringify(empresa));
-      navigate('/cliente');
-    }
+    // Debug: verificar se modal está sendo chamado
+    console.log('🔍 handleAgendarEmpresa chamado, mostrando modal de cliente');
+    console.log('🔍 Estado atual do modal:', showClienteModal);
+    
+      // Forçar modal a aparecer
+      setShowClienteModal(true);
+      setClienteError('');
+      setClienteForm({ nome: '', sobrenome: '', email: '', senha: '', confirmarSenha: '', whatsapp: '' });
+      setIsCadastroMode(false);
+      setCodigoEnviado(false);
+      setCodigoConfirmacao('');
+      setCodigosGerados({ whatsapp: '', sms: '' });
+    
+    // Verificar se o estado mudou
+    setTimeout(() => {
+      console.log('🔍 Estado do modal após setState:', showClienteModal);
+    }, 100);
+    
+    console.log('✅ Modal de cliente deve estar visível agora');
   };
 
   // Auto-rotate carousel
@@ -182,13 +215,32 @@ const AccessSelector = () => {
   }, []);
 
 
+
   useEffect(() => {
     loadEmpresasDestaque();
     loadStats();
     
+    // Criar cliente de teste único com email diferente
+    const clienteTeste = {
+      id: 1,
+      nome: 'João',
+      sobrenome: 'Silva',
+      email: 'cliente@teste.com',
+      whatsapp: '11999999999',
+      senha: '123456',
+      tipo: 'cliente',
+      favoritos: []
+    };
+
+    // Limpar qualquer currentUser existente primeiro
+    localStorage.removeItem('currentUser');
+    
+    // Salvar cliente de teste no localStorage (sempre atualizar)
+    localStorage.setItem('clientes', JSON.stringify([clienteTeste]));
+    console.log('✅ Cliente de teste criado:', clienteTeste);
+    
     // Verificar se há um cliente logado
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-    const clientLoggedIn = currentUser && currentUser.tipo === 'cliente';
+    const clientLoggedIn = user && user.tipo === 'cliente';
     setIsClientLoggedIn(clientLoggedIn);
     
     // Se cliente logado, mostrar favoritas por padrão
@@ -197,7 +249,7 @@ const AccessSelector = () => {
     } else {
       setActiveSection('destaque');
     }
-  }, [loadEmpresasDestaque, loadStats]);
+  }, [loadEmpresasDestaque, loadStats, user]);
 
   const openEmpresaModal = () => {
     setShowEmpresaModal(true);
@@ -212,29 +264,302 @@ const AccessSelector = () => {
     setFuncionarioForm({ empresaId: '', cpf: '' });
   };
 
+  const handleClienteLogin = async (e) => {
+    e.preventDefault();
+    setClienteError('');
+
+    if (!clienteForm.email && !clienteForm.whatsapp) {
+      setClienteError('Por favor, preencha o email ou WhatsApp.');
+      return;
+    }
+
+    if (!clienteForm.senha) {
+      setClienteError('Por favor, preencha a senha.');
+      return;
+    }
+
+    // Validação de email se fornecido
+    if (clienteForm.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(clienteForm.email)) {
+        setClienteError('Por favor, insira um email válido.');
+        return;
+      }
+    }
+
+    // Validação de WhatsApp se fornecido
+    if (clienteForm.whatsapp) {
+      const whatsappNumbers = clienteForm.whatsapp.replace(/\D/g, '');
+      if (whatsappNumbers.length < 10) {
+        setClienteError('Por favor, insira um WhatsApp válido com pelo menos 10 dígitos.');
+        return;
+      }
+    }
+
+    try {
+      setClienteLoading(true);
+      
+      // Limpar qualquer login anterior
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('empresaLogada');
+      localStorage.removeItem('funcionarioLogado');
+      
+      // Verificar apenas clientes (não empresas ou funcionários)
+      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
+      const cliente = clientes.find(c => 
+        (c.email === clienteForm.email || c.whatsapp === clienteForm.whatsapp) && 
+        c.senha === clienteForm.senha
+      );
+      
+      console.log('🔍 Clientes disponíveis:', clientes);
+      console.log('🔍 Buscando cliente com:', clienteForm.email || clienteForm.whatsapp);
+      console.log('🔍 Cliente encontrado:', cliente);
+
+      if (cliente) {
+        // Login bem-sucedido
+        const userData = {
+          id: cliente.id,
+          nome: cliente.nome,
+          email: cliente.email,
+          whatsapp: cliente.whatsapp,
+          tipo: 'cliente',
+          plano: 'free'
+        };
+
+        // Salvar no localStorage diretamente e fazer login
+        localStorage.setItem('currentUser', JSON.stringify(cliente));
+        
+        // Fechar modal e navegar para lista de empresas
+        setShowClienteModal(false);
+        navigate('/cliente');
+      } else {
+        // Verificar se o email existe em empresas ou funcionários
+        const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
+        const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
+        
+        const empresaExiste = empresas.find(e => e.email === clienteForm.email);
+        const funcionarioExiste = funcionarios.find(f => f.email === clienteForm.email);
+        
+        if (empresaExiste) {
+          setClienteError('Este email é de uma empresa. Use a área "Área da Empresa".');
+        } else if (funcionarioExiste) {
+          setClienteError('Este email é de um funcionário. Use a área "Área do Funcionário".');
+        } else {
+          setClienteError('Email/WhatsApp ou senha incorretos.');
+        }
+      }
+    } catch (error) {
+      console.error('Erro no login:', error);
+      setClienteError('Erro ao fazer login. Tente novamente.');
+    } finally {
+      setClienteLoading(false);
+    }
+  };
+
+  const handleClienteCadastro = async (e) => {
+    e.preventDefault();
+    setClienteError('');
+
+    // Validação obrigatória de todos os campos
+    if (!clienteForm.nome || !clienteForm.sobrenome || !clienteForm.email || !clienteForm.senha || !clienteForm.confirmarSenha || !clienteForm.whatsapp) {
+      setClienteError('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    // Validação de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(clienteForm.email)) {
+      setClienteError('Por favor, insira um email válido.');
+      return;
+    }
+
+    // Validação de senha (mínimo 6 caracteres)
+    if (clienteForm.senha.length < 6) {
+      setClienteError('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
+    // Validação de confirmação de senha
+    if (clienteForm.senha !== clienteForm.confirmarSenha) {
+      setClienteError('As senhas não coincidem. Tente novamente.');
+      return;
+    }
+
+    // Validação de WhatsApp (mínimo 10 dígitos)
+    const whatsappNumbers = clienteForm.whatsapp.replace(/\D/g, '');
+    if (whatsappNumbers.length < 10) {
+      setClienteError('Por favor, insira um WhatsApp válido com pelo menos 10 dígitos.');
+      return;
+    }
+
+    try {
+      setClienteLoading(true);
+      
+      // Verificar se email já existe
+      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
+      const emailExiste = clientes.find(c => c.email === clienteForm.email);
+      const whatsappExiste = clientes.find(c => c.whatsapp === clienteForm.whatsapp);
+      
+      if (emailExiste) {
+        setClienteError('Este email já está em uso.');
+        return;
+      }
+      
+      if (whatsappExiste) {
+        setClienteError('Este WhatsApp já está em uso.');
+        return;
+      }
+
+      // Gerar códigos de confirmação para ambos os métodos
+      const codigoWhatsApp = Math.floor(100000 + Math.random() * 900000).toString();
+      const codigoSMS = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      setCodigoConfirmacao('');
+      setCodigoEnviado(true);
+      setCodigosGerados({ whatsapp: codigoWhatsApp, sms: codigoSMS });
+      
+      // Simular envio dos códigos
+      console.log(`📱 Código WhatsApp enviado para ${clienteForm.whatsapp}: ${codigoWhatsApp}`);
+      console.log(`💬 Código SMS enviado para ${clienteForm.whatsapp}: ${codigoSMS}`);
+      console.log(`🔑 Use qualquer um dos códigos acima para confirmar a conta`);
+      
+      // Salvar dados temporariamente
+      localStorage.setItem('clienteTemp', JSON.stringify(clienteForm));
+      localStorage.setItem('codigoWhatsApp', codigoWhatsApp);
+      localStorage.setItem('codigoSMS', codigoSMS);
+      
+    } catch (error) {
+      console.error('Erro no cadastro:', error);
+      setClienteError('Erro ao criar conta. Tente novamente.');
+    } finally {
+      setClienteLoading(false);
+    }
+  };
+
+  const handleConfirmarCodigo = async (e) => {
+    e.preventDefault();
+    setClienteError('');
+
+    if (!codigoConfirmacao || codigoConfirmacao.length !== 6) {
+      setClienteError('Por favor, digite o código de 6 dígitos.');
+      return;
+    }
+
+    try {
+      setClienteLoading(true);
+      
+      // Verificar código (aceita qualquer um dos dois)
+      const clienteTemp = JSON.parse(localStorage.getItem('clienteTemp') || '{}');
+      const codigoWhatsApp = localStorage.getItem('codigoWhatsApp');
+      const codigoSMS = localStorage.getItem('codigoSMS');
+      
+      if (codigoConfirmacao === codigoWhatsApp || codigoConfirmacao === codigoSMS) {
+        // Criar cliente
+        const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
+        const novoCliente = {
+          id: Date.now(),
+          nome: clienteTemp.nome,
+          sobrenome: clienteTemp.sobrenome,
+          email: clienteTemp.email,
+          senha: clienteTemp.senha,
+          whatsapp: clienteTemp.whatsapp,
+          verificado: true,
+          data_criacao: new Date().toISOString()
+        };
+        
+        clientes.push(novoCliente);
+        localStorage.setItem('clientes', JSON.stringify(clientes));
+        
+        // Limpar dados temporários
+        localStorage.removeItem('clienteTemp');
+        localStorage.removeItem('codigoWhatsApp');
+        localStorage.removeItem('codigoSMS');
+        
+        // Login automático
+        const userData = {
+          id: novoCliente.id,
+          nome: `${novoCliente.nome} ${novoCliente.sobrenome}`,
+          email: novoCliente.email,
+          whatsapp: novoCliente.whatsapp,
+          tipo: 'cliente',
+          plano: 'free'
+        };
+
+        await login(userData);
+        setShowClienteModal(false);
+        navigate('/cliente');
+        
+      } else {
+        setClienteError('Código incorreto. Tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro na confirmação:', error);
+      setClienteError('Erro ao confirmar código. Tente novamente.');
+    } finally {
+      setClienteLoading(false);
+    }
+  };
+
+  const handleReenviarCodigo = () => {
+    // Gerar novos códigos
+    const codigoWhatsApp = Math.floor(100000 + Math.random() * 900000).toString();
+    const codigoSMS = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    setCodigosGerados({ whatsapp: codigoWhatsApp, sms: codigoSMS });
+    
+    // Simular reenvio
+    console.log(`📱 Novo código WhatsApp: ${codigoWhatsApp}`);
+    console.log(`💬 Novo código SMS: ${codigoSMS}`);
+    
+    // Salvar novos códigos
+    localStorage.setItem('codigoWhatsApp', codigoWhatsApp);
+    localStorage.setItem('codigoSMS', codigoSMS);
+    
+    // Limpar campo de código
+    setCodigoConfirmacao('');
+  };
+
   const handleEmpresaSubmit = async (e) => {
     e.preventDefault();
     setEmpresaLoading(true);
     setEmpresaError('');
 
+    // Validações para login
+    if (!empresaForm.email && !empresaForm.cnpj) {
+      setEmpresaError('Por favor, preencha o email ou CNPJ.');
+      setEmpresaLoading(false);
+      return;
+    }
+    if (!empresaForm.senha || !empresaForm.confirmarSenha) {
+      setEmpresaError('Por favor, preencha a senha e confirmação.');
+      setEmpresaLoading(false);
+      return;
+    }
+
+    // Validação de senha (mínimo 6 caracteres)
+    if (empresaForm.senha.length < 6) {
+      setEmpresaError('A senha deve ter pelo menos 6 caracteres.');
+      setEmpresaLoading(false);
+      return;
+    }
+
+    // Validação de confirmação de senha
+    if (empresaForm.senha !== empresaForm.confirmarSenha) {
+      setEmpresaError('As senhas não coincidem. Tente novamente.');
+      setEmpresaLoading(false);
+      return;
+    }
+
     try {
-      let result;
-      if (isLoginMode) {
-        // Para login, usar email ou CNPJ
-        const loginIdentifier = empresaForm.email || empresaForm.cnpj;
-        result = await login(loginIdentifier, empresaForm.senha, 'empresa');
-      } else {
-        result = await register({
-          ...empresaForm,
-          tipo: 'empresa'
-        });
-      }
+      // Para login, usar email ou CNPJ
+      const loginIdentifier = empresaForm.email || empresaForm.cnpj;
+      const result = await login(loginIdentifier, empresaForm.senha, 'empresa');
 
       if (result.success) {
         setShowEmpresaModal(false);
         navigate('/empresa/dashboard');
       } else {
-        setEmpresaError(result.error || 'Erro no login/cadastro');
+        setEmpresaError(result.error || 'Erro no login');
       }
     } catch (error) {
       setEmpresaError(error.message);
@@ -287,13 +612,8 @@ const AccessSelector = () => {
       
       console.log('💾 Salvando usuário no localStorage:', userData);
       
-      // Limpar qualquer usuário anterior
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('clienteLogado');
-      localStorage.removeItem('empresaLogada');
-      
-      // Salvar novo usuário
-      localStorage.setItem('currentUser', JSON.stringify(userData));
+      // Usar o hook de login do contexto
+      await login(userData);
 
       // Forçar atualização do contexto
       window.dispatchEvent(new Event('storage'));
@@ -360,6 +680,15 @@ const AccessSelector = () => {
                 <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse shadow-lg"></div>
                 <span className="text-white font-bold text-lg">🔓 FAÇA LOGIN</span>
                 <span className="text-blue-100 text-sm">Para acessar todas as funcionalidades</span>
+                <button 
+                  onClick={() => {
+                    console.log('🧪 TESTE: Forçando modal a aparecer');
+                    setShowClienteModal(true);
+                  }}
+                  className="ml-4 px-3 py-1 bg-red-500 text-white text-xs rounded"
+                >
+                  TESTE MODAL
+                </button>
               </div>
             )}
           </div>
@@ -464,7 +793,10 @@ const AccessSelector = () => {
             </button>
 
             {/* Cliente Card */}
-            <Link to="/cliente" className="group block w-full">
+            <button 
+              onClick={() => handleAgendarEmpresa({})}
+              className="group block w-full"
+            >
               <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl hover:shadow-3xl transition-all duration-700 hover:-translate-y-4 hover:scale-105 border-2 border-green-300 relative overflow-hidden h-full">
                 <div className="absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 bg-gradient-to-br from-green-300/10 to-green-400/10 rounded-full -translate-y-12 md:-translate-y-16 translate-x-12 md:translate-x-16"></div>
                 <div className="relative z-10 h-full flex flex-col">
@@ -497,7 +829,7 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                   </div>
                 </div>
               </div>
-            </Link>
+            </button>
 
             {/* Funcionário Card */}
             <button onClick={openFuncionarioModal} className="group block w-full">
@@ -777,21 +1109,27 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
       {showEmpresaModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
+            {/* Header Azul */}
+            <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-6 py-4 rounded-t-xl">
               <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {isLoginMode ? 'Login Empresa' : 'Cadastro Empresa'}
-                  </h2>
-                  <p className="text-sm text-gray-600">
-                    {isLoginMode ? 'Acesse sua conta' : 'Crie sua conta empresarial'}
-                  </p>
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <Building2 className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">
+                      Login Empresa
+                    </h3>
+                    <p className="text-blue-200 text-sm">
+                      Acesse sua conta empresarial
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowEmpresaModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-white/30 transition-colors"
                 >
-                  <X className="h-5 w-5 text-gray-500" />
+                  <X className="w-4 h-4 text-white" />
                 </button>
               </div>
             </div>
@@ -803,50 +1141,31 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                 </div>
               )}
 
-              {!isLoginMode && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nome da Empresa
-                  </label>
-                  <input
-                    type="text"
-                    value={empresaForm.nome}
-                    onChange={(e) => setEmpresaForm({ ...empresaForm, nome: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required={!isLoginMode}
-                  />
-                </div>
-              )}
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isLoginMode ? 'E-mail ou CNPJ' : 'E-mail'}
+                  E-mail ou CNPJ *
                 </label>
                 <input
-                  type={isLoginMode ? 'text' : 'email'}
-                  value={isLoginMode ? (empresaForm.email || empresaForm.cnpj) : empresaForm.email}
+                  type="text"
+                  value={empresaForm.email || empresaForm.cnpj}
                   onChange={(e) => {
-                    if (isLoginMode) {
-                      const value = e.target.value;
-                      // Se contém @, é email, senão é CNPJ
-                      if (value.includes('@')) {
-                        setEmpresaForm({ ...empresaForm, email: value, cnpj: '' });
-                      } else {
-                        setEmpresaForm({ ...empresaForm, cnpj: value, email: '' });
-                      }
+                    const value = e.target.value;
+                    // Se contém @, é email, senão é CNPJ
+                    if (value.includes('@')) {
+                      setEmpresaForm({ ...empresaForm, email: value, cnpj: '' });
                     } else {
-                      setEmpresaForm({ ...empresaForm, email: e.target.value });
+                      setEmpresaForm({ ...empresaForm, cnpj: value, email: '' });
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder={isLoginMode ? 'Digite seu e-mail ou CNPJ' : 'empresa@exemplo.com'}
+                  placeholder="Digite seu e-mail ou CNPJ"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Senha
+                  Senha *
                 </label>
                 <input
                   type="password"
@@ -857,67 +1176,62 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirmar Senha *
+                </label>
+                <input
+                  type="password"
+                  value={empresaForm.confirmarSenha}
+                  onChange={(e) => setEmpresaForm({ ...empresaForm, confirmarSenha: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+
               <div className="flex items-center justify-between pt-4">
-                {isLoginMode ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setIsLoginMode(false)}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      Criar conta
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={empresaLoading}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                    >
-                      {empresaLoading ? 'Carregando...' : 'Entrar'}
-                    </button>
-                  </>
-                ) : (
-                  <div className="w-full space-y-3">
-                    <p className="text-sm text-gray-600 text-center">
-                      Para cadastrar sua empresa, preencha o formulário completo
-                    </p>
-                    <Link
-                      to="/empresa/cadastro"
-                      className="w-full block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center font-medium"
-                      onClick={() => setShowEmpresaModal(false)}
-                    >
-                      Ir para Cadastro Completo
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => setIsLoginMode(true)}
-                      className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      Já tenho conta - Fazer Login
-                    </button>
-                  </div>
-                )}
+                <Link
+                  to="/empresa/cadastro"
+                  className="bg-white text-blue-600 border border-blue-600 px-5 py-2.5 rounded-md text-sm font-medium cursor-pointer transition-all duration-300 ease-in-out hover:bg-blue-50 hover:text-blue-800 hover:border-blue-800"
+                  onClick={() => setShowEmpresaModal(false)}
+                >
+                  Criar conta
+                </Link>
+                <button
+                  type="submit"
+                  disabled={empresaLoading}
+                  className="bg-blue-600 text-white px-5 py-2.5 rounded-md text-sm font-medium cursor-pointer transition-all duration-300 ease-in-out hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {empresaLoading ? 'Entrando...' : 'Entrar'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-
       {/* Modal do Funcionário */}
       {showFuncionarioModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-            <div className="p-6 border-b border-gray-200">
+            {/* Header Azul */}
+            <div className="bg-gradient-to-r from-blue-300 to-blue-400 px-6 py-4 rounded-t-xl">
               <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Acesso Funcionário</h2>
-                  <p className="text-sm text-gray-600">Entre com seus dados de funcionário</p>
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <ClipboardList className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Login Funcionário</h3>
+                        <p className="text-blue-200 text-sm">Acesse sua conta</p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowFuncionarioModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-white/30 transition-colors"
                 >
-                  <X className="h-5 w-5 text-gray-500" />
+                  <X className="w-4 h-4 text-white" />
                 </button>
               </div>
             </div>
@@ -1048,6 +1362,306 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
           </div>
         </div>
       </footer>
+
+      {/* Modal de Login do Cliente */}
+      {showClienteModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" style={{zIndex: 9999}}>
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            {/* Header Verde */}
+            <div className="bg-gradient-to-r from-green-300 to-green-400 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Login Cliente</h3>
+                    <p className="text-green-100 text-sm">Acesse sua conta</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowClienteModal(false)}
+                  className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-white/30 transition-colors"
+                >
+                  <X className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            </div>
+
+               {!isCadastroMode ? (
+                 // Formulário de Login
+                 <form onSubmit={handleClienteLogin} className="p-6 space-y-4">
+                   {clienteError && (
+                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                       {clienteError}
+                     </div>
+                   )}
+
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       E-mail ou WhatsApp *
+                     </label>
+                     <input
+                       type="text"
+                       value={clienteForm.email || clienteForm.whatsapp}
+                       onChange={(e) => {
+                         const value = e.target.value;
+                         if (value.includes('@')) {
+                           setClienteForm({ ...clienteForm, email: value, whatsapp: '' });
+                         } else {
+                           setClienteForm({ ...clienteForm, whatsapp: value, email: '' });
+                         }
+                       }}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="seu@email.com ou (11) 99999-9999"
+                       required
+                     />
+                   </div>
+
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Senha *
+                     </label>
+                     <input
+                       type="password"
+                       value={clienteForm.senha}
+                       onChange={(e) => setClienteForm({ ...clienteForm, senha: e.target.value })}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="••••••••"
+                       required
+                     />
+                   </div>
+
+                   <div className="flex items-center justify-between pt-4">
+                     <button
+                       type="button"
+                       onClick={() => setIsCadastroMode(true)}
+                       className="bg-white text-green-600 border border-green-600 px-5 py-2.5 rounded-md text-sm font-medium cursor-pointer transition-all duration-300 ease-in-out hover:bg-green-50 hover:text-green-800 hover:border-green-800"
+                     >
+                       Criar conta
+                     </button>
+                     <button
+                       type="submit"
+                       disabled={clienteLoading}
+                       className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+                     >
+                       {clienteLoading ? 'Entrando...' : 'Entrar'}
+                     </button>
+                   </div>
+                 </form>
+               ) : !codigoEnviado ? (
+                 // Formulário de Cadastro
+                 <form onSubmit={handleClienteCadastro} className="p-6 space-y-4">
+                   {clienteError && (
+                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                       {clienteError}
+                     </div>
+                   )}
+
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">
+                         Nome *
+                       </label>
+                       <input
+                         type="text"
+                         value={clienteForm.nome}
+                         onChange={(e) => setClienteForm({ ...clienteForm, nome: e.target.value })}
+                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                         placeholder="João"
+                         required
+                       />
+                     </div>
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">
+                         Sobrenome *
+                       </label>
+                       <input
+                         type="text"
+                         value={clienteForm.sobrenome}
+                         onChange={(e) => setClienteForm({ ...clienteForm, sobrenome: e.target.value })}
+                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                         placeholder="Silva"
+                         required
+                       />
+                     </div>
+                   </div>
+
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       E-mail *
+                     </label>
+                     <input
+                       type="email"
+                       value={clienteForm.email}
+                       onChange={(e) => setClienteForm({ ...clienteForm, email: e.target.value })}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="seu@email.com"
+                       required
+                     />
+                   </div>
+
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       WhatsApp *
+                     </label>
+                     <input
+                       type="tel"
+                       value={clienteForm.whatsapp}
+                       onChange={(e) => setClienteForm({ ...clienteForm, whatsapp: e.target.value })}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="(11) 99999-9999"
+                       required
+                     />
+                   </div>
+
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Senha *
+                     </label>
+                     <input
+                       type="password"
+                       value={clienteForm.senha}
+                       onChange={(e) => setClienteForm({ ...clienteForm, senha: e.target.value })}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="••••••••"
+                       required
+                     />
+                   </div>
+
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Confirmar Senha *
+                     </label>
+                     <input
+                       type="password"
+                       value={clienteForm.confirmarSenha}
+                       onChange={(e) => setClienteForm({ ...clienteForm, confirmarSenha: e.target.value })}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="••••••••"
+                       required
+                     />
+                   </div>
+
+                   <div className="flex items-center justify-between pt-4">
+                     <button
+                       type="button"
+                       onClick={() => setIsCadastroMode(false)}
+                       className="text-gray-600 hover:text-gray-700 text-sm font-medium"
+                     >
+                       Já tenho conta
+                     </button>
+                     <button
+                       type="submit"
+                       disabled={clienteLoading}
+                       className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+                     >
+                       {clienteLoading ? 'Enviando...' : 'Criar Conta'}
+                     </button>
+                   </div>
+                 </form>
+               ) : (
+                 // Formulário de Confirmação
+                 <form onSubmit={handleConfirmarCodigo} className="p-6 space-y-4">
+                   <div className="text-center mb-4">
+                     <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                       <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                       </svg>
+                     </div>
+                     <h4 className="text-lg font-semibold text-gray-900 mb-2">Confirme seu número</h4>
+                     <p className="text-sm text-gray-600 mb-4">
+                       Enviamos códigos de 6 dígitos para<br />
+                       <span className="font-medium">{clienteForm.whatsapp}</span>
+                     </p>
+                     
+                     {/* Opções de verificação */}
+                     <div className="flex gap-4 justify-center mb-4">
+                       <button
+                         type="button"
+                         onClick={() => setMetodoVerificacao('whatsapp')}
+                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                           metodoVerificacao === 'whatsapp'
+                             ? 'bg-green-100 text-green-700 border-2 border-green-300'
+                             : 'bg-gray-100 text-gray-600 border-2 border-gray-200'
+                         }`}
+                       >
+                         📱 WhatsApp
+                       </button>
+                       <button
+                         type="button"
+                         onClick={() => setMetodoVerificacao('sms')}
+                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                           metodoVerificacao === 'sms'
+                             ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                             : 'bg-gray-100 text-gray-600 border-2 border-gray-200'
+                         }`}
+                       >
+                         💬 SMS
+                       </button>
+                     </div>
+                     
+                     <p className="text-xs text-gray-500">
+                       Use qualquer um dos códigos enviados
+                     </p>
+                   </div>
+
+                   {clienteError && (
+                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                       {clienteError}
+                     </div>
+                   )}
+
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Código de confirmação
+                     </label>
+                     <input
+                       type="text"
+                       value={codigoConfirmacao}
+                       onChange={(e) => setCodigoConfirmacao(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg tracking-widest"
+                       placeholder="000000"
+                       maxLength={6}
+                       required
+                     />
+                   </div>
+
+                   <div className="space-y-3">
+                     <button
+                       type="button"
+                       onClick={handleReenviarCodigo}
+                       className="w-full text-center text-green-600 hover:text-green-700 text-sm font-medium py-2"
+                     >
+                       Reenviar códigos
+                     </button>
+                     
+                     <div className="flex items-center justify-between pt-2">
+                       <button
+                         type="button"
+                         onClick={() => {
+                           setCodigoEnviado(false);
+                           setCodigoConfirmacao('');
+                         }}
+                         className="text-gray-600 hover:text-gray-700 text-sm font-medium"
+                       >
+                         Voltar
+                       </button>
+                     <button
+                       type="submit"
+                       disabled={clienteLoading || codigoConfirmacao.length !== 6}
+                       className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+                     >
+                       {clienteLoading ? 'Confirmando...' : 'Confirmar'}
+                     </button>
+                     </div>
+                   </div>
+                 </form>
+               )}
+          </div>
+        </div>
+      )}
+      
       </div>
     </div>
   );

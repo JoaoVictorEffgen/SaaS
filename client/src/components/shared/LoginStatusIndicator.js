@@ -60,14 +60,23 @@ const LoginStatusIndicator = () => {
 
   const loginInfo = getLoginInfo();
 
-  const handleLogout = () => {
-    logout();
-    // Navegar para a página inicial com gradiente
-    navigate('/');
-    // Forçar scroll para o topo para mostrar o gradiente
-    setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: 'instant' });
-    }, 100);
+  const handleLogout = async () => {
+    try {
+      console.log('🚪 LoginStatusIndicator - Iniciando logout...');
+      
+      // Executar logout (limpeza completa sem reload)
+      await logout();
+      
+      // Navegar para a tela de login
+      navigate('/', { replace: true });
+      
+      console.log('✅ LoginStatusIndicator - Logout concluído e navegação realizada');
+      
+    } catch (error) {
+      console.error('❌ Erro no logout do LoginStatusIndicator:', error);
+      // Fallback: navegar para login
+      navigate('/', { replace: true });
+    }
   };
 
   const getIcon = (type) => {

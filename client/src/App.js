@@ -53,7 +53,7 @@ function App() {
           {/* Rotas B2C (Clientes) */}
           <Route path="/cliente" element={<SelecaoEmpresa />} />
           <Route path="/cliente/empresa/:empresaId" element={<AgendamentoEmpresa />} />
-          <Route path="/cliente/agendamentos" element={<ClienteAgendamentos />} />
+          <Route path="/cliente/agendamentos" element={<ProtectedRoute><ClienteAgendamentos /></ProtectedRoute>} />
           
           {/* Rotas de Funcionários */}
           <Route path="/funcionario/agenda" element={<FuncionarioAgenda />} />

@@ -60,9 +60,23 @@ const EmpresaDashboard = () => {
     }
   }, [navigate, user]);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  const handleLogout = async () => {
+    try {
+      console.log('🚪 EmpresaDashboard - Iniciando logout...');
+      
+      // Executar logout (limpeza completa sem reload)
+      await logout();
+      
+      // Navegar para a tela de login
+      navigate('/', { replace: true });
+      
+      console.log('✅ EmpresaDashboard - Logout concluído e navegação realizada');
+      
+    } catch (error) {
+      console.error('❌ Erro no logout do EmpresaDashboard:', error);
+      // Fallback: navegar para login
+      navigate('/', { replace: true });
+    }
   };
 
   const handleLogoUpload = () => {
