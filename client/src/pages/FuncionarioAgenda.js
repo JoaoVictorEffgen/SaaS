@@ -96,6 +96,40 @@ const FuncionarioAgenda = () => {
     loadData();
   }, [currentUser, authLoading, navigate]);
 
+  // Escutar mudanças no localStorage para atualizações em tempo real
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const handleStorageChange = (e) => {
+      if (e.key === `notifications_funcionario_${currentUser.id}`) {
+        console.log('🔔 Nova notificação detectada, atualizando...');
+        loadFuncionarioNotifications();
+      }
+    };
+
+    // Escutar mudanças no localStorage
+    window.addEventListener('storage', handleStorageChange);
+
+    // Escutar eventos customizados (para mudanças na mesma aba)
+    const handleCustomEvent = () => {
+      console.log('🔔 Evento customizado de notificação detectado');
+      loadFuncionarioNotifications();
+    };
+
+    window.addEventListener('notificationUpdate', handleCustomEvent);
+
+    // Atualizar notificações a cada 5 segundos (fallback)
+    const interval = setInterval(() => {
+      loadFuncionarioNotifications();
+    }, 5000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('notificationUpdate', handleCustomEvent);
+      clearInterval(interval);
+    };
+  }, [currentUser?.id]);
+
   const loadAgendamentos = async () => {
     try {
       const agendamentosData = JSON.parse(localStorage.getItem('agendamentos') || '[]');
@@ -359,8 +393,12 @@ const FuncionarioAgenda = () => {
         lida: notif.lida
       }));
       
-      // Adicionar às notificações existentes
-      setNotifications(prev => [...notificacoesFormatadas, ...prev]);
+      // Substituir notificações (não adicionar às existentes para evitar duplicatas)
+      setNotifications(prev => {
+        // Filtrar notificações antigas que não são do funcionário
+        const notificacoesAntigas = prev.filter(n => !n.id.startsWith('funcionario_'));
+        return [...notificacoesFormatadas, ...notificacoesAntigas];
+      });
       
     } catch (error) {
       console.error('Erro ao carregar notificações do funcionário:', error);
@@ -549,10 +587,15 @@ const FuncionarioAgenda = () => {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2 text-gray-700 hover:text-gray-900 transition-colors"
+                className="relative p-2 text-gray-700 hover:text-gray-900 transition-colors"
                 title="Notificações"
               >
                 <Bell className="h-5 w-5" />
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {notifications.length > 9 ? '9+' : notifications.length}
+                  </span>
+                )}
               </button>
               
               <button
@@ -596,13 +639,18 @@ const FuncionarioAgenda = () => {
                 {notifications.map(notification => (
                   <div
                     key={notification.id}
-                    className={`p-3 rounded-lg border-l-4 ${
+                    className={`p-3 rounded-lg border-l-4 relative ${
                       notification.tipo === 'success' ? 'border-green-500 bg-green-50' :
                       notification.tipo === 'warning' ? 'border-yellow-500 bg-yellow-50' :
                       notification.tipo === 'error' ? 'border-red-500 bg-red-50' :
                       'border-blue-500 bg-blue-50'
-                    }`}
+                    } ${!notification.lida ? 'ring-2 ring-blue-200' : ''}`}
                   >
+                    {/* Indicador de não lida */}
+                    {!notification.lida && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full"></div>
+                    )}
+                    
                     <div className="flex justify-between items-start">
                       <div>
                         <h4 className="font-medium text-gray-900">{notification.titulo}</h4>

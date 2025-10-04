@@ -208,9 +208,13 @@ const SelecaoEmpresa = () => {
   const confirmarAgendamento = (agendamentoId) => {
     const resultado = localStorageService.confirmarAgendamento(agendamentoId);
     if (resultado) {
+      // Disparar evento para atualização em tempo real
+      window.dispatchEvent(new CustomEvent('notificationUpdate'));
+      
       alert('✅ Agendamento confirmado com sucesso!');
       loadClienteHistory();
-      window.location.reload();
+      // Remover reload para manter atualizações em tempo real
+      // window.location.reload();
     } else {
       alert('❌ Erro ao confirmar agendamento.');
     }
@@ -220,9 +224,13 @@ const SelecaoEmpresa = () => {
   const cancelarAgendamento = (agendamentoId) => {
     const resultado = localStorageService.cancelarAgendamento(agendamentoId);
     if (resultado.sucesso) {
+      // Disparar evento para atualização em tempo real
+      window.dispatchEvent(new CustomEvent('notificationUpdate'));
+      
       alert('❌ Agendamento cancelado com sucesso!');
       loadClienteHistory();
-      window.location.reload();
+      // Remover reload para manter atualizações em tempo real
+      // window.location.reload();
     } else {
       alert(`❌ Não foi possível cancelar: ${resultado.erro}`);
     }

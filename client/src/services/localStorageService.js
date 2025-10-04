@@ -711,6 +711,11 @@ class LocalStorageService {
       // Salvar notificações
       localStorage.setItem(`notifications_funcionario_${funcionarioId}`, JSON.stringify(notifications));
       
+      // Disparar evento customizado para atualização em tempo real
+      window.dispatchEvent(new CustomEvent('notificationUpdate', {
+        detail: { funcionarioId, acao, agendamentoId: agendamento.id }
+      }));
+      
       console.log(`🔔 Notificação enviada para funcionário ${funcionarioId}:`, mensagem);
       
     } catch (error) {
