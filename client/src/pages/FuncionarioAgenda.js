@@ -16,11 +16,10 @@ import {
   ClipboardList
 } from 'lucide-react';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
-import LoginStatusIndicator from '../components/shared/LoginStatusIndicator';
 
 const FuncionarioAgenda = () => {
   const navigate = useNavigate();
-  const { user: currentUser, loading: authLoading } = useLocalAuth();
+  const { user: currentUser, loading: authLoading, logout } = useLocalAuth();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('agenda');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -28,7 +27,14 @@ const FuncionarioAgenda = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingConfirmations, setPendingConfirmations] = useState([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileData, setProfileData] = useState({});
+  const [profileData, setProfileData] = useState({
+    nome: '',
+    cpf: '',
+    telefone: '',
+    email: '',
+    cargo: '',
+    foto: null
+  });
   const [availability, setAvailability] = useState({});
   const [breaks, setBreaks] = useState([]);
 
@@ -76,6 +82,9 @@ const FuncionarioAgenda = () => {
           checkPendingConfirmations()
         ]);
 
+        // Carregar notificações do funcionário
+        loadFuncionarioNotifications();
+
         setLoading(false);
         console.log('✅ Dados carregados com sucesso');
       } catch (error) {
@@ -91,7 +100,7 @@ const FuncionarioAgenda = () => {
     try {
       const agendamentosData = JSON.parse(localStorage.getItem('agendamentos') || '[]');
       const funcionarioAgendamentos = agendamentosData.filter(
-        agendamento => agendamento.funcionarioId === currentUser.id
+        agendamento => agendamento.funcionario_id === currentUser.id
       );
       
       setAgendamentos(funcionarioAgendamentos);
@@ -109,21 +118,102 @@ const FuncionarioAgenda = () => {
 
   const loadProfileData = async () => {
     try {
-      const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
+      // Buscar funcionários da empresa específica
+      const funcionarios = JSON.parse(localStorage.getItem(`funcionarios_${currentUser.empresa_id}`) || '[]');
       const funcionario = funcionarios.find(f => f.id === currentUser.id);
       
       if (funcionario) {
         setProfileData({
-          nome: funcionario.nome,
+          nome: funcionario.nome_completo || `${funcionario.nome} ${funcionario.sobrenome}`,
           cpf: funcionario.cpf,
           telefone: funcionario.telefone,
-          email: funcionario.email,
-          cargo: funcionario.cargo || 'Funcionário'
+          email: funcionario.email || `funcionario_${funcionario.cpf}@empresa.com`,
+          cargo: funcionario.cargo || 'Funcionário',
+          foto: funcionario.foto
+        });
+      } else {
+        // Se não encontrou, usar dados do currentUser
+        setProfileData({
+          nome: currentUser.nome_completo || currentUser.nome,
+          cpf: currentUser.cpf,
+          telefone: currentUser.telefone,
+          email: currentUser.email,
+          cargo: currentUser.cargo || 'Funcionário',
+          foto: currentUser.foto
         });
       }
     } catch (error) {
       console.error('Erro ao carregar perfil:', error);
+      // Fallback: usar dados do currentUser
+      setProfileData({
+        nome: currentUser.nome_completo || currentUser.nome,
+        cpf: currentUser.cpf,
+        telefone: currentUser.telefone,
+        email: currentUser.email,
+        cargo: currentUser.cargo || 'Funcionário',
+        foto: currentUser.foto
+      });
     }
+  };
+
+  const handleLogoUpload = () => {
+    // Criar input de arquivo temporário
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        // Validar tamanho do arquivo (máximo 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert('A imagem deve ter no máximo 5MB.');
+          return;
+        }
+        
+        // Validar tipo do arquivo
+        if (!file.type.startsWith('image/')) {
+          alert('Por favor, selecione apenas arquivos de imagem.');
+          return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const fotoUrl = e.target.result;
+          
+          // Atualizar estado local
+          setProfileData(prev => ({ ...prev, foto: fotoUrl }));
+          
+          // Salvar no localStorage da empresa
+          try {
+            const funcionarios = JSON.parse(localStorage.getItem(`funcionarios_${currentUser.empresa_id}`) || '[]');
+            const funcionarioIndex = funcionarios.findIndex(f => f.id === currentUser.id);
+            
+            if (funcionarioIndex !== -1) {
+              funcionarios[funcionarioIndex].foto = fotoUrl;
+              localStorage.setItem(`funcionarios_${currentUser.empresa_id}`, JSON.stringify(funcionarios));
+              
+              // Atualizar também no currentUser
+              const updatedUser = { ...currentUser, foto: fotoUrl };
+              localStorage.setItem('funcionarioSession', JSON.stringify(updatedUser));
+              
+              console.log('✅ Foto do funcionário atualizada com sucesso');
+            }
+          } catch (error) {
+            console.error('Erro ao salvar foto:', error);
+            alert('Erro ao salvar a foto. Tente novamente.');
+          }
+        };
+        
+        reader.readAsDataURL(file);
+      }
+    };
+    
+    // Adicionar ao DOM e clicar
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
   };
 
   const loadAvailability = async () => {
@@ -251,6 +341,32 @@ const FuncionarioAgenda = () => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
+  // Carregar notificações específicas do funcionário
+  const loadFuncionarioNotifications = () => {
+    if (!currentUser?.id) return;
+    
+    try {
+      // Buscar notificações específicas do funcionário
+      const funcionarioNotifications = JSON.parse(localStorage.getItem(`notifications_funcionario_${currentUser.id}`) || '[]');
+      
+      // Converter para o formato esperado
+      const notificacoesFormatadas = funcionarioNotifications.map(notif => ({
+        id: notif.id,
+        titulo: notif.acao === 'confirmado' ? 'Agendamento Confirmado' : 'Agendamento Cancelado',
+        mensagem: notif.mensagem,
+        tipo: notif.acao === 'confirmado' ? 'success' : 'warning',
+        timestamp: new Date(notif.dataCriacao),
+        lida: notif.lida
+      }));
+      
+      // Adicionar às notificações existentes
+      setNotifications(prev => [...notificacoesFormatadas, ...prev]);
+      
+    } catch (error) {
+      console.error('Erro ao carregar notificações do funcionário:', error);
+    }
+  };
+
   const saveProfileData = async () => {
     try {
       const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
@@ -367,50 +483,100 @@ const FuncionarioAgenda = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+      {/* Header Moderno */}
+      <div className="bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          {/* Seção Superior */}
+          <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
-              <Calendar className="h-8 w-8 text-purple-600" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Área do Funcionário</h1>
-                <p className="text-sm text-gray-600">Bem-vindo, {currentUser?.nome}</p>
-              </div>
+              <h1 className="text-3xl font-bold text-gray-900">Área do Funcionário</h1>
             </div>
             
             <div className="flex items-center space-x-4">
-              {pendingConfirmations.length > 0 && (
-                <button
-                  onClick={() => setShowConfirmModal(true)}
-                  className="flex items-center space-x-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
+              {/* Avatar do Usuário Clicável */}
+              <div className="flex items-center space-x-3">
+                <div 
+                  className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={handleLogoUpload}
+                  title="Clique para alterar foto"
                 >
-                  <CheckSquare className="h-4 w-4" />
-                  <span>Confirmar Hoje ({pendingConfirmations.length})</span>
-                </button>
-              )}
-              
+                  {profileData?.foto ? (
+                    <img 
+                      src={profileData.foto} 
+                      alt="Foto do funcionário" 
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <User className="h-5 w-5 text-white" />
+                  )}
+                </div>
+                <span className="text-gray-900 font-medium">{currentUser?.nome || 'Funcionário'}</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Linha Divisória */}
+          <div className="border-t border-gray-200"></div>
+          
+          {/* Barra de Navegação */}
+          <div className="flex justify-between items-center py-4">
+            <nav className="flex space-x-8">
+              {[
+                { id: 'agenda', label: 'Agenda', icon: Calendar },
+                { id: 'perfil', label: 'Perfil', icon: User },
+                { id: 'estatisticas', label: 'Estatísticas', icon: BarChart3 },
+                { id: 'horarios', label: 'Horários', icon: Clock }
+              ].map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === tab.id
+                        ? 'border-purple-500 text-purple-600'
+                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+            
+            {/* Botões de Ação */}
+            <div className="flex items-center space-x-4">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors"
+                className="p-2 text-gray-700 hover:text-gray-900 transition-colors"
+                title="Notificações"
               >
-                <Bell className="h-6 w-6" />
-                {notifications.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {notifications.length}
-                  </span>
-                )}
+                <Bell className="h-5 w-5" />
               </button>
               
               <button
                 onClick={() => navigate('/')}
-                className="flex items-center space-x-2 text-purple-600 hover:text-purple-700 transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
               >
-                <Home className="h-5 w-5" />
-                <span>Início</span>
+                <Home className="h-4 w-4" />
+                <span className="font-medium">Início</span>
               </button>
               
-              <LoginStatusIndicator />
+              <button
+                onClick={async () => {
+                  try {
+                    await logout('funcionario');
+                    navigate('/', { replace: true });
+                  } catch (error) {
+                    console.error('Erro no logout:', error);
+                    navigate('/', { replace: true });
+                  }
+                }}
+                className="text-gray-700 hover:text-gray-900 transition-colors font-medium"
+              >
+                Sair
+              </button>
             </div>
           </div>
         </div>
@@ -490,36 +656,7 @@ const FuncionarioAgenda = () => {
       )}
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tab Navigation */}
-        <div className="mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              {[
-                { id: 'agenda', label: 'Agenda', icon: Calendar },
-                { id: 'perfil', label: 'Perfil', icon: User },
-                { id: 'estatisticas', label: 'Estatísticas', icon: BarChart3 },
-                { id: 'horarios', label: 'Horários', icon: Clock }
-              ].map(tab => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === tab.id
-                        ? 'border-purple-500 text-purple-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-        </div>
+      <div className="max-w-7xl mx-auto px-6 py-8">
 
         {/* Tab Content */}
         {activeTab === 'agenda' && (

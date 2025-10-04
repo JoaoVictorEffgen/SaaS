@@ -15,7 +15,8 @@ import {
   ArrowRight,
   Sparkles,
   Edit3,
-  Home
+  Home,
+  Bell
 } from 'lucide-react';
 import { useLocalAuth } from '../../contexts/LocalAuthContext';
 import localStorageService from '../../services/localStorageService';
@@ -24,6 +25,8 @@ const EmpresaDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useLocalAuth();
   const [currentUser, setCurrentUser] = useState(user);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
   
   // Memoização dos dados para evitar recálculos desnecessários
   const { agendamentos, funcionarios } = useMemo(() => {
@@ -62,15 +65,15 @@ const EmpresaDashboard = () => {
 
   const handleLogout = async () => {
     try {
-      console.log('🚪 EmpresaDashboard - Iniciando logout...');
+      console.log('🚪 EmpresaDashboard - Iniciando logout específico...');
       
-      // Executar logout (limpeza completa sem reload)
-      await logout();
+      // Executar logout específico da empresa (mantém outras sessões)
+      await logout('empresa');
       
       // Navegar para a tela de login
       navigate('/', { replace: true });
       
-      console.log('✅ EmpresaDashboard - Logout concluído e navegação realizada');
+      console.log('✅ EmpresaDashboard - Logout específico concluído e navegação realizada');
       
     } catch (error) {
       console.error('❌ Erro no logout do EmpresaDashboard:', error);
@@ -78,6 +81,45 @@ const EmpresaDashboard = () => {
       navigate('/', { replace: true });
     }
   };
+
+  // Carregar notificações da empresa
+  const loadNotifications = () => {
+    if (!currentUser?.id) return;
+    
+    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${currentUser.id}`) || '[]');
+    const notificacoes = agendamentos
+      .filter(a => a.status === 'agendado' || a.status === 'confirmado')
+      .map(a => ({
+        id: a.id,
+        titulo: 'Novo Agendamento',
+        mensagem: `${a.cliente_nome || a.cliente_email} agendou ${a.servicos?.map(s => s.nome).join(', ') || 'serviços'}`,
+        data: a.data,
+        hora: a.hora,
+        status: a.status,
+        tipo: 'agendamento'
+      }))
+      .sort((a, b) => new Date(`${b.data}T${b.hora}`) - new Date(`${a.data}T${a.hora}`))
+      .slice(0, 10); // Últimas 10 notificações
+    
+    setNotifications(notificacoes);
+  };
+
+  // Carregar notificações quando o componente monta
+  useEffect(() => {
+    loadNotifications();
+  }, [currentUser?.id]);
+
+  // Fechar dropdown quando clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNotifications && !event.target.closest('.notification-dropdown')) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
 
   const handleLogoUpload = () => {
     // Criar input de arquivo temporário
@@ -140,66 +182,123 @@ const EmpresaDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-lg border-b border-gray-200/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+    <div className="min-h-screen bg-gray-50">
+      {/* Barra Preta Superior */}
+      <div className="bg-black h-1 w-full"></div>
+      
+      {/* Header Principal */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
+            {/* Lado Esquerdo - Logo e Título */}
             <div className="flex items-center space-x-4">
-              {currentUser?.logo_url ? (
-                <div className="relative group">
-                  <img
-                    src={currentUser.logo_url}
-                    alt={`Logo ${currentUser.razaoSocial}`}
-                    className="h-14 w-14 object-contain rounded-2xl border border-gray-200 shadow-lg"
-                  />
-                  <button 
-                    onClick={handleLogoUpload}
-                    className="absolute -top-1 -right-1 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg hover:bg-blue-700"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                  </button>
+              {/* Logo com opção de trocar */}
+              <div className="relative group">
+                <div className="w-12 h-12 bg-white rounded-full border border-gray-200 flex items-center justify-center shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200">
+                  {currentUser?.logo_url ? (
+                    <img
+                      src={currentUser.logo_url}
+                      alt={`Logo ${currentUser.razaoSocial}`}
+                      className="w-8 h-8 object-contain"
+                    />
+                  ) : (
+                    <div className="w-6 h-4 bg-gray-800 rounded-sm flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">
+                        {currentUser?.razaoSocial?.charAt(0) || 'E'}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="relative group">
-                  <div className="h-14 w-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                    <Edit3 className="w-6 h-6 text-white" />
-                  </div>
-                  <button 
-                    onClick={handleLogoUpload}
-                    className="absolute -top-1 -right-1 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg hover:bg-blue-700"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                  </button>
-                </div>
-              )}
+                
+                {/* Botão de editar logo - aparece no hover */}
+                <button 
+                  onClick={handleLogoUpload}
+                  className="absolute -top-1 -right-1 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg hover:bg-blue-700"
+                  title="Alterar logo"
+                >
+                  <Edit3 className="w-3 h-3" />
+                </button>
+              </div>
+              
+              {/* Título */}
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  {currentUser.razaoSocial} #{currentUser.id}
+                <h1 className="text-xl font-bold text-gray-900">
+                  {currentUser?.razaoSocial || 'Empresa'} #{currentUser?.id || '1'}
                 </h1>
-                <p className="text-sm text-gray-600 flex items-center gap-1">
-                  <Sparkles className="h-3 w-3" />
+                <p className="text-sm text-gray-500">
                   Dashboard Empresarial
                 </p>
               </div>
             </div>
             
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center px-4 py-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-xl transition-all duration-300 font-medium"
-              title="Voltar à Página Inicial"
-            >
-              <Home className="h-4 w-4 mr-2" />
-              Início
-            </button>
-            
-            <button
-              onClick={handleLogout}
-              className="flex items-center px-4 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-300 font-medium"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sair
-            </button>
+            {/* Lado Direito - Botões */}
+            <div className="flex items-center space-x-3">
+              {/* Sino de Notificação */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors duration-200"
+                  title="Notificações"
+                >
+                  <Bell className="h-5 w-5" />
+                  {notifications.length > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {notifications.length > 9 ? '9+' : notifications.length}
+                    </span>
+                  )}
+                </button>
+                
+                {/* Dropdown de Notificações */}
+                {showNotifications && (
+                  <div className="notification-dropdown absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="p-4 border-b border-gray-200">
+                      <h3 className="font-semibold text-gray-900">Notificações</h3>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {notifications.length > 0 ? (
+                        notifications.map((notification) => (
+                          <div key={notification.id} className="p-4 border-b border-gray-100 hover:bg-gray-50">
+                            <div className="flex items-start space-x-3">
+                              <div className="flex-shrink-0">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900">{notification.titulo}</p>
+                                <p className="text-sm text-gray-600 mt-1">{notification.mensagem}</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {new Date(notification.data).toLocaleDateString('pt-BR')} às {notification.hora}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-4 text-center text-gray-500">
+                          <Bell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                          <p>Nenhuma notificação</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center px-4 py-2 bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors duration-200 font-medium"
+                title="Voltar à Página Inicial"
+              >
+                <Home className="h-4 w-4 mr-2" />
+                Início
+              </button>
+              
+              <button
+                onClick={handleLogout}
+                className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium"
+              >
+                Sair
+              </button>
+            </div>
           </div>
         </div>
       </header>

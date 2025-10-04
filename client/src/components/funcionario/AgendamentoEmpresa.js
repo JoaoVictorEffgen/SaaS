@@ -118,7 +118,17 @@ const AgendamentoEmpresa = () => {
 
   const verificarDisponibilidadeFuncionario = (horario) => {
     const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-    const agendamentosHoje = agendamentos.filter(a => 
+    const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
+    
+    // Combinar agendamentos de ambas as chaves para verificação completa
+    const todosAgendamentos = [...agendamentos, ...agendamentosEmpresa];
+    
+    // Remover duplicatas baseado no ID
+    const agendamentosUnicos = todosAgendamentos.filter((agendamento, index, self) => 
+      index === self.findIndex(a => a.id === agendamento.id)
+    );
+    
+    const agendamentosHoje = agendamentosUnicos.filter(a => 
       a.data === quickBooking.data && 
       a.hora === horario && 
       a.empresa_id === empresaId &&
@@ -150,7 +160,17 @@ const AgendamentoEmpresa = () => {
     
     // Verificar se há agendamentos neste horário para este funcionário
     const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-    const agendamentosHorario = agendamentos.filter(a => 
+    const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
+    
+    // Combinar agendamentos de ambas as chaves para verificação completa
+    const todosAgendamentos = [...agendamentos, ...agendamentosEmpresa];
+    
+    // Remover duplicatas baseado no ID
+    const agendamentosUnicos = todosAgendamentos.filter((agendamento, index, self) => 
+      index === self.findIndex(a => a.id === agendamento.id)
+    );
+    
+    const agendamentosHorario = agendamentosUnicos.filter(a => 
       a.data === quickBooking.data && 
       a.hora === horario && 
       a.empresa_id === empresaId &&
@@ -249,15 +269,21 @@ const AgendamentoEmpresa = () => {
       hora: quickBooking.hora,
       funcionario_id: quickBooking.funcionario_id,
       servicos: quickBooking.servicos,
-      status: 'agendado',
+      status: 'em_aprovacao', // Novo status inicial
       observacoes: '',
       valor_total: quickBooking.servicos.reduce((total, servico) => total + (servico.preco || 0), 0),
         data_criacao: new Date().toISOString()
       };
 
+    // Salvar em ambas as chaves para garantir compatibilidade
     const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
     agendamentos.push(novoAgendamento);
     localStorage.setItem('agendamentos', JSON.stringify(agendamentos));
+    
+    // Também salvar na chave específica da empresa para relatórios
+    const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
+    agendamentosEmpresa.push(novoAgendamento);
+    localStorage.setItem(`agendamentos_${empresaId}`, JSON.stringify(agendamentosEmpresa));
 
     // Salvar agendamento confirmado para mostrar resumo destacado
     setAgendamentoConfirmado({

@@ -41,7 +41,7 @@ function App() {
           {/* Rotas B2B (Empresas) */}
           <Route path="/empresa/cadastro" element={<EmpresaCadastro />} />
           <Route path="/empresa/login" element={<EmpresaLogin />} />
-          <Route path="/empresa/dashboard" element={<EmpresaDashboard />} />
+          <Route path="/empresa/dashboard" element={<ProtectedRoute><EmpresaDashboard /></ProtectedRoute>} />
           
           {/* Rotas de Gestão */}
           <Route path="/servicos" element={<ProtectedRoute><ServicosManagement /></ProtectedRoute>} />

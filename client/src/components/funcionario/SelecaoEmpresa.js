@@ -4,7 +4,7 @@ import EmpresaCard from '../shared/EmpresaCard';
 import { 
   LogOut, Star, Crown, Award, Search, Clock, 
   CheckCircle, XCircle,
-  Building2, Home, Heart
+  Building2, Home, Heart, Bell
 } from 'lucide-react';
 import { useLocalAuth } from '../../contexts/LocalAuthContext';
 import localStorageService from '../../services/localStorageService';
@@ -25,6 +25,8 @@ const SelecaoEmpresa = () => {
   const [filteredEmpresas, setFilteredEmpresas] = useState([]);
   const [clienteHistory, setClienteHistory] = useState([]);
   const [activeTab, setActiveTab] = useState('todas'); // 'todas', 'favoritas', 'historico'
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Carregar empresas favoritas
   const loadEmpresasFavoritas = () => {
@@ -47,15 +49,16 @@ const SelecaoEmpresa = () => {
       console.log('🔍 Agendamentos do cliente:', agendamentosDoCliente);
       
       // Criar histórico com ações (agendamento/cancelamento)
-      const history = agendamentosDoCliente
-        .map(agendamento => ({
-          ...agendamento,
-          tipo: agendamento.status === 'cancelado' ? 'cancelado' : 'agendado',
-          dataAcao: agendamento.status === 'cancelado' ? agendamento.dataCancelamento : agendamento.data,
-          empresaNome: empresas.find(e => e.id === (agendamento.empresa_id || agendamento.empresaId))?.nome || 'Empresa não encontrada',
-          servico_nome: agendamento.servicos ? agendamento.servicos.map(s => s.nome).join(', ') : 'Serviço não especificado',
-          hora_inicio: agendamento.hora || agendamento.hora_inicio || 'Horário não especificado'
-        }))
+         const history = agendamentosDoCliente
+           .map(agendamento => ({
+             ...agendamento,
+             tipo: agendamento.status === 'cancelado' ? 'cancelado' : 
+                   agendamento.status === 'em_aprovacao' ? 'em_aprovacao' : 'agendado',
+             dataAcao: agendamento.status === 'cancelado' ? agendamento.dataCancelamento : agendamento.data,
+             empresaNome: empresas.find(e => e.id === (agendamento.empresa_id || agendamento.empresaId))?.nome || 'Empresa não encontrada',
+             servico_nome: agendamento.servicos ? agendamento.servicos.map(s => s.nome).join(', ') : 'Serviço não especificado',
+             hora_inicio: agendamento.hora || agendamento.hora_inicio || 'Horário não especificado'
+           }))
         .sort((a, b) => new Date(b.dataAcao) - new Date(a.dataAcao))
         .slice(0, 15); // Últimas 15 ações
       
@@ -63,6 +66,32 @@ const SelecaoEmpresa = () => {
       
       setClienteHistory(history);
     }
+  };
+
+  // Carregar notificações do cliente
+  const loadNotifications = () => {
+    if (!user?.email) return;
+    
+    const todosAgendamentos = localStorageService.getAgendamentos();
+    const agendamentosDoCliente = todosAgendamentos.filter(agendamento => 
+      (agendamento.cliente_email === user.email || agendamento.clienteEmail === user.email) &&
+      (agendamento.status === 'confirmado' || agendamento.status === 'agendado')
+    );
+    
+    const notificacoes = agendamentosDoCliente
+      .map(agendamento => ({
+        id: agendamento.id,
+        titulo: agendamento.status === 'confirmado' ? 'Agendamento Confirmado' : 'Novo Agendamento',
+        mensagem: `Seu agendamento em ${empresas.find(e => e.id === agendamento.empresa_id)?.nome || 'empresa'} foi ${agendamento.status === 'confirmado' ? 'confirmado' : 'realizado'}`,
+        data: agendamento.data,
+        hora: agendamento.hora || agendamento.hora_inicio,
+        status: agendamento.status,
+        tipo: 'agendamento'
+      }))
+      .sort((a, b) => new Date(`${b.data}T${b.hora}`) - new Date(`${a.data}T${a.hora}`))
+      .slice(0, 10); // Últimas 10 notificações
+    
+    setNotifications(notificacoes);
   };
 
   // Função de pesquisa
@@ -126,6 +155,7 @@ const SelecaoEmpresa = () => {
     const handleStorageChange = () => {
       loadEmpresasFavoritas();
       loadClienteHistory();
+      loadNotifications();
     };
 
     window.addEventListener('storage', handleStorageChange);
@@ -142,17 +172,29 @@ const SelecaoEmpresa = () => {
     };
   }, []);
 
+  // Fechar dropdown quando clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNotifications && !event.target.closest('.notification-dropdown')) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
+
   const handleLogout = async () => {
     try {
-      console.log('🚪 SelecaoEmpresa - Iniciando logout...');
+      console.log('🚪 SelecaoEmpresa - Iniciando logout específico...');
       
-      // Executar logout (limpeza completa sem reload)
-      await logout();
+      // Executar logout específico do cliente (mantém outras sessões)
+      await logout('cliente');
       
       // Navegar para a tela de login
       navigate('/', { replace: true });
       
-      console.log('✅ SelecaoEmpresa - Logout concluído e navegação realizada');
+      console.log('✅ SelecaoEmpresa - Logout específico concluído e navegação realizada');
       
     } catch (error) {
       console.error('❌ Erro no logout do SelecaoEmpresa:', error);
@@ -218,6 +260,56 @@ const SelecaoEmpresa = () => {
               </div>
               
               <div className="flex items-center space-x-2">
+                {/* Sino de Notificação */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
+                    title="Notificações"
+                  >
+                    <Bell className="h-5 w-5" />
+                    {notifications.length > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                        {notifications.length > 9 ? '9+' : notifications.length}
+                      </span>
+                    )}
+                  </button>
+                  
+                  {/* Dropdown de Notificações */}
+                  {showNotifications && (
+                    <div className="notification-dropdown absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                      <div className="p-4 border-b border-gray-200">
+                        <h3 className="font-semibold text-gray-900">Notificações</h3>
+                      </div>
+                      <div className="max-h-64 overflow-y-auto">
+                        {notifications.length > 0 ? (
+                          notifications.map((notification) => (
+                            <div key={notification.id} className="p-4 border-b border-gray-100 hover:bg-gray-50">
+                              <div className="flex items-start space-x-3">
+                                <div className="flex-shrink-0">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900">{notification.titulo}</p>
+                                  <p className="text-sm text-gray-600 mt-1">{notification.mensagem}</p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {new Date(notification.data).toLocaleDateString('pt-BR')} às {notification.hora}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-gray-500">
+                            <Bell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                            <p>Nenhuma notificação</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <button
                   onClick={() => navigate('/')}
                   className="p-2 text-gray-600 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
@@ -512,9 +604,10 @@ const SelecaoEmpresa = () => {
                               <div className="flex-1">
                                 <p className="font-medium text-gray-900">{item.empresaNome}</p>
                                 <p className="text-sm text-gray-600">
-                                  {item.status === 'cancelado' ? 'Cancelado em' : 'Agendado em'} {formatDate(item.dataAcao)}
+                                  {item.status === 'cancelado' ? 'Cancelado em' : 
+                                   item.status === 'em_aprovacao' ? 'Em Aprovação em' : 'Agendado em'} {formatDate(item.dataAcao)}
                                 </p>
-                                {item.status === 'confirmado' && diferencaMinutos > 0 && (
+                                {item.status === 'agendado' && diferencaMinutos > 0 && (
                                   <p className="text-xs text-green-600 font-medium">
                                     {diferencaMinutos > 60 ? 
                                       `Faltam ${Math.round(diferencaMinutos / 60)}h ${Math.round(diferencaMinutos % 60)}min` :
@@ -548,7 +641,7 @@ const SelecaoEmpresa = () => {
 
                             {/* Botões de Ação */}
                             <div className="flex flex-col space-y-2">
-                              {(item.status === 'agendado' || item.status === 'pendente') && (
+                              {item.status === 'em_aprovacao' && (
                                 <button
                                   onClick={() => confirmarAgendamento(item.id)}
                                   className="flex items-center justify-center px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600 transition-colors font-semibold"

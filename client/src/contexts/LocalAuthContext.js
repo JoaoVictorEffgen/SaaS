@@ -12,9 +12,12 @@ export const useLocalAuth = () => {
       user: null,
       loading: true,
       subscription: null,
+      sessions: { empresa: null, funcionario: null, cliente: null },
       login: () => Promise.resolve({ success: false }),
       register: () => Promise.resolve({ success: false }),
       logout: () => {},
+      switchToSession: () => ({ success: false }),
+      getEmpresaData: () => null,
       updateUser: () => ({ success: false }),
       hasPlan: () => false,
       canMakeAppointment: () => false,
@@ -31,22 +34,48 @@ export const LocalAuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState(null);
+  const [sessions, setSessions] = useState({
+    empresa: null,
+    funcionario: null,
+    cliente: null
+  });
 
   // Verificar se usuário está logado ao carregar
   useEffect(() => {
     const loadUser = () => {
       try {
-        const currentUser = localStorageService.getCurrentUser();
+        // Carregar todas as sessões
+        const empresaSession = localStorage.getItem('empresaSession');
+        const funcionarioSession = localStorage.getItem('funcionarioSession');
+        const clienteSession = localStorage.getItem('clienteSession');
         
-        if (currentUser && currentUser.id) {
-          setUser(currentUser);
+        const loadedSessions = {
+          empresa: empresaSession ? JSON.parse(empresaSession) : null,
+          funcionario: funcionarioSession ? JSON.parse(funcionarioSession) : null,
+          cliente: clienteSession ? JSON.parse(clienteSession) : null
+        };
+        
+        setSessions(loadedSessions);
+        
+        // Determinar usuário ativo (prioridade: empresa > funcionario > cliente)
+        let activeUser = null;
+        if (loadedSessions.empresa) {
+          activeUser = loadedSessions.empresa;
+        } else if (loadedSessions.funcionario) {
+          activeUser = loadedSessions.funcionario;
+        } else if (loadedSessions.cliente) {
+          activeUser = loadedSessions.cliente;
+        }
+        
+        if (activeUser && activeUser.id) {
+          setUser(activeUser);
           setSubscription({
-            plano: currentUser.plano || 'business',
+            plano: activeUser.plano || 'business',
             status: 'ativo',
             recursos: {
-              whatsapp: (currentUser.plano || 'business') !== 'free',
-              relatorios: (currentUser.plano || 'business') !== 'free',
-              multiusuario: (currentUser.plano || 'business') === 'business'
+              whatsapp: (activeUser.plano || 'business') !== 'free',
+              relatorios: (activeUser.plano || 'business') !== 'free',
+              multiusuario: (activeUser.plano || 'business') === 'business'
             }
           });
         } else {
@@ -57,6 +86,7 @@ export const LocalAuthProvider = ({ children }) => {
         console.error('Erro ao carregar usuário:', error);
         setUser(null);
         setSubscription(null);
+        setSessions({ empresa: null, funcionario: null, cliente: null });
       } finally {
         setLoading(false);
       }
@@ -94,25 +124,36 @@ export const LocalAuthProvider = ({ children }) => {
       const result = localStorageService.login(identifier, senha);
       console.log('LocalAuthContext - Resultado do login:', result);
       
-      if (result) {
-        setUser(result.user);
+      if (result && result.user) {
+        const userData = result.user;
+        
+        // Salvar em sessão específica baseada no tipo
+        const sessionKey = `${userData.tipo}Session`;
+        localStorage.setItem(sessionKey, JSON.stringify(userData));
+        
+        // Atualizar estado das sessões
+        const newSessions = { ...sessions };
+        newSessions[userData.tipo] = userData;
+        setSessions(newSessions);
+        
+        // Definir como usuário ativo
+        setUser(userData);
         setSubscription({
-          plano: result.user.plano,
+          plano: userData.plano,
           status: 'ativo',
           recursos: {
-            whatsapp: result.user.plano !== 'free',
-            relatorios: result.user.plano !== 'free',
-            multiusuario: result.user.plano === 'business'
+            whatsapp: userData.plano !== 'free',
+            relatorios: userData.plano !== 'free',
+            multiusuario: userData.plano === 'business'
           }
         });
-        // Removido o toast.success - deixar para o componente decidir
-        return { success: true, user: result.user };
+        
+        console.log('✅ Sessão salva para tipo:', userData.tipo);
+        return { success: true, user: userData };
       } else {
-        // Removido o toast.error - deixar para o componente decidir
         return { success: false, error: 'Credenciais inválidas' };
       }
     } catch (error) {
-      // Removido o toast.error - deixar para o componente decidir
       return { success: false, error: error.message };
     } finally {
       setLoading(false);
@@ -153,31 +194,102 @@ export const LocalAuthProvider = ({ children }) => {
   };
 
   // Logout
-  const logout = async () => {
+  const logout = async (tipoUsuario = null) => {
     try {
       console.log('🚪 Iniciando logout do contexto...');
       
-      // Limpar estados do contexto primeiro
-      setUser(null);
-      setSubscription(null);
-      setLoading(true);
+      if (tipoUsuario) {
+        // Logout específico de um tipo de usuário
+        console.log(`🚪 Fazendo logout específico do tipo: ${tipoUsuario}`);
+        
+        // Remover sessão específica
+        localStorage.removeItem(`${tipoUsuario}Session`);
+        
+        // Atualizar estado das sessões
+        const newSessions = { ...sessions };
+        newSessions[tipoUsuario] = null;
+        setSessions(newSessions);
+        
+        // Se o usuário ativo era do tipo que está fazendo logout, trocar para outro
+        if (user && user.tipo === tipoUsuario) {
+          let newActiveUser = null;
+          
+          // Prioridade: empresa > funcionario > cliente
+          if (newSessions.empresa) {
+            newActiveUser = newSessions.empresa;
+          } else if (newSessions.funcionario) {
+            newActiveUser = newSessions.funcionario;
+          } else if (newSessions.cliente) {
+            newActiveUser = newSessions.cliente;
+          }
+          
+          if (newActiveUser) {
+            setUser(newActiveUser);
+            setSubscription({
+              plano: newActiveUser.plano || 'business',
+              status: 'ativo',
+              recursos: {
+                whatsapp: (newActiveUser.plano || 'business') !== 'free',
+                relatorios: (newActiveUser.plano || 'business') !== 'free',
+                multiusuario: (newActiveUser.plano || 'business') === 'business'
+              }
+            });
+            console.log(`✅ Troca automática para usuário ativo: ${newActiveUser.tipo}`);
+          } else {
+            setUser(null);
+            setSubscription(null);
+            console.log('✅ Nenhum usuário ativo restante');
+          }
+        }
+      } else {
+        // Logout completo (comportamento original)
+        setUser(null);
+        setSubscription(null);
+        setSessions({ empresa: null, funcionario: null, cliente: null });
+        localStorageService.logout();
+      }
       
-      // Limpar localStorage (sem reload automático)
-      localStorageService.logout();
-      
+      setLoading(false);
       console.log('✅ Logout do contexto realizado com sucesso');
       
     } catch (error) {
       console.error('❌ Erro durante logout do contexto:', error);
-      // Mesmo com erro, limpar os estados
       setUser(null);
       setSubscription(null);
+      setSessions({ empresa: null, funcionario: null, cliente: null });
       setLoading(false);
-      
-      // Forçar limpeza completa
-      localStorage.clear();
-      sessionStorage.clear();
     }
+  };
+
+  // Trocar para uma sessão específica
+  const switchToSession = (tipoUsuario) => {
+    if (sessions[tipoUsuario]) {
+      const sessionUser = sessions[tipoUsuario];
+      setUser(sessionUser);
+      setSubscription({
+        plano: sessionUser.plano || 'business',
+        status: 'ativo',
+        recursos: {
+          whatsapp: (sessionUser.plano || 'business') !== 'free',
+          relatorios: (sessionUser.plano || 'business') !== 'free',
+          multiusuario: (sessionUser.plano || 'business') === 'business'
+        }
+      });
+      console.log(`✅ Trocado para sessão: ${tipoUsuario}`);
+      return { success: true, user: sessionUser };
+    }
+    return { success: false, error: `Sessão ${tipoUsuario} não encontrada` };
+  };
+
+  // Obter dados da empresa para funcionário
+  const getEmpresaData = () => {
+    if (user && user.tipo === 'funcionario' && user.empresa_id) {
+      // Buscar dados da empresa
+      const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
+      const empresa = empresas.find(emp => emp.id === user.empresa_id);
+      return empresa;
+    }
+    return null;
   };
 
   // Atualizar usuário
@@ -232,9 +344,12 @@ export const LocalAuthProvider = ({ children }) => {
     user,
     loading,
     subscription,
+    sessions,
     login,
     register,
     logout,
+    switchToSession,
+    getEmpresaData,
     updateUser,
     hasPlan,
     canMakeAppointment,

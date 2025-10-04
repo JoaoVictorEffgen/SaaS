@@ -239,11 +239,6 @@ const LoginStatusIndicator = () => {
 
   return (
     <div className="flex items-center space-x-3">
-      {/* Indicador de status - Mais Destacado */}
-      <div className="flex items-center space-x-2 px-3 py-2 bg-green-50 border-2 border-green-200 rounded-lg shadow-lg">
-        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-lg"></div>
-        <span className="text-sm font-bold text-green-800">✅ ONLINE</span>
-      </div>
 
       {/* Informações do usuário - Mais Visível */}
       <div className="flex items-center space-x-3 px-4 py-3 rounded-xl border-2 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 shadow-lg">
@@ -259,7 +254,7 @@ const LoginStatusIndicator = () => {
             </span>
             <span className="text-xs font-medium text-gray-600">
               {loginInfo.type === 'empresa' ? '🏢 Empresa' : 
-               loginInfo.type === 'cliente' ? '👤 Cliente' : '👨‍💼 Funcionário'} • ID: {loginInfo.id}
+               loginInfo.type === 'cliente' ? '👤 Cliente' : '👨‍💼 Funcionário'}
             </span>
           </div>
         </div>

@@ -354,10 +354,19 @@ class LocalStorageService {
     const newAgendamento = {
       ...agendamentoData,
       id: (agendamentos.length + 1).toString(),
-      status: 'pendente'
+      status: 'em_aprovacao', // Novo status inicial
+      data_criacao: new Date().toISOString()
     };
     agendamentos.push(newAgendamento);
     localStorage.setItem('agendamentos', JSON.stringify(agendamentos));
+    
+    // Também salvar na chave específica da empresa se tiver empresa_id
+    if (newAgendamento.empresa_id) {
+      const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${newAgendamento.empresa_id}`) || '[]');
+      agendamentosEmpresa.push(newAgendamento);
+      localStorage.setItem(`agendamentos_${newAgendamento.empresa_id}`, JSON.stringify(agendamentosEmpresa));
+    }
+    
     return newAgendamento;
   }
 
@@ -377,9 +386,23 @@ class LocalStorageService {
     const agendamentos = this.getAgendamentos();
     const index = agendamentos.findIndex(a => a.id == agendamentoId);
     if (index !== -1) {
-      agendamentos[index].status = 'confirmado';
+      agendamentos[index].status = 'agendado'; // Mudança: 'confirmado' → 'agendado'
       agendamentos[index].dataConfirmacao = new Date().toISOString();
       localStorage.setItem('agendamentos', JSON.stringify(agendamentos));
+      
+      // Atualizar também na chave específica da empresa
+      if (agendamentos[index].empresa_id) {
+        const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${agendamentos[index].empresa_id}`) || '[]');
+        const indexEmpresa = agendamentosEmpresa.findIndex(a => a.id == agendamentoId);
+        if (indexEmpresa !== -1) {
+          agendamentosEmpresa[indexEmpresa] = agendamentos[index];
+          localStorage.setItem(`agendamentos_${agendamentos[index].empresa_id}`, JSON.stringify(agendamentosEmpresa));
+        }
+      }
+      
+      // Enviar notificação para o funcionário
+      this.enviarNotificacaoFuncionario(agendamentos[index], 'confirmado');
+      
       console.log('✅ Agendamento confirmado:', agendamentos[index]);
       return agendamentos[index];
     }
@@ -453,6 +476,20 @@ class LocalStorageService {
       agendamentos[index].cancelamento_por = 'cliente';
       
       localStorage.setItem('agendamentos', JSON.stringify(agendamentos));
+      
+      // Atualizar também na chave específica da empresa
+      if (agendamentos[index].empresa_id) {
+        const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${agendamentos[index].empresa_id}`) || '[]');
+        const indexEmpresa = agendamentosEmpresa.findIndex(a => a.id == agendamentoId);
+        if (indexEmpresa !== -1) {
+          agendamentosEmpresa[indexEmpresa] = agendamentos[index];
+          localStorage.setItem(`agendamentos_${agendamentos[index].empresa_id}`, JSON.stringify(agendamentosEmpresa));
+        }
+      }
+      
+      // Enviar notificação para o funcionário
+      this.enviarNotificacaoFuncionario(agendamentos[index], 'cancelado');
+      
       console.log('❌ Agendamento cancelado:', agendamentos[index]);
       
       return { sucesso: true, agendamento: agendamentos[index] };
@@ -510,6 +547,8 @@ class LocalStorageService {
 
   // Autenticação
   login(identifier, senha, tipo = null) {
+    console.log('🔐 localStorageService.login chamado com:', { identifier, senha: '***', tipo });
+    
     if (tipo === 'cliente') {
       // Buscar clientes
       const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
@@ -550,17 +589,31 @@ class LocalStorageService {
     return null;
   }
 
-  logout() {
+  logout(tipoUsuario = null) {
     try {
       console.log('🧹 Iniciando logout - limpando dados...');
       
-      // Limpar todos os dados de autenticação
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('clienteLogado');
-      localStorage.removeItem('empresaLogada');
-      localStorage.removeItem('funcionarioLogado');
-      localStorage.removeItem('empresaFuncionario');
+      if (tipoUsuario) {
+        // Logout específico - não limpar outras sessões
+        console.log(`🧹 Logout específico para: ${tipoUsuario}`);
+        localStorage.removeItem(`${tipoUsuario}Session`);
+      } else {
+        // Logout completo - limpar todas as sessões
+        console.log('🧹 Logout completo - limpando todas as sessões');
+        
+        // Limpar todos os dados de autenticação
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('clienteLogado');
+        localStorage.removeItem('empresaLogada');
+        localStorage.removeItem('funcionarioLogado');
+        localStorage.removeItem('empresaFuncionario');
+        
+        // Limpar todas as sessões
+        localStorage.removeItem('empresaSession');
+        localStorage.removeItem('funcionarioSession');
+        localStorage.removeItem('clienteSession');
+      }
       
       // Limpar dados de sessão e cache
       localStorage.removeItem('userSession');
@@ -604,6 +657,65 @@ class LocalStorageService {
   // Token simples (em produção seria JWT)
   generateToken(userId) {
     return `token_${userId}_${Date.now()}`;
+  }
+
+  // Enviar notificação para o funcionário
+  enviarNotificacaoFuncionario(agendamento, acao) {
+    try {
+      const funcionarioId = agendamento.funcionario_id;
+      const empresaId = agendamento.empresa_id;
+      
+      // Buscar dados do funcionário
+      const funcionarios = JSON.parse(localStorage.getItem(`funcionarios_${empresaId}`) || '[]');
+      const funcionario = funcionarios.find(f => f.id === funcionarioId);
+      
+      if (!funcionario) {
+        console.log('⚠️ Funcionário não encontrado para notificação');
+        return;
+      }
+      
+      // Criar mensagem baseada na ação
+      let mensagem = '';
+      if (acao === 'confirmado') {
+        mensagem = `✅ Agendamento confirmado: ${agendamento.cliente_nome} - ${agendamento.data} às ${agendamento.hora}`;
+      } else if (acao === 'cancelado') {
+        mensagem = `❌ Agendamento cancelado: ${agendamento.cliente_nome} - ${agendamento.data} às ${agendamento.hora}`;
+      }
+      
+      // Buscar notificações existentes do funcionário
+      const notifications = JSON.parse(localStorage.getItem(`notifications_funcionario_${funcionarioId}`) || '[]');
+      
+      // Criar nova notificação
+      const newNotification = {
+        id: Date.now().toString(),
+        tipo: 'agendamento',
+        acao: acao,
+        mensagem: mensagem,
+        agendamentoId: agendamento.id,
+        clienteNome: agendamento.cliente_nome,
+        data: agendamento.data,
+        hora: agendamento.hora,
+        empresaId: empresaId,
+        lida: false,
+        dataCriacao: new Date().toISOString()
+      };
+      
+      // Adicionar no início da lista (mais recente primeiro)
+      notifications.unshift(newNotification);
+      
+      // Manter apenas as últimas 50 notificações
+      if (notifications.length > 50) {
+        notifications.splice(50);
+      }
+      
+      // Salvar notificações
+      localStorage.setItem(`notifications_funcionario_${funcionarioId}`, JSON.stringify(notifications));
+      
+      console.log(`🔔 Notificação enviada para funcionário ${funcionarioId}:`, mensagem);
+      
+    } catch (error) {
+      console.error('❌ Erro ao enviar notificação para funcionário:', error);
+    }
   }
 
   // Limpar todos os dados (para reset)

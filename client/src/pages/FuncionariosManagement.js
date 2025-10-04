@@ -15,6 +15,8 @@ const FuncionariosManagement = () => {
     nome: '',
     sobrenome: '',
     telefone: '',
+    cpf: '',
+    cargo: '',
     foto: null
   });
 
@@ -91,6 +93,23 @@ const FuncionariosManagement = () => {
       alert('Telefone é obrigatório.');
       return;
     }
+
+    if (!formData.cpf.trim()) {
+      alert('CPF é obrigatório.');
+      return;
+    }
+
+    if (!formData.cargo.trim()) {
+      alert('Cargo é obrigatório.');
+      return;
+    }
+
+    // Validação básica do CPF (11 dígitos)
+    const cpfNumbers = formData.cpf.replace(/[^\d]/g, '');
+    if (cpfNumbers.length !== 11) {
+      alert('CPF deve ter 11 dígitos.');
+      return;
+    }
     
     const funcionarioData = {
       id: editingFuncionario?.id || Date.now().toString(),
@@ -98,6 +117,8 @@ const FuncionariosManagement = () => {
       nome: formData.nome.trim(),
       sobrenome: formData.sobrenome.trim(),
       telefone: formData.telefone.trim(),
+      cpf: cpfNumbers,
+      cargo: formData.cargo.trim(),
       foto: formData.foto,
       empresa_id: user.id,
       created_at: editingFuncionario?.created_at || new Date().toISOString(),
@@ -120,6 +141,8 @@ const FuncionariosManagement = () => {
       nome: '',
       sobrenome: '',
       telefone: '',
+      cpf: '',
+      cargo: '',
       foto: null
     });
     setEditingFuncionario(null);
@@ -134,6 +157,8 @@ const FuncionariosManagement = () => {
       nome: funcionario.nome || '',
       sobrenome: funcionario.sobrenome || '',
       telefone: funcionario.telefone || '',
+      cpf: funcionario.cpf || '',
+      cargo: funcionario.cargo || '',
       foto: funcionario.foto || null
     });
     setShowModal(true);
@@ -361,6 +386,44 @@ const FuncionariosManagement = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="11999999999"
                       maxLength="11"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CPF *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.cpf}
+                      onChange={(e) => {
+                        let value = e.target.value.replace(/[^\d]/g, '');
+                        if (value.length <= 11) {
+                          // Formatar CPF: 000.000.000-00
+                          value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                          value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                          value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                          setFormData({...formData, cpf: value});
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="000.000.000-00"
+                      maxLength="14"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Cargo *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.cargo}
+                      onChange={(e) => setFormData({...formData, cargo: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Ex: Recepcionista, Barbeiro, Manicure"
                     />
                   </div>
 

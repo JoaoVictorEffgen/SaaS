@@ -547,7 +547,9 @@ const AccessSelector = () => {
     try {
       // Para login, usar email ou CNPJ
       const loginIdentifier = empresaForm.email || empresaForm.cnpj;
+      console.log('🔐 Tentando login da empresa:', { loginIdentifier, senha: '***', tipo: 'empresa' });
       const result = await login(loginIdentifier, empresaForm.senha, 'empresa');
+      console.log('🔐 Resultado do login da empresa:', result);
 
       if (result.success) {
         setShowEmpresaModal(false);
@@ -573,15 +575,22 @@ const AccessSelector = () => {
       console.log('CPF inserido:', funcionarioForm.cpf);
 
       const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
-      const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
+      
+      // Buscar funcionários da empresa específica
+      const funcionarios = JSON.parse(localStorage.getItem(`funcionarios_${funcionarioForm.empresaId}`) || '[]');
       
       console.log('Empresas encontradas:', empresas.length);
       console.log('Funcionários encontrados:', funcionarios.length);
+      console.log('CPF inserido (formatado):', funcionarioForm.cpf);
+      
+      // Buscar funcionário pelo CPF (sem formatação)
+      const cpfLimpo = funcionarioForm.cpf.replace(/[^\d]/g, '');
+      console.log('CPF limpo (apenas números):', cpfLimpo);
+      console.log('Lista de funcionários:', funcionarios);
       
       const empresa = empresas.find(emp => emp.id === funcionarioForm.empresaId);
       const funcionario = funcionarios.find(func => 
-        func.empresaId === funcionarioForm.empresaId && 
-        func.cpf === funcionarioForm.cpf
+        func.cpf === cpfLimpo
       );
 
       console.log('Empresa encontrada:', empresa ? empresa.nome : 'NÃO ENCONTRADA');
@@ -606,8 +615,8 @@ const AccessSelector = () => {
       
       console.log('💾 Salvando usuário no localStorage:', userData);
       
-      // Salvar diretamente no localStorage para funcionários
-      localStorage.setItem('currentUser', JSON.stringify(userData));
+      // Salvar em sessão específica para funcionários
+      localStorage.setItem('funcionarioSession', JSON.stringify(userData));
       localStorage.setItem('authToken', 'funcionario_token_' + userData.id);
 
       // Forçar atualização do contexto
