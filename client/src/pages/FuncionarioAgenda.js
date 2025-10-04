@@ -52,13 +52,16 @@ const FuncionarioAgenda = () => {
         console.log('🔍 Verificando usuário atual:', currentUser);
         
         if (!currentUser) {
-          console.log('❌ Nenhum usuário logado, redirecionando...');
+          console.log('❌ FuncionarioAgenda - Nenhum usuário logado, redirecionando...');
+          console.log('🔍 currentUser:', currentUser);
           navigate('/');
           return;
         }
 
         if (currentUser.tipo !== 'funcionario') {
-          console.log('❌ Usuário não é funcionário, redirecionando...');
+          console.log('❌ FuncionarioAgenda - Usuário não é funcionário, redirecionando...');
+          console.log('🔍 Tipo do usuário:', currentUser.tipo);
+          console.log('🔍 Usuário completo:', currentUser);
           navigate('/');
           return;
         }

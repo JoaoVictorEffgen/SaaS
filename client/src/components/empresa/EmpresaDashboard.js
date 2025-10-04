@@ -343,6 +343,7 @@ const EmpresaDashboard = () => {
                 <p><strong>CNPJ:</strong> {currentUser?.cnpj || 'Não informado'}</p>
                 <p><strong>Email:</strong> {currentUser?.email || 'Não informado'}</p>
                 <p><strong>Telefone:</strong> {currentUser?.telefone || 'Não informado'}</p>
+                <p><strong>ID da Empresa:</strong> {currentUser?.id || 'Não informado'}</p>
                 {currentUser?.endereco && <p><strong>Endereço:</strong> {currentUser.endereco}</p>}
               </div>
             </div>

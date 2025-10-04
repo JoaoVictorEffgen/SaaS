@@ -66,7 +66,7 @@ class LocalStorageService {
     if (!localStorage.getItem('empresas')) {
       const defaultEmpresas = [
         {
-          id: '1',
+          id: 'salao_beleza_estilo_7890',
           nome: 'Salão Beleza & Estilo',
           email: 'contato@belezaestilo.com',
           telefone: '(11) 99999-1111',
@@ -85,7 +85,7 @@ class LocalStorageService {
           ]
         },
         {
-          id: '2',
+          id: 'clinica_saude_total_2468',
           nome: 'Clínica Saúde Total',
           email: 'contato@saudetotal.com',
           telefone: '(11) 99999-2222',
@@ -140,9 +140,62 @@ class LocalStorageService {
             { id: '7', nome: 'Dr. Roberto Alves', especialidade: 'Ortodontista' },
             { id: '8', nome: 'Dra. Fernanda Costa', especialidade: 'Endodontista' }
           ]
+        },
+        // Empresa de teste para funcionários
+        {
+          id: 'empresa_teste_funcionarios_1234',
+          nome: 'Empresa Teste Funcionários',
+          email: 'teste@empresa.com',
+          telefone: '11999999999',
+          endereco: 'Rua Teste, 123 - São Paulo, SP',
+          cnpj: '12345678000123',
+          descricao: 'Empresa para teste de funcionários',
+          categoria: 'Serviços',
+          horario_inicio: '08:00',
+          horario_fim: '18:00',
+          dias_funcionamento: [1, 2, 3, 4, 5], // Segunda a Sexta
+          logo_url: null,
+          notaMedia: 4.5,
+          totalAvaliacoes: 50,
+          funcionarios: []
         }
       ];
       localStorage.setItem('empresas', JSON.stringify(defaultEmpresas));
+
+      // Criar funcionários de teste
+      const funcionarios = [
+        {
+          id: '1',
+          empresaId: 'empresa_teste_funcionarios_1234',
+          nome: 'João Funcionário',
+          cpf: '12345678901',
+          email: 'joao.funcionario@teste.com',
+          telefone: '11987654321',
+          especialidade: 'Atendimento Geral',
+          horario_inicio: '08:00',
+          horario_fim: '17:00',
+          intervalos: [
+            { inicio: '12:00', fim: '13:00', descricao: 'Almoço' }
+          ]
+        },
+        {
+          id: '3',
+          empresaId: 'empresa_teste_funcionarios_1234',
+          nome: 'Maria Funcionária',
+          cpf: '98765432100',
+          email: 'maria.funcionaria@teste.com',
+          telefone: '11912345678',
+          especialidade: 'Especialista',
+          horario_inicio: '09:00',
+          horario_fim: '18:00',
+          intervalos: [
+            { inicio: '12:30', fim: '13:30', descricao: 'Almoço' }
+          ]
+        }
+      ];
+
+      // Salvar funcionários no localStorage
+      localStorage.setItem('funcionarios', JSON.stringify(funcionarios));
     }
   }
 
@@ -236,9 +289,29 @@ class LocalStorageService {
 
   createEmpresa(empresaData) {
     const empresas = this.getEmpresas();
+    
+    // Gerar ID único: nome da empresa + número aleatório
+    const generateUniqueId = (nome) => {
+      const nomeLimpo = nome
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '') // Remove caracteres especiais
+        .replace(/\s+/g, '_') // Substitui espaços por underscore
+        .substring(0, 20); // Limita a 20 caracteres
+      
+      let id;
+      let existe;
+      do {
+        const numeroAleatorio = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        id = `${nomeLimpo}_${numeroAleatorio}`;
+        existe = empresas.some(emp => emp.id === id);
+      } while (existe);
+      
+      return id;
+    };
+    
     const newEmpresa = {
       ...empresaData,
-      id: (empresas.length + 1).toString(),
+      id: generateUniqueId(empresaData.nome),
       notaMedia: 0,
       totalAvaliacoes: 0,
       funcionarios: []
@@ -297,6 +370,135 @@ class LocalStorageService {
       return agendamentos[index];
     }
     return null;
+  }
+
+  // Confirmar agendamento
+  confirmarAgendamento(agendamentoId) {
+    const agendamentos = this.getAgendamentos();
+    const index = agendamentos.findIndex(a => a.id == agendamentoId);
+    if (index !== -1) {
+      agendamentos[index].status = 'confirmado';
+      agendamentos[index].dataConfirmacao = new Date().toISOString();
+      localStorage.setItem('agendamentos', JSON.stringify(agendamentos));
+      console.log('✅ Agendamento confirmado:', agendamentos[index]);
+      return agendamentos[index];
+    }
+    return null;
+  }
+
+  // Confirmar todos os agendamentos pendentes de um cliente
+  confirmarTodosAgendamentosPendentes(clienteEmail) {
+    const agendamentos = this.getAgendamentos();
+    let confirmados = 0;
+    
+    agendamentos.forEach(agendamento => {
+      if ((agendamento.cliente_email === clienteEmail || agendamento.clienteEmail === clienteEmail) && 
+          (agendamento.status === 'agendado' || agendamento.status === 'pendente')) {
+        agendamento.status = 'confirmado';
+        agendamento.dataConfirmacao = new Date().toISOString();
+        confirmados++;
+      }
+    });
+    
+    if (confirmados > 0) {
+      localStorage.setItem('agendamentos', JSON.stringify(agendamentos));
+      console.log(`✅ ${confirmados} agendamentos confirmados para ${clienteEmail}`);
+    }
+    
+    return confirmados;
+  }
+
+  // Verificar se pode cancelar agendamento (regra de 1 hora)
+  podeCancelarAgendamento(agendamento) {
+    if (agendamento.status === 'cancelado' || agendamento.status === 'realizado' || agendamento.status === 'concluido') {
+      return { pode: false, motivo: 'Agendamento já finalizado' };
+    }
+
+    if (agendamento.status === 'agendado' || agendamento.status === 'pendente') {
+      return { pode: true, motivo: null };
+    }
+
+    if (agendamento.status === 'confirmado') {
+      // Verificar se faltam mais de 1 hora
+      const agora = new Date();
+      const dataAgendamento = new Date(`${agendamento.data}T${agendamento.hora || agendamento.hora_inicio}`);
+      const diferencaMinutos = (dataAgendamento - agora) / (1000 * 60);
+      
+      if (diferencaMinutos <= 60) {
+        return { pode: false, motivo: `Menos de 1 hora restante (${Math.round(diferencaMinutos)} min)` };
+      }
+      
+      return { pode: true, motivo: null };
+    }
+
+    return { pode: false, motivo: 'Status não permitido para cancelamento' };
+  }
+
+  // Cancelar agendamento específico
+  cancelarAgendamento(agendamentoId, motivo = 'Cancelado pelo cliente') {
+    const agendamentos = this.getAgendamentos();
+    const index = agendamentos.findIndex(a => a.id == agendamentoId);
+    
+    if (index !== -1) {
+      const agendamento = agendamentos[index];
+      const verificacao = this.podeCancelarAgendamento(agendamento);
+      
+      if (!verificacao.pode) {
+        return { sucesso: false, erro: verificacao.motivo };
+      }
+      
+      agendamentos[index].status = 'cancelado';
+      agendamentos[index].dataCancelamento = new Date().toISOString();
+      agendamentos[index].cancelamento_motivo = motivo;
+      agendamentos[index].cancelamento_por = 'cliente';
+      
+      localStorage.setItem('agendamentos', JSON.stringify(agendamentos));
+      console.log('❌ Agendamento cancelado:', agendamentos[index]);
+      
+      return { sucesso: true, agendamento: agendamentos[index] };
+    }
+    
+    return { sucesso: false, erro: 'Agendamento não encontrado' };
+  }
+
+  // Cancelar todos os agendamentos canceláveis de um cliente
+  cancelarTodosAgendamentosCancelaveis(clienteEmail) {
+    const agendamentos = this.getAgendamentos();
+    let cancelados = 0;
+    let naoCancelaveis = [];
+    
+    agendamentos.forEach(agendamento => {
+      if ((agendamento.cliente_email === clienteEmail || agendamento.clienteEmail === clienteEmail) && 
+          (agendamento.status === 'agendado' || agendamento.status === 'pendente' || agendamento.status === 'confirmado')) {
+        
+        const verificacao = this.podeCancelarAgendamento(agendamento);
+        
+        if (verificacao.pode) {
+          agendamento.status = 'cancelado';
+          agendamento.dataCancelamento = new Date().toISOString();
+          agendamento.cancelamento_motivo = 'Cancelado em lote pelo cliente';
+          agendamento.cancelamento_por = 'cliente';
+          cancelados++;
+        } else {
+          naoCancelaveis.push({
+            id: agendamento.id,
+            motivo: verificacao.motivo,
+            data: agendamento.data,
+            hora: agendamento.hora || agendamento.hora_inicio
+          });
+        }
+      }
+    });
+    
+    if (cancelados > 0 || naoCancelaveis.length > 0) {
+      localStorage.setItem('agendamentos', JSON.stringify(agendamentos));
+      console.log(`❌ ${cancelados} agendamentos cancelados para ${clienteEmail}`);
+      if (naoCancelaveis.length > 0) {
+        console.log(`⚠️ ${naoCancelaveis.length} agendamentos não puderam ser cancelados:`, naoCancelaveis);
+      }
+    }
+    
+    return { cancelados, naoCancelaveis };
   }
 
   deleteAgendamento(id) {

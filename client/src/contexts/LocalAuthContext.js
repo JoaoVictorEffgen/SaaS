@@ -71,11 +71,18 @@ export const LocalAuthProvider = ({ children }) => {
       loadUser();
     };
 
+    const handleUserLogin = (event) => {
+      console.log('🔄 User login event detected, updating user...');
+      setUser(event.detail);
+    };
+
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('userLogin', handleUserLogin);
     
     // Cleanup
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('userLogin', handleUserLogin);
     };
   }, []);
 

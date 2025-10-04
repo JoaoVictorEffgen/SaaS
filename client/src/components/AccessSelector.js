@@ -43,7 +43,7 @@ const AccessSelector = () => {
   const [activeSection, setActiveSection] = useState('destaque'); // 'destaque', 'proximas', 'favoritas'
   const [allEmpresas, setAllEmpresas] = useState([]);
   const [isClientLoggedIn, setIsClientLoggedIn] = useState(false);
-  const [empresaForm, setEmpresaForm] = useState({ email: '', senha: '', confirmarSenha: '', nome: '', telefone: '', endereco: '', cnpj: '' });
+  const [empresaForm, setEmpresaForm] = useState({ email: '', senha: '', nome: '', telefone: '', endereco: '', cnpj: '' });
   const [funcionarioForm, setFuncionarioForm] = useState({ 
     empresaId: '', 
     cpf: '' 
@@ -317,20 +317,20 @@ const AccessSelector = () => {
 
       if (cliente) {
         // Login bem-sucedido
-        const userData = {
-          id: cliente.id,
-          nome: cliente.nome,
-          email: cliente.email,
-          whatsapp: cliente.whatsapp,
-          tipo: 'cliente',
-          plano: 'free'
-        };
-
+        console.log('✅ Cliente encontrado:', cliente);
+        
         // Salvar no localStorage diretamente e fazer login
         localStorage.setItem('currentUser', JSON.stringify(cliente));
+        console.log('💾 Cliente salvo no localStorage');
+        
+        // Forçar atualização do contexto
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new CustomEvent('userLogin', { detail: cliente }));
+        console.log('🔄 Eventos disparados para atualizar contexto');
         
         // Fechar modal e navegar para lista de empresas
         setShowClienteModal(false);
+        console.log('🚀 Navegando para /cliente');
         navigate('/cliente');
       } else {
         // Verificar se o email existe em empresas ou funcionários
@@ -530,8 +530,8 @@ const AccessSelector = () => {
       setEmpresaLoading(false);
       return;
     }
-    if (!empresaForm.senha || !empresaForm.confirmarSenha) {
-      setEmpresaError('Por favor, preencha a senha e confirmação.');
+    if (!empresaForm.senha) {
+      setEmpresaError('Por favor, preencha a senha.');
       setEmpresaLoading(false);
       return;
     }
@@ -543,12 +543,6 @@ const AccessSelector = () => {
       return;
     }
 
-    // Validação de confirmação de senha
-    if (empresaForm.senha !== empresaForm.confirmarSenha) {
-      setEmpresaError('As senhas não coincidem. Tente novamente.');
-      setEmpresaLoading(false);
-      return;
-    }
 
     try {
       // Para login, usar email ou CNPJ
@@ -612,8 +606,9 @@ const AccessSelector = () => {
       
       console.log('💾 Salvando usuário no localStorage:', userData);
       
-      // Usar o hook de login do contexto
-      await login(userData);
+      // Salvar diretamente no localStorage para funcionários
+      localStorage.setItem('currentUser', JSON.stringify(userData));
+      localStorage.setItem('authToken', 'funcionario_token_' + userData.id);
 
       // Forçar atualização do contexto
       window.dispatchEvent(new Event('storage'));
@@ -623,7 +618,9 @@ const AccessSelector = () => {
       // Aguardar um pouco para garantir que o contexto seja atualizado
       setTimeout(() => {
         console.log('🚀 Redirecionando para /funcionario/agenda');
+        console.log('🔍 URL atual antes da navegação:', window.location.href);
         navigate('/funcionario/agenda');
+        console.log('🔍 URL após navegação:', window.location.href);
       }, 100);
 
     } catch (error) {
@@ -1176,18 +1173,6 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirmar Senha *
-                </label>
-                <input
-                  type="password"
-                  value={empresaForm.confirmarSenha}
-                  onChange={(e) => setEmpresaForm({ ...empresaForm, confirmarSenha: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
 
 
               <div className="flex items-center justify-between pt-4">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useParams, Navigate } from 'react-router-dom';
+import { Link, useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Calendar, Users, ArrowLeft, MessageCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLocalAuth } from '../../contexts/LocalAuthContext';
 import WhatsAppChat from '../shared/WhatsAppChat';
@@ -8,11 +8,13 @@ import notificationService from '../../services/notificationService';
 const AgendamentoEmpresa = () => {
   const { empresaId } = useParams();
   const { user } = useLocalAuth();
+  const navigate = useNavigate();
   
   const [empresa, setEmpresa] = useState(null);
   const [funcionarios, setFuncionarios] = useState([]);
   const [servicos, setServicos] = useState([]);
   const [showWhatsAppChat, setShowWhatsAppChat] = useState(false);
+  const [agendamentoConfirmado, setAgendamentoConfirmado] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
   
   const [quickBooking, setQuickBooking] = useState({
@@ -79,9 +81,13 @@ const AgendamentoEmpresa = () => {
   }, [showCalendar]);
 
   // Verificar se o usuário está logado DEPOIS de todos os hooks
+  console.log('🔍 AgendamentoEmpresa - Verificando usuário:', user);
   if (!user) {
+    console.log('❌ AgendamentoEmpresa - Usuário não logado, redirecionando...');
     return <Navigate to="/" replace />;
   }
+  
+  console.log('✅ AgendamentoEmpresa - Usuário logado:', user);
 
   const gerarHorariosDisponiveis = () => {
     if (!empresa) return [];
@@ -161,6 +167,70 @@ const AgendamentoEmpresa = () => {
     return funcionarios;
   };
 
+  // Função para enviar notificações
+  const enviarNotificacoes = async (agendamento, empresa, funcionario, cliente) => {
+    try {
+      console.log('📱 Enviando notificações...');
+      
+      // 1. Notificação para a empresa
+      const notificacaoEmpresa = {
+        id: Date.now(),
+        tipo: 'novo_agendamento',
+        titulo: 'Novo Agendamento',
+        mensagem: `Novo agendamento para ${cliente.nome} em ${new Date(agendamento.data).toLocaleDateString('pt-BR')} às ${agendamento.hora}`,
+        empresa_id: empresa.id,
+        agendamento_id: agendamento.id,
+        data: new Date().toISOString(),
+        lida: false
+      };
+      
+      // Salvar notificação da empresa
+      const notificacoesEmpresa = JSON.parse(localStorage.getItem('notificacoes_empresa') || '[]');
+      notificacoesEmpresa.push(notificacaoEmpresa);
+      localStorage.setItem('notificacoes_empresa', JSON.stringify(notificacoesEmpresa));
+      
+      // 2. Notificação para o funcionário
+      const notificacaoFuncionario = {
+        id: Date.now() + 1,
+        tipo: 'novo_agendamento',
+        titulo: 'Novo Agendamento',
+        mensagem: `Você tem um novo agendamento com ${cliente.nome} em ${new Date(agendamento.data).toLocaleDateString('pt-BR')} às ${agendamento.hora}`,
+        funcionario_id: funcionario.id,
+        empresa_id: empresa.id,
+        agendamento_id: agendamento.id,
+        data: new Date().toISOString(),
+        lida: false
+      };
+      
+      // Salvar notificação do funcionário
+      const notificacoesFuncionario = JSON.parse(localStorage.getItem('notificacoes_funcionario') || '[]');
+      notificacoesFuncionario.push(notificacaoFuncionario);
+      localStorage.setItem('notificacoes_funcionario', JSON.stringify(notificacoesFuncionario));
+      
+      // 3. Notificação via WhatsApp para o cliente
+      const mensagemWhatsApp = `🎉 *Agendamento Confirmado!*\n\n` +
+        `📅 *Data:* ${new Date(agendamento.data).toLocaleDateString('pt-BR')}\n` +
+        `⏰ *Horário:* ${agendamento.hora}\n` +
+        `🏢 *Empresa:* ${empresa.nome}\n` +
+        `👤 *Funcionário:* ${funcionario.nome}\n` +
+        `🛠️ *Serviços:* ${agendamento.servicos.map(s => s.nome).join(', ')}\n` +
+        `💰 *Total:* R$ ${agendamento.valor_total.toFixed(2)}\n\n` +
+        `✅ Seu agendamento foi confirmado com sucesso!`;
+      
+      // Abrir WhatsApp com a mensagem
+      if (cliente.whatsapp || cliente.telefone) {
+        const telefone = (cliente.whatsapp || cliente.telefone).replace(/\D/g, '');
+        const whatsappLink = `https://wa.me/55${telefone}?text=${encodeURIComponent(mensagemWhatsApp)}`;
+        window.open(whatsappLink, '_blank');
+      }
+      
+      console.log('✅ Notificações enviadas com sucesso!');
+      
+    } catch (error) {
+      console.error('❌ Erro ao enviar notificações:', error);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -189,29 +259,18 @@ const AgendamentoEmpresa = () => {
     agendamentos.push(novoAgendamento);
     localStorage.setItem('agendamentos', JSON.stringify(agendamentos));
 
-    // Enviar notificação
-    const funcionario = funcionarios.find(f => f.id === quickBooking.funcionario_id);
-    await notificationService.sendNewAppointmentNotification(
-      novoAgendamento,
-      empresa,
-      funcionario,
-      user
-    );
-    
-    alert('Agendamento criado com sucesso!');
-    
-    // Reset form
-    setQuickBooking({ 
-      nome: user.nome,
-      telefone: user.telefone || user.whatsapp,
-      data: '', 
-      hora: '', 
-      funcionario_id: '', 
-      servicos: [],
-      recorrente: false,
-      tipo_recorrencia: 'semanal',
-      fim_recorrencia: ''
+    // Salvar agendamento confirmado para mostrar resumo destacado
+    setAgendamentoConfirmado({
+      ...novoAgendamento,
+      empresa_nome: empresa.nome,
+      funcionario_nome: funcionarios.find(f => f.id === quickBooking.funcionario_id)?.nome
     });
+
+    // Enviar notificações
+    const funcionario = funcionarios.find(f => f.id === quickBooking.funcionario_id);
+    await enviarNotificacoes(novoAgendamento, empresa, funcionario, user);
+    
+    // O modal agora é fechado pelos botões "Voltar ao Início" ou "Novo Agendamento"
   };
 
   const toggleServico = (servico) => {
@@ -229,8 +288,13 @@ const AgendamentoEmpresa = () => {
   // Funções para o calendário
   const formatarDataParaExibicao = (data) => {
     if (!data) return '';
-    const date = new Date(data);
-    return date.toLocaleDateString('pt-BR');
+    // Formato direto sem problemas de timezone
+    const partes = data.split('-');
+    if (partes.length === 3) {
+      const [ano, mes, dia] = partes;
+      return `${dia}/${mes}/${ano}`;
+    }
+    return data;
   };
 
   const obterDiasDoMes = (ano, mes) => {
@@ -281,13 +345,21 @@ const AgendamentoEmpresa = () => {
 
   const selecionarDia = (dia) => {
     if (dia) {
-      const dataSelecionada = new Date(calendarioAno, calendarioMes, dia);
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
+      const dataSelecionada = new Date(calendarioAno, calendarioMes, dia);
       
       // Só permite selecionar datas futuras
       if (dataSelecionada >= hoje) {
-        const dataFormatada = dataSelecionada.toISOString().split('T')[0];
+        // Formato direto sem problemas de timezone
+        const anoStr = calendarioAno.toString();
+        const mesStr = String(calendarioMes + 1).padStart(2, '0');
+        const diaStr = String(dia).padStart(2, '0');
+        const dataFormatada = `${anoStr}-${mesStr}-${diaStr}`;
+        
+        console.log('📅 Dia clicado:', dia, 'Mês:', calendarioMes, 'Ano:', calendarioAno);
+        console.log('📅 Data formatada:', dataFormatada);
+        
         setQuickBooking({ ...quickBooking, data: dataFormatada });
         setShowCalendar(false);
       }
@@ -380,8 +452,8 @@ const AgendamentoEmpresa = () => {
                   </div>
             </div>
             
-            <button
-              onClick={() => setShowWhatsAppChat(true)}
+              <button
+                onClick={() => setShowWhatsAppChat(true)}
               className="flex items-center px-6 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors shadow-lg backdrop-blur-sm border border-white border-opacity-20"
             >
               <MessageCircle className="w-5 h-5 mr-2" />
@@ -478,8 +550,8 @@ const AgendamentoEmpresa = () => {
                       className="p-2 hover:bg-gray-100 rounded-lg"
                     >
                       <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
+              </button>
+            </div>
                   
                   {/* Dias da Semana */}
                   <div className="grid grid-cols-7 gap-1 mb-2">
@@ -488,24 +560,30 @@ const AgendamentoEmpresa = () => {
                         {dia}
                       </div>
                     ))}
-                  </div>
-                  
+        </div>
+
                   {/* Dias do Mês */}
                   <div className="grid grid-cols-7 gap-1">
                     {obterDiasDoMes(calendarioAno, calendarioMes).map((dia, index) => {
                       if (dia === null) {
-                        return <div key={index} className="py-2"></div>;
+                        return <div key={`empty-${index}`} className="py-2"></div>;
                       }
                       
-                      const dataSelecionada = new Date(calendarioAno, calendarioMes, dia);
                       const hoje = new Date();
                       hoje.setHours(0, 0, 0, 0);
-                      const dataAtual = new Date(quickBooking.data);
-                      const isSelecionado = dataSelecionada.getTime() === dataAtual.getTime();
+                      const dataSelecionada = new Date(calendarioAno, calendarioMes, dia);
+                      
+                      // Formato direto para comparação
+                      const anoStr = calendarioAno.toString();
+                      const mesStr = String(calendarioMes + 1).padStart(2, '0');
+                      const diaStr = String(dia).padStart(2, '0');
+                      const dataFormatada = `${anoStr}-${mesStr}-${diaStr}`;
+                      
+                      const isSelecionado = quickBooking.data === dataFormatada;
                       const isPassado = dataSelecionada < hoje;
                       
                       return (
-                        <button
+                <button
                           key={dia}
                           type="button"
                           onClick={() => selecionarDia(dia)}
@@ -523,10 +601,10 @@ const AgendamentoEmpresa = () => {
                       );
                     })}
                   </div>
+                    </div>
+                      )}
+                    </div>
                   </div>
-              )}
-                  </div>
-                </div>
 
           {/* Seção de Funcionário */}
           {quickBooking.data && (
@@ -555,9 +633,9 @@ const AgendamentoEmpresa = () => {
                   ))}
                       </select>
                 <Users className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    </div>
-                  </div>
-                )}
+            </div>
+          </div>
+        )}
 
           {/* Seção de Horário */}
           {quickBooking.data && quickBooking.funcionario_id && (
@@ -576,13 +654,13 @@ const AgendamentoEmpresa = () => {
                       type="button"
                       onClick={() => {
                         if (isDisponivel) {
-                          setQuickBooking({ 
-                            ...quickBooking, 
+                        setQuickBooking({
+                          ...quickBooking,
                             hora: horario,
                             servicos: [] // Limpar serviços selecionados ao trocar horário
-                          });
-                        }
-                      }}
+                        });
+                      }
+                    }}
                       disabled={!isDisponivel}
                       style={{ 
                         cursor: isDisponivel ? 'pointer' : 'not-allowed',
@@ -620,9 +698,9 @@ const AgendamentoEmpresa = () => {
                 <div className="flex items-center space-x-2">
                   <div className="w-4 h-4 bg-blue-500 border-2 border-blue-500 rounded"></div>
                   <span className="text-blue-500">Selecionado</span>
-                </div>
-              </div>
-            </div>
+                    </div>
+                    </div>
+                  </div>
           )}
 
           {/* Seção de Serviços */}
@@ -630,7 +708,7 @@ const AgendamentoEmpresa = () => {
             <div className="mb-8">
               <label className="block text-lg font-semibold text-gray-900 mb-3">
                 Selecione o serviço
-              </label>
+                </label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {servicos.map((servico) => (
                   <div
@@ -651,10 +729,10 @@ const AgendamentoEmpresa = () => {
                       {quickBooking.servicos.some(s => s.id === servico.id) && (
                         <CheckCircle className="w-6 h-6 text-blue-500" />
                       )}
+            </div>
                     </div>
-                  </div>
-                ))}
-                    </div>
+                  ))}
+                </div>
                   </div>
                 )}
 
@@ -689,23 +767,23 @@ const AgendamentoEmpresa = () => {
                   <span>Total:</span>
                   <span>R$ {calcularValorTotal().toFixed(2)}</span>
                 </div>
-            </div>
+              </div>
           </div>
         )}
 
           {/* Botão de Confirmar */}
           {quickBooking.servicos.length > 0 && (
             <form onSubmit={handleSubmit}>
-              <button
+            <button
                 type="submit"
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 px-6 rounded-xl text-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-              >
+            >
                 Confirmar Agendamento
-              </button>
+            </button>
             </form>
           )}
-        </div>
-      </div>
+                  </div>
+                </div>
 
       {/* WhatsApp Chat */}
       {showWhatsAppChat && (
@@ -714,6 +792,96 @@ const AgendamentoEmpresa = () => {
           onClose={() => setShowWhatsAppChat(false)}
           empresa={empresa}
         />
+      )}
+
+      {/* Resumo Destacado após Confirmação */}
+      {agendamentoConfirmado && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform border-2 border-green-200">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-teal-700 mb-2">🎉 SUCESSO!</h3>
+              <p className="text-gray-700 font-semibold">Agendamento Confirmado</p>
+              <div className="w-20 h-1 bg-gradient-to-r from-green-400 to-blue-400 rounded-full mx-auto mt-2"></div>
+            </div>
+            
+            {/* Card de Resumo */}
+            <div className="bg-gradient-to-b from-green-50 to-green-100 rounded-xl p-4 mb-6 shadow-sm">
+              <h4 className="font-bold text-gray-900 mb-4 flex items-center">
+                📋 Resumo do Agendamento
+              </h4>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between items-center bg-green-50 rounded-lg p-3">
+                  <span className="text-gray-700 flex items-center">📅 <span className="ml-2">Data:</span></span>
+                  <span className="font-bold text-gray-900">{new Date(agendamentoConfirmado.data).toLocaleDateString('pt-BR')}</span>
+                </div>
+                
+                <div className="flex justify-between items-center bg-green-50 rounded-lg p-3">
+                  <span className="text-gray-700 flex items-center">⏰ <span className="ml-2">Horário:</span></span>
+                  <span className="font-bold text-gray-900">{agendamentoConfirmado.hora}</span>
+                  </div>
+                
+                <div className="flex justify-between items-center bg-green-50 rounded-lg p-3">
+                  <span className="text-gray-700 flex items-center">🏢 <span className="ml-2">Empresa:</span></span>
+                  <span className="font-bold text-gray-900 text-right">{agendamentoConfirmado.empresa_nome}</span>
+                  </div>
+                
+                <div className="flex justify-between items-center bg-green-50 rounded-lg p-3">
+                  <span className="text-gray-700 flex items-center">👤 <span className="ml-2">Funcionário:</span></span>
+                  <span className="font-bold text-gray-900">{agendamentoConfirmado.funcionario_nome}</span>
+                </div>
+
+                <div className="flex justify-between items-center bg-green-50 rounded-lg p-3">
+                  <span className="text-gray-700 flex items-center">🛠️ <span className="ml-2">Serviços:</span></span>
+                  <span className="font-bold text-gray-900 text-right">
+                    {agendamentoConfirmado.servicos.map(s => s.nome).join(', ')}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center bg-green-200 rounded-lg p-4 border border-green-300">
+                  <span className="font-bold text-green-700 flex items-center">💰 <span className="ml-2">Total:</span></span>
+                  <span className="text-xl font-bold text-green-600">R$ {agendamentoConfirmado.valor_total.toFixed(2)}</span>
+                    </div>
+                    </div>
+                  </div>
+
+            {/* Botões */}
+            <div className="space-y-3">
+                  <button
+                onClick={() => {
+                  setAgendamentoConfirmado(null);
+                  navigate('/');
+                }}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-6 px-8 rounded-2xl text-xl font-bold hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 min-h-[60px] flex items-center justify-center"
+              >
+                🏠 Voltar ao Início
+                  </button>
+              
+                  <button
+                onClick={() => {
+                  setAgendamentoConfirmado(null);
+                  // Reset form para novo agendamento na mesma empresa
+                  setQuickBooking({ 
+                    nome: user.nome,
+                    telefone: user.telefone || user.whatsapp,
+                    data: '', 
+                    hora: '', 
+                    funcionario_id: '', 
+                    servicos: [],
+                    observacoes: '',
+                    recorrente: false,
+                    tipo_recorrencia: 'semanal',
+                    fim_recorrencia: ''
+                  });
+                }}
+                className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-6 px-8 rounded-2xl text-xl font-bold hover:from-green-600 hover:to-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 min-h-[60px] flex items-center justify-center"
+              >
+                ➕ Novo Agendamento
+                  </button>
+                </div>
+            </div>
+          </div>
       )}
     </div>
   );

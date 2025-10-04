@@ -22,7 +22,7 @@ const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }
     
     // Buscar agendamentos ativos (não concluídos) com esta empresa
     const agendamentosAtivos = agendamentos.filter(agendamento => 
-      agendamento.clienteEmail === currentUser.email && 
+      (agendamento.cliente_email === currentUser.email || agendamento.clienteEmail === currentUser.email) && 
       agendamento.empresa_id === empresa.id &&
       (agendamento.status === 'agendado' || agendamento.status === 'confirmado') &&
       agendamento.status !== 'realizado' && 
@@ -54,21 +54,30 @@ const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }
     e.preventDefault();
     e.stopPropagation();
     
+    console.log('🔍 EmpresaCardWithFavorites - handleBookingClick chamado');
+    console.log('🔍 Current user:', currentUser);
+    console.log('🔍 Current user tipo:', currentUser?.tipo);
+    console.log('🔍 Empresa ID:', empresa.id);
+    console.log('🔍 Agendamento status:', agendamentoStatus);
+    console.log('🔍 localStorage currentUser:', localStorage.getItem('currentUser'));
+    
     // A verificação de login já foi feita antes de chegar nesta tela
     // Se o usuário chegou aqui, ele já está logado como cliente
     
     // Se já tem agendamento confirmado, não permitir novo agendamento
     if (agendamentoStatus === 'confirmado') {
+      console.log('❌ Já tem agendamento confirmado');
       return;
     }
     
     // Se tem agendamento pendente, mostrar mensagem ou permitir visualizar
     if (agendamentoStatus === 'agendado') {
-      // Aqui você pode implementar uma lógica para visualizar o agendamento existente
+      console.log('❌ Já tem agendamento pendente');
       alert('Você já tem um agendamento pendente com esta empresa.');
       return;
     }
     
+    console.log('✅ Redirecionando para:', `/cliente/empresa/${empresa.id}`);
     // Redirecionar para a página de agendamento
     navigate(`/cliente/empresa/${empresa.id}`);
   };

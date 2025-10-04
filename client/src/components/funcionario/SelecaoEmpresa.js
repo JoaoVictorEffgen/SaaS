@@ -37,20 +37,29 @@ const SelecaoEmpresa = () => {
     if (user && user.email) {
       // Buscar agendamentos pelo email do cliente (que é mais confiável)
       const todosAgendamentos = localStorageService.getAgendamentos();
+      console.log('🔍 Todos os agendamentos:', todosAgendamentos);
+      console.log('🔍 Email do usuário:', user.email);
+      
       const agendamentosDoCliente = todosAgendamentos.filter(agendamento => 
-        agendamento.clienteEmail === user.email
+        agendamento.cliente_email === user.email || agendamento.clienteEmail === user.email
       );
+      
+      console.log('🔍 Agendamentos do cliente:', agendamentosDoCliente);
       
       // Criar histórico com ações (agendamento/cancelamento)
       const history = agendamentosDoCliente
         .map(agendamento => ({
           ...agendamento,
           tipo: agendamento.status === 'cancelado' ? 'cancelado' : 'agendado',
-          dataAcao: agendamento.status === 'cancelado' ? agendamento.dataCancelamento : agendamento.dataAgendamento,
-          empresaNome: empresas.find(e => e.id === (agendamento.empresa_id || agendamento.empresaId))?.nome || 'Empresa não encontrada'
+          dataAcao: agendamento.status === 'cancelado' ? agendamento.dataCancelamento : agendamento.data,
+          empresaNome: empresas.find(e => e.id === (agendamento.empresa_id || agendamento.empresaId))?.nome || 'Empresa não encontrada',
+          servico_nome: agendamento.servicos ? agendamento.servicos.map(s => s.nome).join(', ') : 'Serviço não especificado',
+          hora_inicio: agendamento.hora || agendamento.hora_inicio || 'Horário não especificado'
         }))
         .sort((a, b) => new Date(b.dataAcao) - new Date(a.dataAcao))
         .slice(0, 15); // Últimas 15 ações
+      
+      console.log('🔍 Histórico criado:', history);
       
       setClienteHistory(history);
     }
@@ -152,6 +161,31 @@ const SelecaoEmpresa = () => {
     }
   };
 
+
+  // Função para confirmar agendamento específico
+  const confirmarAgendamento = (agendamentoId) => {
+    const resultado = localStorageService.confirmarAgendamento(agendamentoId);
+    if (resultado) {
+      alert('✅ Agendamento confirmado com sucesso!');
+      loadClienteHistory();
+      window.location.reload();
+    } else {
+      alert('❌ Erro ao confirmar agendamento.');
+    }
+  };
+
+  // Função para cancelar agendamento específico
+  const cancelarAgendamento = (agendamentoId) => {
+    const resultado = localStorageService.cancelarAgendamento(agendamentoId);
+    if (resultado.sucesso) {
+      alert('❌ Agendamento cancelado com sucesso!');
+      loadClienteHistory();
+      window.location.reload();
+    } else {
+      alert(`❌ Não foi possível cancelar: ${resultado.erro}`);
+    }
+  };
+
   // Permitir acesso mesmo sem login - usuário pode ver empresas
 
 
@@ -192,6 +226,7 @@ const SelecaoEmpresa = () => {
                   <Home className="h-4 w-4 mr-2" />
                   INÍCIO
                 </button>
+                
                 
                 <button
                   onClick={handleLogout}
@@ -319,11 +354,8 @@ const SelecaoEmpresa = () => {
                           key={empresa.id} 
                           empresa={empresa} 
                           onSelect={(empresa) => {
-                            // Verificar se o usuário está logado
-                            if (!user || user.tipo !== 'cliente') {
-                              alert('Você precisa fazer login para agendar um serviço.');
-                              return;
-                            }
+                            // A verificação de login já foi feita antes de chegar nesta tela
+                            // Se o usuário chegou aqui, ele já está logado como cliente
                             navigate(`/cliente/empresa/${empresa.id}`);
                           }}
                         />
@@ -461,27 +493,94 @@ const SelecaoEmpresa = () => {
                   
                   {clienteHistory.length > 0 ? (
                     <div className="space-y-4">
-                      {clienteHistory.map((item, index) => (
-                        <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            {item.tipo === 'agendado' ? (
-                              <CheckCircle className="w-5 h-5 text-green-500" />
-                            ) : (
-                              <XCircle className="w-5 h-5 text-red-500" />
-                            )}
-                            <div>
-                              <p className="font-medium text-gray-900">{item.empresaNome}</p>
-                              <p className="text-sm text-gray-600">
-                                {item.tipo === 'agendado' ? 'Agendado em' : 'Cancelado em'} {formatDate(item.dataAcao)}
-                              </p>
+                      {clienteHistory.map((item, index) => {
+                        const agora = new Date();
+                        const dataAgendamento = new Date(`${item.data}T${item.hora_inicio}`);
+                        const diferencaMinutos = (dataAgendamento - agora) / (1000 * 60);
+                        const podeCancelar = localStorageService.podeCancelarAgendamento(item);
+                        
+                        return (
+                          <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex items-center space-x-3 flex-1">
+                              {item.status === 'confirmado' ? (
+                                <CheckCircle className="w-5 h-5 text-green-500" />
+                              ) : item.status === 'cancelado' ? (
+                                <XCircle className="w-5 h-5 text-red-500" />
+                              ) : item.status === 'agendado' || item.status === 'pendente' ? (
+                                <Clock className="w-5 h-5 text-yellow-500" />
+                              ) : (
+                                <CheckCircle className="w-5 h-5 text-blue-500" />
+                              )}
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900">{item.empresaNome}</p>
+                                <p className="text-sm text-gray-600">
+                                  {item.status === 'cancelado' ? 'Cancelado em' : 'Agendado em'} {formatDate(item.dataAcao)}
+                                </p>
+                                {item.status === 'confirmado' && diferencaMinutos > 0 && (
+                                  <p className="text-xs text-green-600 font-medium">
+                                    {diferencaMinutos > 60 ? 
+                                      `Faltam ${Math.round(diferencaMinutos / 60)}h ${Math.round(diferencaMinutos % 60)}min` :
+                                      `Faltam ${Math.round(diferencaMinutos)}min`
+                                    }
+                                  </p>
+                                )}
+                                {!podeCancelar.pode && item.status !== 'cancelado' && (
+                                  <p className="text-xs text-red-600 font-medium">
+                                    {podeCancelar.motivo}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="text-center mr-4">
+                              <p className="text-sm font-medium text-gray-900">{item.servico_nome}</p>
+                              <p className="text-xs text-gray-500">{formatTime(item.hora_inicio)}</p>
+                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${
+                                item.status === 'confirmado' ? 'bg-green-100 text-green-800' :
+                                item.status === 'cancelado' ? 'bg-red-100 text-red-800' :
+                                item.status === 'agendado' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                                {item.status === 'confirmado' ? 'CONFIRMADO' :
+                                 item.status === 'cancelado' ? 'CANCELADO' :
+                                 item.status === 'agendado' ? 'AGENDADO' :
+                                 item.status.toUpperCase()}
+                              </span>
+                            </div>
+
+                            {/* Botões de Ação */}
+                            <div className="flex flex-col space-y-2">
+                              {(item.status === 'agendado' || item.status === 'pendente') && (
+                                <button
+                                  onClick={() => confirmarAgendamento(item.id)}
+                                  className="flex items-center justify-center px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600 transition-colors font-semibold"
+                                  title="Confirmar Agendamento"
+                                >
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  CONFIRMAR
+                                </button>
+                              )}
+                              
+                              {item.status !== 'cancelado' && podeCancelar.pode && (
+                                <button
+                                  onClick={() => cancelarAgendamento(item.id)}
+                                  className="flex items-center justify-center px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors font-semibold"
+                                  title="Cancelar Agendamento"
+                                >
+                                  <XCircle className="w-3 h-3 mr-1" />
+                                  CANCELAR
+                                </button>
+                              )}
+                              
+                              {item.status !== 'cancelado' && !podeCancelar.pode && (
+                                <div className="px-3 py-1 bg-gray-300 text-gray-600 text-xs rounded-lg font-semibold text-center">
+                                  NÃO PODE CANCELAR
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm font-medium text-gray-900">{item.servico_nome}</p>
-                            <p className="text-xs text-gray-500">{formatTime(item.hora_inicio)}</p>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-center py-12">
