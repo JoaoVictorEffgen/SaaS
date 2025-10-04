@@ -198,103 +198,101 @@ const SelecaoEmpresa = () => {
         <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-green-400/10 to-blue-400/10 rounded-full blur-3xl animate-pulse"></div>
       </div>
 
-      <div className="relative z-10">
-        {/* Header Moderno */}
-        <header className="bg-white/90 backdrop-blur-sm shadow-lg border-b border-white/20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-6">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-white" />
+      <div className="relative z-10 min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+        {/* Header Simplificado */}
+        <header className="bg-white/80 backdrop-blur-sm shadow-sm">
+          <div className="max-w-6xl mx-auto px-6 py-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    {user ? `Olá, ${user.nome}!` : 'Escolha uma empresa para agendar seus serviços'}
+                  <h1 className="text-xl font-bold text-gray-900">
+                    {user ? `Olá, ${user.nome.split(' ')[0]}!` : 'Olá!'}
                   </h1>
                   <p className="text-sm text-gray-600">
-                    {user ? 'Escolha uma empresa para agendar seus serviços' : 'Faça login para agendar ou explore as empresas disponíveis'}
+                    Escolha uma empresa para agendar seus serviços
                   </p>
                 </div>
               </div>
               
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
                 <button
                   onClick={() => navigate('/')}
-                  className="flex items-center px-4 py-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-all duration-200 font-semibold"
-                  title="Voltar à Página Inicial"
+                  className="p-2 text-gray-600 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
+                  title="Voltar ao Início"
                 >
-                  <Home className="h-4 w-4 mr-2" />
-                  INÍCIO
+                  <Home className="h-5 w-5" />
                 </button>
-                
                 
                 <button
                   onClick={handleLogout}
-                  className="flex items-center px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors rounded-xl hover:bg-gray-50"
+                  className="p-2 text-gray-600 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-100"
+                  title="Sair"
                 >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sair
+                  <LogOut className="h-5 w-5" />
                 </button>
               </div>
             </div>
           </div>
         </header>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Título Principal */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl mb-4 shadow-lg">
-              <Building2 className="w-8 h-8 text-white" />
+        <div className="max-w-6xl mx-auto px-6 py-12">
+          {/* Título Principal Centralizado */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-600 rounded-2xl mb-6 shadow-lg">
+              <Building2 className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-4xl font-bold text-gray-900 mb-2">Empresas Disponíveis</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-3">Empresas Disponíveis</h2>
             <p className="text-lg text-gray-600">Selecione uma empresa para agendar seus serviços</p>
           </div>
 
           {/* Abas de Navegação */}
-          <div className="flex justify-center mb-8">
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-2 shadow-lg border border-white/50">
-              <div className="flex space-x-2">
+          <div className="flex justify-center mb-10">
+            <div className="bg-white rounded-xl p-1.5 shadow-lg border border-gray-100">
+              <div className="flex space-x-1">
                 <button
                   onClick={() => setActiveTab('todas')}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                  className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-all duration-200 font-medium ${
                     activeTab === 'todas'
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   <Building2 className="w-4 h-4" />
-                  <span className="font-medium">Todas</span>
+                  <span>Todas</span>
                 </button>
                 
                 <button
                   onClick={() => setActiveTab('favoritas')}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                  className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-all duration-200 font-medium ${
                     activeTab === 'favoritas'
-                      ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   <Heart className="w-4 h-4" />
-                  <span className="font-medium">Favoritas ({empresasFavoritas.length})</span>
+                  <span>Favoritas ({empresasFavoritas.length})</span>
                 </button>
                 
                 <button
                   onClick={() => setActiveTab('historico')}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                  className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-all duration-200 font-medium ${
                     activeTab === 'historico'
-                      ? 'bg-gradient-to-r from-green-500 to-teal-500 text-white shadow-lg'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   <Clock className="w-4 h-4" />
-                  <span className="font-medium">Histórico</span>
+                  <span>Histórico</span>
                 </button>
               </div>
             </div>
           </div>
 
           {/* Barra de Pesquisa */}
-          <div className="max-w-2xl mx-auto mb-8">
+          <div className="max-w-2xl mx-auto mb-12">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
@@ -304,7 +302,7 @@ const SelecaoEmpresa = () => {
                 placeholder="Pesquisar por nome, especialização ou serviços..."
                 value={searchTerm}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/90 backdrop-blur-sm shadow-lg text-lg"
+                className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 bg-white shadow-lg text-lg"
               />
               {searchTerm && (
                 <button
