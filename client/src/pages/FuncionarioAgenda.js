@@ -13,9 +13,11 @@ import {
   Save, 
   X,
   BarChart3,
-  ClipboardList
+  ClipboardList,
+  RefreshCw
 } from 'lucide-react';
 import { useLocalAuth } from '../contexts/LocalAuthContext';
+import localStorageService from '../services/localStorageService';
 
 const FuncionarioAgenda = () => {
   const navigate = useNavigate();
@@ -26,6 +28,9 @@ const FuncionarioAgenda = () => {
   const [notifications, setNotifications] = useState([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingConfirmations, setPendingConfirmations] = useState([]);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelAgendamentoId, setCancelAgendamentoId] = useState(null);
+  const [cancelJustificativa, setCancelJustificativa] = useState('');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
     nome: '',
@@ -113,40 +118,171 @@ const FuncionarioAgenda = () => {
     // Escutar eventos customizados (para mudanças na mesma aba)
     const handleCustomEvent = () => {
       console.log('🔔 Evento customizado de notificação detectado');
+      // Só carregar novas notificações, não recarregar todas
       loadFuncionarioNotifications();
     };
 
     window.addEventListener('notificationUpdate', handleCustomEvent);
 
-    // Atualizar notificações a cada 5 segundos (fallback)
-    const interval = setInterval(() => {
-      loadFuncionarioNotifications();
-    }, 5000);
+    // Remover intervalo automático - usuário controla quando atualizar
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('notificationUpdate', handleCustomEvent);
-      clearInterval(interval);
     };
+  }, [currentUser?.id]);
+
+  // Timer para verificar automaticamente agendamentos que devem ser marcados como realizados
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const checkAutoRealizados = () => {
+      console.log('⏰ Verificando agendamentos para auto-marcação como realizados...');
+      loadAgendamentos();
+    };
+
+    // Verificar imediatamente
+    checkAutoRealizados();
+
+    // Verificar a cada 5 minutos
+    const interval = setInterval(checkAutoRealizados, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
   }, [currentUser?.id]);
 
   const loadAgendamentos = async () => {
     try {
+      console.log('🔍 Carregando agendamentos para funcionário:', currentUser.id);
+      
       const agendamentosData = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+      console.log('📋 Todos os agendamentos:', agendamentosData);
+      
       const funcionarioAgendamentos = agendamentosData.filter(
         agendamento => agendamento.funcionario_id === currentUser.id
       );
       
-      setAgendamentos(funcionarioAgendamentos);
+      console.log('👤 Agendamentos do funcionário:', funcionarioAgendamentos);
+      
+      // Verificar e marcar automaticamente agendamentos que já passaram como realizados
+      const agora = new Date();
+      let agendamentosAtualizados = false;
+      
+      const agendamentosComAutoRealizado = funcionarioAgendamentos.map(agendamento => {
+        // Verificar se o agendamento já passou da data/hora e ainda não foi cancelado/realizado
+        if (agendamento.status === 'agendado' || agendamento.status === 'confirmado') {
+          const dataAgendamento = new Date(`${agendamento.data}T${agendamento.hora}`);
+          
+          // Se já passou da data/hora (com margem de 30 minutos para evitar problemas de timezone)
+          if (dataAgendamento.getTime() < (agora.getTime() - (30 * 60 * 1000))) {
+            console.log('⏰ Auto-marcando como realizado:', {
+              id: agendamento.id,
+              data: agendamento.data,
+              hora: agendamento.hora,
+              status: agendamento.status
+            });
+            
+            agendamentosAtualizados = true;
+            return {
+              ...agendamento,
+              status: 'realizado',
+              dataRealizacao: agora.toISOString()
+            };
+          }
+        }
+        return agendamento;
+      });
+      
+      // Se houve atualizações, salvar no localStorage
+      if (agendamentosAtualizados) {
+        const todosAgendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+        const todosAtualizados = todosAgendamentos.map(agendamento => {
+          const atualizado = agendamentosComAutoRealizado.find(a => a.id === agendamento.id);
+          return atualizado || agendamento;
+        });
+        
+        localStorage.setItem('agendamentos', JSON.stringify(todosAtualizados));
+        
+        // Atualizar também na chave específica da empresa
+        const empresaIds = [...new Set(agendamentosComAutoRealizado.map(a => a.empresa_id))];
+        empresaIds.forEach(empresaId => {
+          const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
+          const agendamentosEmpresaAtualizados = agendamentosEmpresa.map(agendamento => {
+            const atualizado = agendamentosComAutoRealizado.find(a => a.id === agendamento.id);
+            return atualizado || agendamento;
+          });
+          localStorage.setItem(`agendamentos_${empresaId}`, JSON.stringify(agendamentosEmpresaAtualizados));
+        });
+        
+        console.log('✅ Agendamentos auto-marcados como realizados salvos no localStorage');
+        
+        // Notificar o funcionário sobre os agendamentos auto-marcados
+        const autoRealizados = agendamentosComAutoRealizado.filter(a => a.status === 'realizado' && a.dataRealizacao);
+        if (autoRealizados.length > 0) {
+          addNotification(
+            'Agendamentos Auto-Marcados',
+            `${autoRealizados.length} agendamento(s) foram automaticamente marcados como realizados por terem passado da data/hora prevista.`,
+            'info'
+          );
+        }
+        
+        // Usar os agendamentos atualizados para continuar o processamento
+        funcionarioAgendamentos.splice(0, funcionarioAgendamentos.length, ...agendamentosComAutoRealizado);
+      }
+      
+      // Mapear dados corretamente
+      const agendamentosMapeados = funcionarioAgendamentos.map(agendamento => ({
+        ...agendamento,
+        // Garantir que os campos estão corretos
+        clienteNome: agendamento.cliente_nome || agendamento.clienteNome || 'Cliente não informado',
+        servicoNome: agendamento.servicos ? 
+          (Array.isArray(agendamento.servicos) ? 
+            agendamento.servicos.map(s => s.nome).join(', ') : 
+            agendamento.servicos.nome || 'Serviço não informado') : 
+          'Serviço não informado',
+        horario: agendamento.hora || agendamento.horario || 'Horário não informado',
+        data: agendamento.data || 'Data não informada'
+      }));
+      
+      // Ordenar agendamentos: primeiro os que precisam de resposta, depois os que não precisam
+      const agendamentosOrdenados = agendamentosMapeados.sort((a, b) => {
+        // Status que precisam de resposta (prioridade alta)
+        const precisaResposta = (status) => ['em_aprovacao', 'pendente'].includes(status);
+        
+        // Status que não precisam de resposta (prioridade baixa)
+        const naoPrecisaResposta = (status) => ['cancelado', 'agendado', 'confirmado', 'realizado'].includes(status);
+        
+        const aPrecisaResposta = precisaResposta(a.status);
+        const bPrecisaResposta = precisaResposta(b.status);
+        
+        // Se um precisa de resposta e o outro não, priorizar o que precisa
+        if (aPrecisaResposta && !bPrecisaResposta) {
+          return -1;
+        }
+        if (!aPrecisaResposta && bPrecisaResposta) {
+          return 1;
+        }
+        
+        // Se ambos têm a mesma prioridade, ordenar por data e horário
+        const dataA = new Date(`${a.data}T${a.horario}`);
+        const dataB = new Date(`${b.data}T${b.horario}`);
+        
+        const resultado = dataA - dataB;
+        console.log(`📅 Ordenação por data: ${resultado > 0 ? 'b vem primeiro' : resultado < 0 ? 'a vem primeiro' : 'iguais'}`);
+        
+        return resultado; // Ordem crescente (mais antigo primeiro)
+      });
+      
+      console.log('✅ Agendamentos mapeados e ordenados:', agendamentosOrdenados);
+      setAgendamentos(agendamentosOrdenados);
 
       // Filtrar agendamentos de hoje
       const hoje = new Date().toISOString().split('T')[0];
-      const hojeAgendamentos = funcionarioAgendamentos.filter(
+      const hojeAgendamentos = agendamentosOrdenados.filter(
         agendamento => agendamento.data === hoje
       );
       setAgendamentosHoje(hojeAgendamentos);
     } catch (error) {
-      console.error('Erro ao carregar agendamentos:', error);
+      console.error('❌ Erro ao carregar agendamentos:', error);
     }
   };
 
@@ -305,24 +441,59 @@ const FuncionarioAgenda = () => {
 
   const updateAgendamentoStatus = async (agendamentoId, novoStatus) => {
     try {
-      const agendamentosData = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-      const agendamentosAtualizados = agendamentosData.map(agendamento => {
-        if (agendamento.id === agendamentoId) {
-          return { ...agendamento, status: novoStatus };
-        }
-        return agendamento;
-      });
+      console.log('🔄 Atualizando status do agendamento:', { agendamentoId, novoStatus });
       
-      localStorage.setItem('agendamentos', JSON.stringify(agendamentosAtualizados));
+      if (novoStatus === 'agendado') {
+        // Usar o localStorageService para confirmar
+        localStorageService.confirmarAgendamento(agendamentoId);
+      } else if (novoStatus === 'cancelado') {
+        // Usar o localStorageService para cancelar
+        const resultado = localStorageService.cancelarAgendamento(agendamentoId);
+        if (!resultado.sucesso) {
+          alert(`❌ Erro ao cancelar: ${resultado.erro}`);
+          return;
+        }
+      } else {
+        // Para outros status, atualizar manualmente
+        const agendamentosData = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+        const agendamentosAtualizados = agendamentosData.map(agendamento => {
+          if (agendamento.id === agendamentoId) {
+            return { ...agendamento, status: novoStatus };
+          }
+          return agendamento;
+        });
+        
+        localStorage.setItem('agendamentos', JSON.stringify(agendamentosAtualizados));
+        
+        // Também atualizar na chave específica da empresa
+        const agendamento = agendamentosData.find(a => a.id === agendamentoId);
+        if (agendamento?.empresa_id) {
+          const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${agendamento.empresa_id}`) || '[]');
+          const agendamentosEmpresaAtualizados = agendamentosEmpresa.map(a => {
+            if (a.id === agendamentoId) {
+              return { ...a, status: novoStatus };
+            }
+            return a;
+          });
+          localStorage.setItem(`agendamentos_${agendamento.empresa_id}`, JSON.stringify(agendamentosEmpresaAtualizados));
+        }
+      }
+      
       await loadAgendamentos();
+      
+      const mensagemStatus = {
+        'agendado': 'confirmado',
+        'cancelado': 'cancelado',
+        'realizado': 'marcado como realizado'
+      }[novoStatus] || novoStatus;
       
       addNotification(
         'Status Atualizado',
-        `Agendamento ${novoStatus === 'confirmado' ? 'confirmado' : 'cancelado'} com sucesso.`,
+        `Agendamento ${mensagemStatus} com sucesso.`,
         'success'
       );
     } catch (error) {
-      console.error('Erro ao atualizar status:', error);
+      console.error('❌ Erro ao atualizar status:', error);
       addNotification('Erro', 'Erro ao atualizar status do agendamento.', 'error');
     }
   };
@@ -365,43 +536,147 @@ const FuncionarioAgenda = () => {
     
     setNotifications(prev => [novaNotificacao, ...prev.slice(0, 9)]);
     
-    // Auto-remover após 5 segundos
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== novaNotificacao.id));
-    }, 5000);
+    // Não auto-remover mais - usuário controla quando fechar
   };
 
   const removeNotification = (id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    console.log('🗑️ Removendo notificação:', id);
+    setNotifications(prev => prev.map(n => 
+      n.id === id ? { ...n, removidaPeloUsuario: true } : n
+    ).filter(n => n.id !== id));
+  };
+
+  // Confirmar agendamento diretamente da notificação
+  const confirmarAgendamentoNotificacao = (agendamentoId) => {
+    try {
+      console.log('✅ Confirmando agendamento:', agendamentoId);
+      localStorageService.confirmarAgendamento(agendamentoId);
+      
+      // Remover notificação pendente
+      setNotifications(prev => prev.filter(n => n.agendamentoId !== agendamentoId));
+      
+      // Não recarregar automaticamente - usuário controla as notificações
+      
+      alert('✅ Agendamento confirmado com sucesso!');
+    } catch (error) {
+      console.error('❌ Erro ao confirmar agendamento:', error);
+      alert('❌ Erro ao confirmar agendamento');
+    }
+  };
+
+  // Cancelar agendamento diretamente da notificação
+  const cancelarAgendamentoNotificacao = (agendamentoId) => {
+    try {
+      console.log('❌ Cancelando agendamento:', agendamentoId);
+      const resultado = localStorageService.cancelarAgendamento(agendamentoId);
+      
+      if (resultado.sucesso) {
+        // Remover notificação pendente
+        setNotifications(prev => prev.filter(n => n.agendamentoId !== agendamentoId));
+        
+        // Não recarregar automaticamente - usuário controla as notificações
+        
+        alert('❌ Agendamento cancelado com sucesso!');
+      } else {
+        alert(`❌ Não foi possível cancelar: ${resultado.erro}`);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao cancelar agendamento:', error);
+      alert('❌ Erro ao cancelar agendamento');
+    }
+  };
+
+  // Mostrar modal de cancelamento com justificativa
+  const abrirModalCancelamento = (agendamentoId) => {
+    setCancelAgendamentoId(agendamentoId);
+    setCancelJustificativa('');
+    setShowCancelModal(true);
+  };
+
+  // Cancelar agendamento com justificativa
+  const cancelarComJustificativa = async () => {
+    if (!cancelJustificativa.trim()) {
+      alert('❌ Por favor, informe a justificativa para o cancelamento.');
+      return;
+    }
+
+    try {
+      console.log('❌ Cancelando agendamento com justificativa:', {
+        agendamentoId: cancelAgendamentoId,
+        justificativa: cancelJustificativa
+      });
+
+      const resultado = localStorageService.cancelarAgendamentoComJustificativa(cancelAgendamentoId, cancelJustificativa);
+      
+      if (resultado.sucesso) {
+        await loadAgendamentos();
+        setShowCancelModal(false);
+        setCancelJustificativa('');
+        setCancelAgendamentoId(null);
+        
+        addNotification(
+          'Agendamento Cancelado',
+          `Agendamento cancelado com sucesso. Justificativa enviada ao cliente.`,
+          'success'
+        );
+      } else {
+        alert(`❌ Não foi possível cancelar: ${resultado.erro}`);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao cancelar agendamento:', error);
+      alert('❌ Erro ao cancelar agendamento');
+    }
   };
 
   // Carregar notificações específicas do funcionário
   const loadFuncionarioNotifications = () => {
-    if (!currentUser?.id) return;
+    if (!currentUser?.id) {
+      console.log('❌ loadFuncionarioNotifications: currentUser.id não encontrado');
+      return;
+    }
     
     try {
+      console.log('🔍 Carregando notificações para funcionário:', currentUser.id);
+      
       // Buscar notificações específicas do funcionário
       const funcionarioNotifications = JSON.parse(localStorage.getItem(`notifications_funcionario_${currentUser.id}`) || '[]');
+      console.log('📋 Notificações encontradas:', funcionarioNotifications);
       
       // Converter para o formato esperado
       const notificacoesFormatadas = funcionarioNotifications.map(notif => ({
-        id: notif.id,
-        titulo: notif.acao === 'confirmado' ? 'Agendamento Confirmado' : 'Agendamento Cancelado',
+        id: `funcionario_${notif.id}`,
+        titulo: notif.titulo || (notif.acao === 'confirmado' ? 'Agendamento Confirmado' : 
+                                 notif.acao === 'cancelado' ? 'Agendamento Cancelado' : 
+                                 'Novo Agendamento'),
         mensagem: notif.mensagem,
-        tipo: notif.acao === 'confirmado' ? 'success' : 'warning',
+        tipo: notif.acao === 'confirmado' ? 'success' : 
+              notif.acao === 'cancelado' ? 'error' : 'info',
         timestamp: new Date(notif.dataCriacao),
-        lida: notif.lida
+        lida: notif.lida || false,
+        // Propriedades para ações
+        acao: notif.acao,
+        podeConfirmar: notif.podeConfirmar || false,
+        podeCancelar: notif.podeCancelar || false,
+        agendamentoId: notif.agendamentoId,
+        clienteEmail: notif.clienteEmail,
+        // Flag para controlar se já foi removida pelo usuário
+        removidaPeloUsuario: false
       }));
       
-      // Substituir notificações (não adicionar às existentes para evitar duplicatas)
+      console.log('✅ Notificações formatadas:', notificacoesFormatadas);
+      
+      // Só adicionar notificações que não foram removidas pelo usuário
       setNotifications(prev => {
-        // Filtrar notificações antigas que não são do funcionário
-        const notificacoesAntigas = prev.filter(n => !n.id.startsWith('funcionario_'));
-        return [...notificacoesFormatadas, ...notificacoesAntigas];
+        const notificacoesExistentes = prev.filter(n => n.removidaPeloUsuario !== true);
+        const novasNotificacoes = notificacoesFormatadas.filter(nova => 
+          !notificacoesExistentes.some(existente => existente.id === nova.id)
+        );
+        
+        return [...notificacoesExistentes, ...novasNotificacoes];
       });
       
     } catch (error) {
-      console.error('Erro ao carregar notificações do funcionário:', error);
+      console.error('❌ Erro ao carregar notificações do funcionário:', error);
     }
   };
 
@@ -488,7 +763,9 @@ const FuncionarioAgenda = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
+      case 'em_aprovacao': return 'text-orange-600 bg-orange-100';
       case 'confirmado': return 'text-green-600 bg-green-100';
+      case 'agendado': return 'text-green-600 bg-green-100';
       case 'cancelado': return 'text-red-600 bg-red-100';
       case 'realizado': return 'text-blue-600 bg-blue-100';
       case 'pendente': return 'text-yellow-600 bg-yellow-100';
@@ -498,7 +775,9 @@ const FuncionarioAgenda = () => {
 
   const getStatusText = (status) => {
     switch (status) {
+      case 'em_aprovacao': return 'Em Aprovação';
       case 'confirmado': return 'Confirmado';
+      case 'agendado': return 'Agendado';
       case 'cancelado': return 'Cancelado';
       case 'realizado': return 'Realizado';
       case 'pendente': return 'Pendente';
@@ -599,6 +878,18 @@ const FuncionarioAgenda = () => {
               </button>
               
               <button
+                onClick={() => {
+                  console.log('🔄 Atualizando notificações manualmente...');
+                  loadFuncionarioNotifications();
+                }}
+                className="p-2 text-gray-700 hover:text-gray-900 transition-colors"
+                title="Atualizar Notificações"
+              >
+                <RefreshCw className="h-5 w-5" />
+              </button>
+              
+              
+              <button
                 onClick={() => navigate('/')}
                 className="flex items-center space-x-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
               >
@@ -628,8 +919,15 @@ const FuncionarioAgenda = () => {
       {/* Notifications Panel */}
       {showNotifications && (
         <div className="fixed top-20 right-4 z-50 w-80 max-h-96 overflow-y-auto bg-white rounded-lg shadow-xl border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
+          <div className="p-4 border-b border-gray-200 flex justify-between items-center">
             <h3 className="text-lg font-semibold text-gray-900">Notificações</h3>
+            <button
+              onClick={() => setShowNotifications(false)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              title="Fechar"
+            >
+              ✕
+            </button>
           </div>
           <div className="p-4">
             {notifications.length === 0 ? (
@@ -652,16 +950,40 @@ const FuncionarioAgenda = () => {
                     )}
                     
                     <div className="flex justify-between items-start">
-                      <div>
+                      <div className="flex-1">
                         <h4 className="font-medium text-gray-900">{notification.titulo}</h4>
                         <p className="text-sm text-gray-600 mt-1">{notification.mensagem}</p>
                         <p className="text-xs text-gray-500 mt-1">
                           {notification.timestamp.toLocaleTimeString()}
                         </p>
+                        
+                        {/* Botões de ação para agendamentos pendentes */}
+                        {notification.acao === 'pendente' && notification.podeConfirmar && (
+                          <div className="flex space-x-3 mt-3">
+                            <button
+                              onClick={() => confirmarAgendamentoNotificacao(notification.agendamentoId)}
+                              className="flex items-center space-x-2 px-4 py-2 bg-white border-2 border-green-500 text-green-600 text-sm font-bold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:bg-green-50"
+                            >
+                              <div className="w-5 h-5 bg-green-500 rounded flex items-center justify-center shadow-sm">
+                                <span className="text-white text-xs font-bold">✓</span>
+                              </div>
+                              <span>Confirmar</span>
+                            </button>
+                            <button
+                              onClick={() => cancelarAgendamentoNotificacao(notification.agendamentoId)}
+                              className="flex items-center space-x-2 px-4 py-2 bg-white border-2 border-red-500 text-red-600 text-sm font-bold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:bg-red-50"
+                            >
+                              <div className="w-5 h-5 bg-red-500 rounded flex items-center justify-center shadow-sm">
+                                <span className="text-white text-xs font-bold">✕</span>
+                              </div>
+                              <span>Cancelar</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <button
                         onClick={() => removeNotification(notification.id)}
-                        className="text-gray-400 hover:text-gray-600"
+                        className="text-gray-400 hover:text-gray-600 ml-2"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -697,6 +1019,55 @@ const FuncionarioAgenda = () => {
                 className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
               >
                 Confirmar Todos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Modal with Justification */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Cancelar Agendamento
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Você está prestes a cancelar um agendamento já confirmado. 
+              Por favor, informe a justificativa que será enviada ao cliente.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Justificativa *
+              </label>
+              <textarea
+                value={cancelJustificativa}
+                onChange={(e) => setCancelJustificativa(e.target.value)}
+                placeholder="Ex: Horário indisponível, emergência médica, etc..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                rows={4}
+                maxLength={500}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {cancelJustificativa.length}/500 caracteres
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancelJustificativa('');
+                  setCancelAgendamentoId(null);
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={cancelarComJustificativa}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Confirmar Cancelamento
               </button>
             </div>
           </div>
@@ -807,8 +1178,10 @@ const FuncionarioAgenda = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {agendamentos.map(agendamento => (
-                        <tr key={agendamento.id}>
+                      {agendamentos.map(agendamento => {
+                        const precisaResposta = ['em_aprovacao', 'pendente'].includes(agendamento.status);
+                        return (
+                        <tr key={agendamento.id} className={precisaResposta ? 'bg-orange-50 border-l-4 border-orange-400' : ''}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {new Date(agendamento.data).toLocaleDateString('pt-BR')}
                           </td>
@@ -827,33 +1200,65 @@ const FuncionarioAgenda = () => {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            {agendamento.status === 'pendente' && (
+                            {/* Botões para agendamentos em aprovação */}
+                            {(agendamento.status === 'em_aprovacao' || agendamento.status === 'pendente') && (
                               <div className="flex space-x-2">
                                 <button
-                                  onClick={() => updateAgendamentoStatus(agendamento.id, 'confirmado')}
-                                  className="text-green-600 hover:text-green-900"
+                                  onClick={() => updateAgendamentoStatus(agendamento.id, 'agendado')}
+                                  className="flex items-center space-x-1 px-3 py-1 bg-white border-2 border-green-500 text-green-600 text-xs font-bold rounded-lg shadow-sm hover:shadow-md transition-all duration-200 hover:bg-green-50"
                                 >
-                                  Confirmar
+                                  <div className="w-4 h-4 bg-green-500 rounded flex items-center justify-center shadow-sm">
+                                    <span className="text-white text-xs font-bold">✓</span>
+                                  </div>
+                                  <span>Confirmar</span>
                                 </button>
                                 <button
                                   onClick={() => updateAgendamentoStatus(agendamento.id, 'cancelado')}
-                                  className="text-red-600 hover:text-red-900"
+                                  className="flex items-center space-x-1 px-3 py-1 bg-white border-2 border-red-500 text-red-600 text-xs font-bold rounded-lg shadow-sm hover:shadow-md transition-all duration-200 hover:bg-red-50"
                                 >
-                                  Cancelar
+                                  <div className="w-4 h-4 bg-red-500 rounded flex items-center justify-center shadow-sm">
+                                    <span className="text-white text-xs font-bold">✕</span>
+                                  </div>
+                                  <span>Cancelar</span>
                                 </button>
                               </div>
                             )}
-                            {agendamento.status === 'confirmado' && (
-                              <button
-                                onClick={() => updateAgendamentoStatus(agendamento.id, 'realizado')}
-                                className="text-blue-600 hover:text-blue-900"
-                              >
-                                Marcar Realizado
-                              </button>
+                            
+                            {/* Botão para agendamentos confirmados */}
+                            {(agendamento.status === 'confirmado' || agendamento.status === 'agendado') && (
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => updateAgendamentoStatus(agendamento.id, 'realizado')}
+                                  className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+                                >
+                                  ✅ Realizado
+                                </button>
+                                <button
+                                  onClick={() => abrirModalCancelamento(agendamento.id)}
+                                  className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
+                                >
+                                  ❌ Cancelar
+                                </button>
+                              </div>
+                            )}
+                            
+                            {/* Status final - sem ações */}
+                            {(agendamento.status === 'realizado' || agendamento.status === 'cancelado') && (
+                              <div className="flex flex-col items-center">
+                                <span className="text-gray-400 text-xs">
+                                  Finalizado
+                                </span>
+                                {agendamento.status === 'realizado' && agendamento.dataRealizacao && (
+                                  <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full mt-1" title="Auto-marcado como realizado">
+                                    Auto
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

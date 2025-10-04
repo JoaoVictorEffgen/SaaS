@@ -72,26 +72,48 @@ const SelecaoEmpresa = () => {
   const loadNotifications = () => {
     if (!user?.email) return;
     
+    console.log('🔔 Carregando notificações para cliente:', user.email);
+    
+    // Carregar notificações específicas do cliente (incluindo cancelamentos com justificativa)
+    const clienteNotifications = JSON.parse(localStorage.getItem(`notifications_cliente_${user.email}`) || '[]');
+    console.log('📋 Notificações específicas do cliente:', clienteNotifications);
+    
+    // Carregar notificações baseadas nos agendamentos
     const todosAgendamentos = localStorageService.getAgendamentos();
     const agendamentosDoCliente = todosAgendamentos.filter(agendamento => 
       (agendamento.cliente_email === user.email || agendamento.clienteEmail === user.email) &&
       (agendamento.status === 'confirmado' || agendamento.status === 'agendado')
     );
     
-    const notificacoes = agendamentosDoCliente
+    const notificacoesAgendamentos = agendamentosDoCliente
       .map(agendamento => ({
-        id: agendamento.id,
+        id: `agendamento_${agendamento.id}`,
         titulo: agendamento.status === 'confirmado' ? 'Agendamento Confirmado' : 'Novo Agendamento',
         mensagem: `Seu agendamento em ${empresas.find(e => e.id === agendamento.empresa_id)?.nome || 'empresa'} foi ${agendamento.status === 'confirmado' ? 'confirmado' : 'realizado'}`,
         data: agendamento.data,
         hora: agendamento.hora || agendamento.hora_inicio,
         status: agendamento.status,
-        tipo: 'agendamento'
-      }))
-      .sort((a, b) => new Date(`${b.data}T${b.hora}`) - new Date(`${a.data}T${a.hora}`))
-      .slice(0, 10); // Últimas 10 notificações
+        tipo: 'agendamento',
+        dataCriacao: agendamento.data_criacao || new Date().toISOString()
+      }));
     
-    setNotifications(notificacoes);
+    // Combinar notificações específicas com notificações de agendamentos
+    const todasNotificacoes = [
+      ...clienteNotifications.map(notif => ({
+        ...notif,
+        id: `notificacao_${notif.id}`,
+        dataCriacao: notif.dataCriacao || new Date().toISOString()
+      })),
+      ...notificacoesAgendamentos
+    ];
+    
+    // Ordenar por data de criação (mais recentes primeiro)
+    const notificacoesOrdenadas = todasNotificacoes
+      .sort((a, b) => new Date(b.dataCriacao) - new Date(a.dataCriacao))
+      .slice(0, 20); // Últimas 20 notificações
+    
+    console.log('✅ Notificações carregadas:', notificacoesOrdenadas);
+    setNotifications(notificacoesOrdenadas);
   };
 
   // Função de pesquisa
@@ -158,7 +180,14 @@ const SelecaoEmpresa = () => {
       loadNotifications();
     };
 
+    const handleNotificationUpdate = (event) => {
+      console.log('🔔 Evento notificationUpdate recebido:', event.detail);
+      loadNotifications();
+      loadClienteHistory();
+    };
+
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('notificationUpdate', handleNotificationUpdate);
     
     // Também escutar mudanças no localStorage local
     const interval = setInterval(() => {
@@ -168,6 +197,7 @@ const SelecaoEmpresa = () => {
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('notificationUpdate', handleNotificationUpdate);
       clearInterval(interval);
     };
   }, []);
@@ -183,6 +213,12 @@ const SelecaoEmpresa = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showNotifications]);
+
+  // Remover notificação individual
+  const removeNotification = (id) => {
+    console.log('🗑️ Removendo notificação:', id);
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
 
   const handleLogout = async () => {
     try {
@@ -204,23 +240,10 @@ const SelecaoEmpresa = () => {
   };
 
 
-  // Função para confirmar agendamento específico
-  const confirmarAgendamento = (agendamentoId) => {
-    const resultado = localStorageService.confirmarAgendamento(agendamentoId);
-    if (resultado) {
-      // Disparar evento para atualização em tempo real
-      window.dispatchEvent(new CustomEvent('notificationUpdate'));
-      
-      alert('✅ Agendamento confirmado com sucesso!');
-      loadClienteHistory();
-      // Remover reload para manter atualizações em tempo real
-      // window.location.reload();
-    } else {
-      alert('❌ Erro ao confirmar agendamento.');
-    }
-  };
+  // Cliente não pode confirmar agendamentos - só o funcionário pode
+  // Função removida pois cliente só pode cancelar agendamentos em aprovação
 
-  // Função para cancelar agendamento específico
+  // Função para cancelar agendamento específico (apenas agendamentos em aprovação)
   const cancelarAgendamento = (agendamentoId) => {
     const resultado = localStorageService.cancelarAgendamento(agendamentoId);
     if (resultado.sucesso) {
@@ -229,8 +252,6 @@ const SelecaoEmpresa = () => {
       
       alert('❌ Agendamento cancelado com sucesso!');
       loadClienteHistory();
-      // Remover reload para manter atualizações em tempo real
-      // window.location.reload();
     } else {
       alert(`❌ Não foi possível cancelar: ${resultado.erro}`);
     }
@@ -286,8 +307,15 @@ const SelecaoEmpresa = () => {
                   {/* Dropdown de Notificações */}
                   {showNotifications && (
                     <div className="notification-dropdown absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                      <div className="p-4 border-b border-gray-200">
+                      <div className="p-4 border-b border-gray-200 flex justify-between items-center">
                         <h3 className="font-semibold text-gray-900">Notificações</h3>
+                        <button
+                          onClick={() => setShowNotifications(false)}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                          title="Fechar"
+                        >
+                          ✕
+                        </button>
                       </div>
                       <div className="max-h-64 overflow-y-auto">
                         {notifications.length > 0 ? (
@@ -298,12 +326,36 @@ const SelecaoEmpresa = () => {
                                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-900">{notification.titulo}</p>
-                                  <p className="text-sm text-gray-600 mt-1">{notification.mensagem}</p>
+                                  <p className={`text-sm font-medium ${
+                                    notification.tipo === 'cancelamento_justificado' ? 'text-red-900' : 'text-gray-900'
+                                  }`}>
+                                    {notification.titulo}
+                                  </p>
+                                  <p className={`text-sm mt-1 ${
+                                    notification.tipo === 'cancelamento_justificado' ? 'text-red-700' : 'text-gray-600'
+                                  }`}>
+                                    {notification.mensagem}
+                                  </p>
+                                  {notification.justificativa && (
+                                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                                      <p className="text-xs font-medium text-red-800">Justificativa:</p>
+                                      <p className="text-xs text-red-700 mt-1">{notification.justificativa}</p>
+                                    </div>
+                                  )}
                                   <p className="text-xs text-gray-500 mt-1">
-                                    {new Date(notification.data).toLocaleDateString('pt-BR')} às {notification.hora}
+                                    {notification.dataCriacao ? 
+                                      new Date(notification.dataCriacao).toLocaleString('pt-BR') :
+                                      `${new Date(notification.data).toLocaleDateString('pt-BR')} às ${notification.hora}`
+                                    }
                                   </p>
                                 </div>
+                                <button
+                                  onClick={() => removeNotification(notification.id)}
+                                  className="text-gray-400 hover:text-gray-600 transition-colors ml-2"
+                                  title="Fechar notificação"
+                                >
+                                  ✕
+                                </button>
                               </div>
                             </div>
                           ))
@@ -649,30 +701,30 @@ const SelecaoEmpresa = () => {
 
                             {/* Botões de Ação */}
                             <div className="flex flex-col space-y-2">
+                              {/* Cliente não pode confirmar - só o funcionário */}
                               {item.status === 'em_aprovacao' && (
-                                <button
-                                  onClick={() => confirmarAgendamento(item.id)}
-                                  className="flex items-center justify-center px-3 py-1 bg-green-500 text-white text-xs rounded-lg hover:bg-green-600 transition-colors font-semibold"
-                                  title="Confirmar Agendamento"
-                                >
-                                  <CheckCircle className="w-3 h-3 mr-1" />
-                                  CONFIRMAR
-                                </button>
+                                <div className="px-3 py-2 bg-blue-100 border-2 border-blue-300 text-blue-600 text-xs rounded-lg font-bold text-center">
+                                  AGUARDANDO FUNCIONÁRIO
+                                </div>
                               )}
                               
-                              {item.status !== 'cancelado' && podeCancelar.pode && (
+                              {/* Cliente pode cancelar apenas agendamentos em aprovação */}
+                              {item.status === 'em_aprovacao' && podeCancelar.pode && (
                                 <button
                                   onClick={() => cancelarAgendamento(item.id)}
-                                  className="flex items-center justify-center px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors font-semibold"
+                                  className="flex items-center space-x-2 px-3 py-2 bg-white border-2 border-red-500 text-red-600 text-xs font-bold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 hover:bg-red-50"
                                   title="Cancelar Agendamento"
                                 >
-                                  <XCircle className="w-3 h-3 mr-1" />
-                                  CANCELAR
+                                  <div className="w-4 h-4 bg-red-500 rounded flex items-center justify-center shadow-sm">
+                                    <span className="text-white text-xs font-bold">✕</span>
+                                  </div>
+                                  <span>Cancelar</span>
                                 </button>
                               )}
                               
+                              {/* Não pode cancelar agendamentos já confirmados pelo funcionário */}
                               {item.status !== 'cancelado' && !podeCancelar.pode && (
-                                <div className="px-3 py-1 bg-gray-300 text-gray-600 text-xs rounded-lg font-semibold text-center">
+                                <div className="px-3 py-2 bg-gray-100 border-2 border-gray-300 text-gray-600 text-xs rounded-lg font-bold text-center">
                                   NÃO PODE CANCELAR
                                 </div>
                               )}

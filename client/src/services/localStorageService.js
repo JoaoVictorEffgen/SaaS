@@ -367,6 +367,9 @@ class LocalStorageService {
       localStorage.setItem(`agendamentos_${newAgendamento.empresa_id}`, JSON.stringify(agendamentosEmpresa));
     }
     
+    // Enviar notificação para o funcionário sobre novo agendamento pendente
+    this.enviarNotificacaoFuncionario(newAgendamento, 'pendente');
+    
     return newAgendamento;
   }
 
@@ -662,23 +665,42 @@ class LocalStorageService {
   // Enviar notificação para o funcionário
   enviarNotificacaoFuncionario(agendamento, acao) {
     try {
+      console.log('🔔 Enviando notificação para funcionário:', { agendamento, acao });
+      
       const funcionarioId = agendamento.funcionario_id;
       const empresaId = agendamento.empresa_id;
       
+      console.log('🔍 IDs:', { funcionarioId, empresaId });
+      
       // Buscar dados do funcionário
       const funcionarios = JSON.parse(localStorage.getItem(`funcionarios_${empresaId}`) || '[]');
+      console.log('👥 Funcionários encontrados:', funcionarios);
+      
       const funcionario = funcionarios.find(f => f.id === funcionarioId);
+      console.log('👤 Funcionário específico:', funcionario);
       
       if (!funcionario) {
         console.log('⚠️ Funcionário não encontrado para notificação');
         return;
       }
       
+      // Se o agendamento foi confirmado, agendar notificação para o cliente 1h antes
+      if (acao === 'confirmado') {
+        this.agendarNotificacaoCliente(agendamento);
+      }
+      
       // Criar mensagem baseada na ação
       let mensagem = '';
-      if (acao === 'confirmado') {
+      let titulo = '';
+      
+      if (acao === 'pendente') {
+        titulo = 'Novo Agendamento - Aguardando Confirmação';
+        mensagem = `🔄 Novo agendamento aguardando sua confirmação: ${agendamento.cliente_nome} - ${agendamento.data} às ${agendamento.hora}`;
+      } else if (acao === 'confirmado') {
+        titulo = 'Agendamento Confirmado';
         mensagem = `✅ Agendamento confirmado: ${agendamento.cliente_nome} - ${agendamento.data} às ${agendamento.hora}`;
       } else if (acao === 'cancelado') {
+        titulo = 'Agendamento Cancelado';
         mensagem = `❌ Agendamento cancelado: ${agendamento.cliente_nome} - ${agendamento.data} às ${agendamento.hora}`;
       }
       
@@ -690,6 +712,7 @@ class LocalStorageService {
         id: Date.now().toString(),
         tipo: 'agendamento',
         acao: acao,
+        titulo: titulo,
         mensagem: mensagem,
         agendamentoId: agendamento.id,
         clienteNome: agendamento.cliente_nome,
@@ -697,7 +720,13 @@ class LocalStorageService {
         hora: agendamento.hora,
         empresaId: empresaId,
         lida: false,
-        dataCriacao: new Date().toISOString()
+        dataCriacao: new Date().toISOString(),
+        // Informações para ações (apenas para agendamentos pendentes)
+        ...(acao === 'pendente' && {
+          podeConfirmar: true,
+          podeCancelar: true,
+          clienteEmail: agendamento.cliente_email || agendamento.clienteEmail
+        })
       };
       
       // Adicionar no início da lista (mais recente primeiro)
@@ -710,16 +739,193 @@ class LocalStorageService {
       
       // Salvar notificações
       localStorage.setItem(`notifications_funcionario_${funcionarioId}`, JSON.stringify(notifications));
+      console.log('💾 Notificações salvas no localStorage:', notifications);
       
       // Disparar evento customizado para atualização em tempo real
       window.dispatchEvent(new CustomEvent('notificationUpdate', {
         detail: { funcionarioId, acao, agendamentoId: agendamento.id }
       }));
+      console.log('📡 Evento customizado disparado');
       
       console.log(`🔔 Notificação enviada para funcionário ${funcionarioId}:`, mensagem);
       
     } catch (error) {
       console.error('❌ Erro ao enviar notificação para funcionário:', error);
+    }
+  }
+
+  // Agendar notificação para o cliente 1h antes do agendamento confirmado
+  agendarNotificacaoCliente(agendamento) {
+    try {
+      console.log('⏰ Agendando notificação para cliente 1h antes:', agendamento);
+      
+      const clienteEmail = agendamento.cliente_email || agendamento.clienteEmail;
+      const dataAgendamento = new Date(`${agendamento.data}T${agendamento.hora}`);
+      const umaHoraAntes = new Date(dataAgendamento.getTime() - (60 * 60 * 1000)); // 1h antes
+      const agora = new Date();
+      
+      // Se já passou de 1h antes, enviar imediatamente
+      if (umaHoraAntes <= agora) {
+        console.log('⏰ Já passou de 1h antes, enviando notificação imediatamente');
+        this.enviarNotificacaoCliente(agendamento);
+        return;
+      }
+      
+      // Calcular tempo restante em milissegundos
+      const tempoRestante = umaHoraAntes.getTime() - agora.getTime();
+      
+      console.log('⏰ Agendamento programado para:', umaHoraAntes.toLocaleString());
+      console.log('⏰ Tempo restante:', Math.round(tempoRestante / 1000 / 60), 'minutos');
+      
+      // Agendar a notificação
+      setTimeout(() => {
+        this.enviarNotificacaoCliente(agendamento);
+      }, tempoRestante);
+      
+    } catch (error) {
+      console.error('❌ Erro ao agendar notificação para cliente:', error);
+    }
+  }
+
+  // Enviar notificação para o cliente confirmar presença
+  enviarNotificacaoCliente(agendamento) {
+    try {
+      console.log('📱 Enviando notificação para cliente confirmar presença:', agendamento);
+      
+      const clienteEmail = agendamento.cliente_email || agendamento.clienteEmail;
+      
+      // Criar notificação para o cliente
+      const notificacaoCliente = {
+        id: Date.now().toString(),
+        tipo: 'confirmacao_presenca',
+        titulo: 'Confirmar Presença',
+        mensagem: `Seu agendamento está confirmado! Por favor, confirme sua presença para ${agendamento.data} às ${agendamento.hora}`,
+        agendamentoId: agendamento.id,
+        empresaNome: agendamento.empresa_nome || 'Empresa',
+        data: agendamento.data,
+        hora: agendamento.hora,
+        lida: false,
+        dataCriacao: new Date().toISOString(),
+        podeConfirmar: true,
+        podeCancelar: true
+      };
+      
+      // Salvar notificação do cliente
+      const clienteNotifications = JSON.parse(localStorage.getItem(`notifications_cliente_${clienteEmail}`) || '[]');
+      clienteNotifications.unshift(notificacaoCliente);
+      
+      // Manter apenas as últimas 20 notificações
+      if (clienteNotifications.length > 20) {
+        clienteNotifications.splice(20);
+      }
+      
+      localStorage.setItem(`notifications_cliente_${clienteEmail}`, JSON.stringify(clienteNotifications));
+      
+      console.log('✅ Notificação de confirmação enviada para cliente:', clienteEmail);
+      
+    } catch (error) {
+      console.error('❌ Erro ao enviar notificação para cliente:', error);
+    }
+  }
+
+  // Cancelar agendamento com justificativa (para funcionário cancelar agendamentos confirmados)
+  cancelarAgendamentoComJustificativa(agendamentoId, justificativa) {
+    try {
+      console.log('❌ Cancelando agendamento com justificativa:', { agendamentoId, justificativa });
+      
+      const agendamentos = this.getAgendamentos();
+      const index = agendamentos.findIndex(agendamento => agendamento.id === agendamentoId);
+      
+      if (index === -1) {
+        return { sucesso: false, erro: 'Agendamento não encontrado' };
+      }
+      
+      const agendamento = agendamentos[index];
+      
+      // Verificar se pode cancelar (agendamentos confirmados/agendados)
+      if (!['agendado', 'confirmado'].includes(agendamento.status)) {
+        return { sucesso: false, erro: 'Este agendamento não pode ser cancelado' };
+      }
+      
+      // Atualizar status e adicionar justificativa
+      agendamentos[index] = {
+        ...agendamento,
+        status: 'cancelado',
+        dataCancelamento: new Date().toISOString(),
+        canceladoPor: 'funcionario',
+        justificativaCancelamento: justificativa
+      };
+      
+      // Salvar agendamentos atualizados
+      localStorage.setItem('agendamentos', JSON.stringify(agendamentos));
+      
+      // Também atualizar na chave específica da empresa
+      if (agendamentos[index].empresa_id) {
+        const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${agendamentos[index].empresa_id}`) || '[]');
+        const indexEmpresa = agendamentosEmpresa.findIndex(a => a.id === agendamentoId);
+        if (indexEmpresa !== -1) {
+          agendamentosEmpresa[indexEmpresa] = agendamentos[index];
+          localStorage.setItem(`agendamentos_${agendamentos[index].empresa_id}`, JSON.stringify(agendamentosEmpresa));
+        }
+      }
+      
+      // Enviar notificação para o cliente sobre o cancelamento
+      this.enviarNotificacaoCancelamentoCliente(agendamentos[index], justificativa);
+      
+      console.log('✅ Agendamento cancelado com justificativa:', agendamentos[index]);
+      
+      return { sucesso: true, agendamento: agendamentos[index] };
+      
+    } catch (error) {
+      console.error('❌ Erro ao cancelar agendamento com justificativa:', error);
+      return { sucesso: false, erro: 'Erro interno do sistema' };
+    }
+  }
+
+  // Enviar notificação para o cliente sobre cancelamento com justificativa
+  enviarNotificacaoCancelamentoCliente(agendamento, justificativa) {
+    try {
+      console.log('📱 Enviando notificação de cancelamento para cliente:', { agendamento, justificativa });
+      
+      const clienteEmail = agendamento.cliente_email || agendamento.clienteEmail;
+      
+      // Criar notificação para o cliente
+      const notificacaoCliente = {
+        id: Date.now().toString(),
+        tipo: 'cancelamento_justificado',
+        titulo: 'Agendamento Cancelado',
+        mensagem: `Seu agendamento foi cancelado pela empresa. Motivo: ${justificativa}`,
+        agendamentoId: agendamento.id,
+        empresaNome: agendamento.empresa_nome || 'Empresa',
+        data: agendamento.data,
+        hora: agendamento.hora,
+        justificativa: justificativa,
+        lida: false,
+        dataCriacao: new Date().toISOString(),
+        podeConfirmar: false,
+        podeCancelar: false
+      };
+      
+      // Salvar notificação do cliente
+      const clienteNotifications = JSON.parse(localStorage.getItem(`notifications_cliente_${clienteEmail}`) || '[]');
+      clienteNotifications.unshift(notificacaoCliente);
+      
+      // Manter apenas as últimas 20 notificações
+      if (clienteNotifications.length > 20) {
+        clienteNotifications.splice(20);
+      }
+      
+      localStorage.setItem(`notifications_cliente_${clienteEmail}`, JSON.stringify(clienteNotifications));
+      
+      // Disparar evento customizado para atualização em tempo real
+      window.dispatchEvent(new CustomEvent('notificationUpdate', {
+        detail: { clienteEmail, tipo: 'cancelamento_justificado', agendamentoId: agendamento.id }
+      }));
+      
+      console.log('✅ Notificação de cancelamento enviada para cliente:', clienteEmail);
+      
+    } catch (error) {
+      console.error('❌ Erro ao enviar notificação de cancelamento para cliente:', error);
     }
   }
 
