@@ -1,7 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
-const { User, Subscription } = require('../models');
+const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 const { sendWelcomeEmail } = require('../services/emailService');
 

@@ -5,7 +5,21 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const { sequelize } = require('./config/database');
+
+// Importar e configurar modelos
+const User = require('./models/User');
+const Empresa = require('./models/Empresa');
+const Servico = require('./models/Servico');
+const Agendamento = require('./models/Agendamento');
+
+// Configurar relacionamentos
+const setupAssociations = require('./models/associations');
+setupAssociations();
+
 const authRoutes = require('./routes/auth');
+const empresasRoutes = require('./routes/empresas');
+const usersRoutes = require('./routes/users');
+const agendamentosRoutes = require('./routes/agendamentos');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +51,9 @@ app.use((req, res, next) => {
 
 // Rotas da API
 app.use('/api/auth', authRoutes);
+app.use('/api/empresas', empresasRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/agendamentos', agendamentosRoutes);
 
 // Rota de health check
 app.get('/api/health', (req, res) => {
