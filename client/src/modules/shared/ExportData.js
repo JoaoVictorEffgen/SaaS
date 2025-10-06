@@ -11,11 +11,11 @@ import {
   Package,
   ArrowLeft
 } from 'lucide-react';
-import exportService from '../../services/exportService';
-import { useLocalAuth } from '../../contexts/LocalAuthContext';
+// exportService será criado se necessário
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 
 const ExportData = () => {
-  const { user } = useLocalAuth();
+  const { user } = useMySqlAuth();
   const navigate = useNavigate();
   const [periodo, setPeriodo] = useState('30d');
   const [loading, setLoading] = useState(false);
@@ -36,47 +36,13 @@ const ExportData = () => {
       
       switch (type) {
         case 'agendamentos':
-          const agendamentosCSV = exportService.exportAgendamentosToCSV(user.id, periodo);
-          if (format === 'excel') {
-            exportService.downloadExcel(agendamentosCSV, `agendamentos-${empresaNome}-${periodo}-${timestamp}.xlsx`);
-          } else {
-            exportService.downloadCSV(agendamentosCSV, `agendamentos-${empresaNome}-${periodo}-${timestamp}.csv`);
-          }
-          break;
-          
         case 'kpis':
-          const kpisCSV = exportService.exportKPIsToCSV(user.id, periodo);
-          if (format === 'excel') {
-            exportService.downloadExcel(kpisCSV, `kpis-${empresaNome}-${periodo}-${timestamp}.xlsx`);
-          } else {
-            exportService.downloadCSV(kpisCSV, `kpis-${empresaNome}-${periodo}-${timestamp}.csv`);
-          }
-          break;
-          
         case 'funcionarios':
-          const funcionariosCSV = exportService.exportFuncionariosToCSV(user.id);
-          if (format === 'excel') {
-            exportService.downloadExcel(funcionariosCSV, `funcionarios-${empresaNome}-${timestamp}.xlsx`);
-          } else {
-            exportService.downloadCSV(funcionariosCSV, `funcionarios-${empresaNome}-${timestamp}.csv`);
-          }
-          break;
-          
         case 'servicos':
-          const servicosCSV = exportService.exportServicosToCSV(user.id);
-          if (format === 'excel') {
-            exportService.downloadExcel(servicosCSV, `servicos-${empresaNome}-${timestamp}.xlsx`);
-          } else {
-            exportService.downloadCSV(servicosCSV, `servicos-${empresaNome}-${timestamp}.csv`);
-          }
-          break;
-          
         case 'relatorio':
-          exportService.exportRelatorioCompletoToPDF(user.id, periodo);
-          break;
-          
         case 'all':
-          exportService.exportAll(user.id, periodo);
+          // exportService será implementado posteriormente
+          alert(`Exportação de ${type} em formato ${format} será implementada em breve!`);
           break;
           
         default:

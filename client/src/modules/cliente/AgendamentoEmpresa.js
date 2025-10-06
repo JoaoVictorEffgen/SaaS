@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Calendar, Users, ArrowLeft, MessageCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useLocalAuth } from '../../contexts/LocalAuthContext';
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import WhatsAppChat from '../shared/WhatsAppChat';
 import notificationService from '../../services/notificationService';
 
 const AgendamentoEmpresa = () => {
   const { empresaId } = useParams();
-  const { user } = useLocalAuth();
+  const { user } = useMySqlAuth();
   const navigate = useNavigate();
   
   const [empresa, setEmpresa] = useState(null);

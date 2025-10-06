@@ -11,13 +11,13 @@ import {
   AlertCircle,
   Home
 } from 'lucide-react';
-import { useLocalAuth } from '../../contexts/LocalAuthContext';
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import LoginStatusIndicator from '../shared/LoginStatusIndicator';
 import AvaliacaoModal from './AvaliacaoModal';
 
 const ClienteAgendamentos = () => {
   const navigate = useNavigate();
-  const { user: currentUser, logout } = useLocalAuth();
+  const { user: currentUser, logout } = useMySqlAuth();
   const [agendamentos, setAgendamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAvaliacaoModal, setShowAvaliacaoModal] = useState(false);

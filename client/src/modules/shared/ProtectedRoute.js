@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import { useLocalAuth } from '../../contexts/LocalAuthContext';
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useLocalAuth();
+  const { user, loading } = useMySqlAuth();
   const navigate = useNavigate();
   
   console.log('ProtectedRoute - user:', user, 'loading:', loading);

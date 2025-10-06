@@ -579,13 +579,23 @@ class LocalStorageService {
     } else {
       // Buscar por email ou CNPJ (empresas)
       const users = this.getUsers();
-      const user = users.find(u => u.email === identifier || u.cnpj === identifier);
+      console.log('🔍 localStorageService: Usuários encontrados:', users.length);
+      console.log('🔍 localStorageService: Buscando por:', identifier);
       
-      if (user && user.senha === senha) {
-        const token = this.generateToken(user.id);
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        localStorage.setItem('authToken', token);
-        return { user, token };
+      const user = users.find(u => u.email === identifier || u.cnpj === identifier);
+      console.log('🔍 localStorageService: Usuário encontrado:', user ? 'Sim' : 'Não');
+      
+      if (user) {
+        console.log('🔍 localStorageService: Verificando senha...');
+        if (user.senha === senha) {
+          console.log('✅ localStorageService: Senha correta!');
+          const token = this.generateToken(user.id);
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          localStorage.setItem('authToken', token);
+          return { user, token };
+        } else {
+          console.log('❌ localStorageService: Senha incorreta');
+        }
       }
     }
     

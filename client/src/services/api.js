@@ -30,10 +30,11 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Se o token expirou ou é inválido, fazer logout
+    // Se o token expirou ou é inválido, apenas remover o token
+    // O redirecionamento será controlado pelos componentes
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/';
+      console.warn('Token expirado ou inválido removido do localStorage');
     }
     
     return Promise.reject(error);

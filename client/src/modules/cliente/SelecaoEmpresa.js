@@ -6,14 +6,14 @@ import {
   CheckCircle, XCircle,
   Building2, Home, Heart, Bell
 } from 'lucide-react';
-import { useLocalAuth } from '../../contexts/LocalAuthContext';
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import localStorageService from '../../services/localStorageService';
 import { formatDate, formatTime } from '../../utils/formatters';
 import { getFavoriteEmpresas } from '../../services/favoritesService';
 import EmpresaCardWithFavorites from '../shared/EmpresaCardWithFavorites';
 
 const SelecaoEmpresa = () => {
-  const { user, logout } = useLocalAuth();
+  const { user, logout } = useMySqlAuth();
   const navigate = useNavigate();
   const [empresas, setEmpresas] = useState([]);
   const [empresasDestaque, setEmpresasDestaque] = useState([]);

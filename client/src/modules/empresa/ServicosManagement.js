@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useLocalAuth } from '../contexts/LocalAuthContext';
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, Clock, DollarSign, Save, X, ArrowLeft } from 'lucide-react';
 
 const ServicosManagement = () => {
-  const { user } = useLocalAuth();
+  const { user } = useMySqlAuth();
   const navigate = useNavigate();
   const [servicos, setServicos] = useState([]);
   const [showModal, setShowModal] = useState(false);

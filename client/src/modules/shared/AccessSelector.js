@@ -5,9 +5,7 @@ import {
   Users2, X, ClipboardList, ChevronLeft, ChevronRight, Facebook, Instagram, Twitter, Linkedin, Plus,
   Heart, Navigation
 } from 'lucide-react';
-import { useLocalAuth } from '../contexts/LocalAuthContext';
-import EmpresasProximas from './shared/EmpresasProximas';
-import EmpresasFavoritas from './shared/EmpresasFavoritas';
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 
 const AccessSelector = () => {
   const [empresasDestaque, setEmpresasDestaque] = useState([]);
@@ -54,17 +52,11 @@ const AccessSelector = () => {
   const [funcionarioLoading, setFuncionarioLoading] = useState(false);
   const [currentBenefit, setCurrentBenefit] = useState(0);
   const [currentEmpresa, setCurrentEmpresa] = useState(0);
-  const [animatedStats, setAnimatedStats] = useState({
-    totalEmpresas: 0,
-    totalAgendamentos: 0,
-    totalClientes: 0,
-    satisfacao: 0
-  });
   
 
   
   const navigate = useNavigate();
-  const { login, register, user } = useLocalAuth();
+  const { login, register, user } = useMySqlAuth();
 
   const beneficios = [
     {
@@ -146,22 +138,6 @@ const AccessSelector = () => {
     }
   }, [empresasDestaque.length]);
 
-  // Animate stats numbers
-  const animateNumber = (start, end, duration, setter) => {
-    const startTime = Date.now();
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-      const current = Math.floor(start + (end - start) * easeOutQuart);
-      setter(current);
-      
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-    animate();
-  };
 
   const loadEmpresasDestaque = useCallback(() => {
     const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
@@ -182,43 +158,11 @@ const AccessSelector = () => {
     setEmpresasDestaque(empresasOrdenadas);
   }, []);
 
-  const loadStats = useCallback(() => {
-    const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
-    const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-    
-    let totalAgendamentos = 0;
-    let totalClientes = 0;
-    
-    empresas.forEach(empresa => {
-      const agendamentosEmpresa = agendamentos.filter(a => a.empresa_id === empresa.id);
-      totalAgendamentos += agendamentosEmpresa.length;
-      
-      const clientesUnicos = new Set(agendamentosEmpresa.map(a => a.cliente_email));
-      totalClientes += clientesUnicos.size;
-    });
-
-    // Animate the numbers
-    setTimeout(() => {
-      animateNumber(0, empresas.length, 2000, (value) => 
-        setAnimatedStats(prev => ({ ...prev, totalEmpresas: value }))
-      );
-      animateNumber(0, totalAgendamentos, 2000, (value) => 
-        setAnimatedStats(prev => ({ ...prev, totalAgendamentos: value }))
-      );
-      animateNumber(0, totalClientes, 2000, (value) => 
-        setAnimatedStats(prev => ({ ...prev, totalClientes: value }))
-      );
-      animateNumber(0, 4.8 * 10, 2000, (value) => 
-        setAnimatedStats(prev => ({ ...prev, satisfacao: value / 10 }))
-      );
-    }, 500);
-  }, []);
 
 
 
   useEffect(() => {
     loadEmpresasDestaque();
-    loadStats();
     
     // Criar cliente de teste único com email diferente
     const clienteTeste = {
@@ -249,7 +193,7 @@ const AccessSelector = () => {
     } else {
       setActiveSection('destaque');
     }
-  }, [loadEmpresasDestaque, loadStats, user]);
+  }, [loadEmpresasDestaque, user]);
 
   const openEmpresaModal = () => {
     setShowEmpresaModal(true);
@@ -671,87 +615,7 @@ const AccessSelector = () => {
           </div>
         </div>
 
-      {/* Banner de Status de Login */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center space-x-4">
-            {isClientLoggedIn ? (
-              <div className="flex items-center space-x-3 bg-white/20 backdrop-blur-sm rounded-xl px-6 py-3 border border-white/30">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-                <span className="text-white font-bold text-lg">🎉 VOCÊ ESTÁ LOGADO!</span>
-                <span className="text-blue-100 text-sm">Acesse suas funcionalidades completas</span>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-3 bg-white/20 backdrop-blur-sm rounded-xl px-6 py-3 border border-white/30">
-                <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse shadow-lg"></div>
-                <span className="text-white font-bold text-lg">🔓 FAÇA LOGIN</span>
-                <span className="text-blue-100 text-sm">Para acessar todas as funcionalidades</span>
-                <button 
-                  onClick={() => {
-                    console.log('🧪 TESTE: Forçando modal a aparecer');
-                    setShowClienteModal(true);
-                  }}
-                  className="ml-4 px-3 py-1 bg-red-500 text-white text-xs rounded"
-                >
-                  TESTE MODAL
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* Stats Section */}
-      <div className="py-8 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Números que Impressionam</h2>
-            <p className="text-gray-600">Confiança de milhares de usuários em todo o país</p>
-          </div>
-          
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-white/50 text-center group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl mb-3 group-hover:rotate-12 transition-transform duration-500">
-                <Building2 className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-3xl font-bold text-gray-900 mb-1 animate-pulse">
-                {animatedStats.totalEmpresas.toLocaleString()}
-              </div>
-              <div className="text-gray-600 text-sm">Empresas Ativas</div>
-            </div>
-            
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-white/50 text-center group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl mb-3 group-hover:rotate-12 transition-transform duration-500">
-                <Calendar className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-3xl font-bold text-gray-900 mb-1 animate-pulse">
-                {animatedStats.totalAgendamentos.toLocaleString()}
-              </div>
-              <div className="text-gray-600 text-sm">Agendamentos</div>
-            </div>
-            
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-white/50 text-center group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl mb-3 group-hover:rotate-12 transition-transform duration-500">
-                <Users2 className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-3xl font-bold text-gray-900 mb-1 animate-pulse">
-                {animatedStats.totalClientes.toLocaleString()}
-              </div>
-              <div className="text-gray-600 text-sm">Clientes Satisfeitos</div>
-            </div>
-            
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-white/50 text-center group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl mb-3 group-hover:rotate-12 transition-transform duration-500">
-                <Star className="w-6 h-6 text-white" />
-              </div>
-              <div className="text-3xl font-bold text-gray-900 mb-1 animate-pulse">
-                {animatedStats.satisfacao.toFixed(1)}★
-              </div>
-              <div className="text-gray-600 text-sm">Satisfação</div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Action Cards */}
       <div className="py-8 px-4">
@@ -1097,7 +961,10 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
       {activeSection === 'proximas' && (
         <div className="py-12 md:py-16 px-4">
           <div className="max-w-6xl mx-auto">
-            <EmpresasProximas empresas={allEmpresas} radius={15} />
+            <div className="text-center py-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Empresas Próximas</h2>
+              <p className="text-gray-600">Funcionalidade será implementada em breve</p>
+            </div>
           </div>
         </div>
       )}
@@ -1106,7 +973,10 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
       {activeSection === 'favoritas' && (
         <div className="py-12 md:py-16 px-4">
           <div className="max-w-6xl mx-auto">
-            <EmpresasFavoritas empresas={allEmpresas} />
+            <div className="text-center py-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Empresas Favoritas</h2>
+              <p className="text-gray-600">Funcionalidade será implementada em breve</p>
+            </div>
           </div>
         </div>
       )}

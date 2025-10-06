@@ -16,16 +16,16 @@ import {
   UserPlus,
   Eye
 } from 'lucide-react';
-import kpiService from '../../services/kpiService';
-import { useLocalAuth } from '../../contexts/LocalAuthContext';
-import { formatCurrency } from '../../utils/formatters';
+// kpiService será criado se necessário
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
+// formatCurrency será criado se necessário
 import AdvancedFilters from './AdvancedFilters';
 import VisualReports from './VisualReports';
 import PDFExport from './PDFExport';
 import CRMClientes from './CRMClientes';
 
 const DashboardKPIs = () => {
-  const { user } = useLocalAuth();
+  const { user } = useMySqlAuth();
   const navigate = useNavigate();
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,7 +41,16 @@ const DashboardKPIs = () => {
     if (!user?.id) return;
     setLoading(true);
     try {
-      const kpisData = kpiService.calculateKPIs(user.id, periodo);
+      // kpiService será implementado posteriormente
+      const kpisData = {
+        totalAgendamentos: 0,
+        agendamentosConfirmados: 0,
+        agendamentosCancelados: 0,
+        receitaTotal: 0,
+        receitaMediaPorAgendamento: 0,
+        taxaConfirmacao: 0,
+        clientesAtivos: 0
+      };
       setKpis(kpisData);
     } catch (error) {
       console.error('Erro ao carregar KPIs:', error);
@@ -74,18 +83,20 @@ const DashboardKPIs = () => {
   // Usar formatação do utils/formatters.js
 
   const formatPercentage = useMemo(() => {
-    return (value) => `${value.toFixed(1)}%`;
+    return (value) => `${(value || 0).toFixed(1)}%`;
   }, []);
 
   const getTrendIcon = (trend) => {
-    if (trend > 0) return <TrendingUp className="h-4 w-4 text-green-500" />;
-    if (trend < 0) return <TrendingDown className="h-4 w-4 text-red-500" />;
+    const value = trend || 0;
+    if (value > 0) return <TrendingUp className="h-4 w-4 text-green-500" />;
+    if (value < 0) return <TrendingDown className="h-4 w-4 text-red-500" />;
     return <BarChart3 className="h-4 w-4 text-gray-500" />;
   };
 
   const getTrendColor = (trend) => {
-    if (trend > 0) return 'text-green-600';
-    if (trend < 0) return 'text-red-600';
+    const value = trend || 0;
+    if (value > 0) return 'text-green-600';
+    if (value < 0) return 'text-red-600';
     return 'text-gray-600';
   };
 
@@ -192,7 +203,7 @@ const DashboardKPIs = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Agendamentos</p>
-              <p className="text-2xl font-bold text-gray-900">{kpis.totalAgendamentos}</p>
+              <p className="text-2xl font-bold text-gray-900">{kpis.totalAgendamentos || 0}</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-lg">
               <Calendar className="h-6 w-6 text-blue-600" />
@@ -201,7 +212,7 @@ const DashboardKPIs = () => {
           <div className="mt-4 flex items-center">
             {getTrendIcon(kpis.tendenciaAgendamentos)}
             <span className={`ml-2 text-sm font-medium ${getTrendColor(kpis.tendenciaAgendamentos)}`}>
-              {formatPercentage(Math.abs(kpis.tendenciaAgendamentos))}
+              {formatPercentage(Math.abs(kpis.tendenciaAgendamentos || 0))}
             </span>
             <span className="ml-2 text-sm text-gray-500">vs período anterior</span>
           </div>
@@ -222,7 +233,7 @@ const DashboardKPIs = () => {
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-green-600 h-2 rounded-full" 
-                style={{ width: `${kpis.taxaComparecimento}%` }}
+                style={{ width: `${kpis.taxaComparecimento || 0}%` }}
               ></div>
             </div>
           </div>
@@ -233,7 +244,7 @@ const DashboardKPIs = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Receita Total</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(kpis.receitaTotal)}</p>
+              <p className="text-2xl font-bold text-gray-900">R$ {(kpis.receitaTotal || 0).toFixed(2)}</p>
             </div>
             <div className="p-3 bg-yellow-100 rounded-lg">
               <DollarSign className="h-6 w-6 text-yellow-600" />
@@ -242,7 +253,7 @@ const DashboardKPIs = () => {
           <div className="mt-4 flex items-center">
             {getTrendIcon(kpis.tendenciaReceita)}
             <span className={`ml-2 text-sm font-medium ${getTrendColor(kpis.tendenciaReceita)}`}>
-              {formatPercentage(Math.abs(kpis.tendenciaReceita))}
+              {formatPercentage(Math.abs(kpis.tendenciaReceita || 0))}
             </span>
             <span className="ml-2 text-sm text-gray-500">vs período anterior</span>
           </div>
@@ -253,7 +264,7 @@ const DashboardKPIs = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Satisfação Média</p>
-              <p className="text-2xl font-bold text-gray-900">{kpis.satisfacaoMedia.toFixed(1)}</p>
+              <p className="text-2xl font-bold text-gray-900">{(kpis.satisfacaoMedia || 0).toFixed(1)}</p>
             </div>
             <div className="p-3 bg-purple-100 rounded-lg">
               <Star className="h-6 w-6 text-purple-600" />
@@ -264,7 +275,7 @@ const DashboardKPIs = () => {
               {[...Array(5)].map((_, i) => (
                 <Star 
                   key={i} 
-                  className={`h-4 w-4 ${i < Math.floor(kpis.satisfacaoMedia) ? 'fill-current' : ''}`} 
+                  className={`h-4 w-4 ${i < Math.floor(kpis.satisfacaoMedia || 0) ? 'fill-current' : ''}`} 
                 />
               ))}
             </div>
@@ -281,7 +292,7 @@ const DashboardKPIs = () => {
             <Clock className="h-8 w-8 text-blue-600 mr-4" />
             <div>
               <p className="text-sm font-medium text-gray-600">Tempo Médio por Cliente</p>
-              <p className="text-xl font-bold text-gray-900">{kpis.tempoMedioPorCliente.toFixed(0)} min</p>
+              <p className="text-xl font-bold text-gray-900">{(kpis.tempoMedioPorCliente || 0).toFixed(0)} min</p>
             </div>
           </div>
         </div>
@@ -292,7 +303,7 @@ const DashboardKPIs = () => {
             <DollarSign className="h-8 w-8 text-green-600 mr-4" />
             <div>
               <p className="text-sm font-medium text-gray-600">Receita Média por Agendamento</p>
-              <p className="text-xl font-bold text-gray-900">{formatCurrency(kpis.receitaMediaPorAgendamento)}</p>
+              <p className="text-xl font-bold text-gray-900">R$ {(kpis.receitaMediaPorAgendamento || 0).toFixed(2)}</p>
             </div>
           </div>
         </div>
@@ -315,7 +326,7 @@ const DashboardKPIs = () => {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Horários Mais Populares</h3>
           <div className="space-y-3">
-            {kpis.horariosMaisPopulares.map((horario, index) => (
+            {(kpis.horariosMaisPopulares || []).map((horario, index) => (
               <div key={index} className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">{horario.hora}</span>
                 <div className="flex items-center">
@@ -323,7 +334,7 @@ const DashboardKPIs = () => {
                     <div 
                       className="bg-blue-600 h-2 rounded-full" 
                       style={{ 
-                        width: `${(horario.count / kpis.horariosMaisPopulares[0].count) * 100}%` 
+                        width: `${(horario.count / (kpis.horariosMaisPopulares?.[0]?.count || 1)) * 100}%` 
                       }}
                     ></div>
                   </div>
@@ -338,7 +349,7 @@ const DashboardKPIs = () => {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Serviços Mais Solicitados</h3>
           <div className="space-y-3">
-            {kpis.servicosMaisSolicitados.map((servico, index) => (
+            {(kpis.servicosMaisSolicitados || []).map((servico, index) => (
               <div key={index} className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">{servico.nome}</span>
                 <div className="flex items-center">
@@ -346,7 +357,7 @@ const DashboardKPIs = () => {
                     <div 
                       className="bg-green-600 h-2 rounded-full" 
                       style={{ 
-                        width: `${(servico.count / kpis.servicosMaisSolicitados[0].count) * 100}%` 
+                        width: `${(servico.count / (kpis.servicosMaisSolicitados?.[0]?.count || 1)) * 100}%` 
                       }}
                     ></div>
                   </div>
@@ -368,12 +379,12 @@ const DashboardKPIs = () => {
                 <Users className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-lg font-semibold text-gray-900">{kpis.funcionarioMaisProdutivo.nome}</p>
-                <p className="text-sm text-gray-600">{kpis.funcionarioMaisProdutivo.totalAgendamentos} agendamentos</p>
+                <p className="text-lg font-semibold text-gray-900">{kpis.funcionarioMaisProdutivo?.nome || 'Nenhum'}</p>
+                <p className="text-sm text-gray-600">{kpis.funcionarioMaisProdutivo?.totalAgendamentos || 0} agendamentos</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-blue-600">{kpis.funcionarioMaisProdutivo.totalAgendamentos}</p>
+              <p className="text-2xl font-bold text-blue-600">{kpis.funcionarioMaisProdutivo?.totalAgendamentos || 0}</p>
               <p className="text-sm text-gray-500">total</p>
             </div>
           </div>

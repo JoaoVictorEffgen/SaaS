@@ -1,54 +1,60 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { LocalAuthProvider } from './contexts/LocalAuthContext';
-import ProtectedRoute from './components/shared/ProtectedRoute';
+import { MySqlAuthProvider } from './contexts/MySqlAuthContext';
 
-// Componentes principais
-import AccessSelector from './components/AccessSelector';
+// Importações dos módulos organizados
+import {
+  AccessSelector,
+  TypedProtectedRoute,
+  RedirectHandler,
+  DashboardKPIs,
+  ExportData,
+  EmpresaCadastro,
+  EmpresaLogin,
+  EmpresaDashboard,
+  ServicosManagement,
+  FuncionariosManagement,
+  SelecaoEmpresa,
+  AgendamentoEmpresa,
+  FuncionarioAgenda
+} from './modules';
 
-// Componentes de empresa
-import EmpresaCadastro from './components/empresa/EmpresaCadastro';
-import EmpresaLogin from './components/empresa/EmpresaLogin';
-import EmpresaDashboard from './components/empresa/EmpresaDashboard';
-
-// Componentes de cliente
-import SelecaoEmpresa from './components/funcionario/SelecaoEmpresa';
-import AgendamentoEmpresa from './components/funcionario/AgendamentoEmpresa';
-
-// Páginas de funcionário e gestão
-import FuncionarioAgenda from './pages/FuncionarioAgenda';
-import ServicosManagement from './pages/ServicosManagement';
-import FuncionariosManagement from './pages/FuncionariosManagement';
+// Debug components removidos para limpeza
 
 function App() {
   return (
-    <LocalAuthProvider>
+    <MySqlAuthProvider>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <RedirectHandler />
         <Routes>
           {/* Página Principal */}
           <Route path="/" element={<AccessSelector />} />
           
-          {/* Rotas B2B (Empresas) */}
+          {/* Rotas B2B (Empresas) - Apenas para usuários tipo 'empresa' */}
           <Route path="/empresa/cadastro" element={<EmpresaCadastro />} />
           <Route path="/empresa/login" element={<EmpresaLogin />} />
-          <Route path="/empresa/dashboard" element={<ProtectedRoute><EmpresaDashboard /></ProtectedRoute>} />
+          <Route path="/empresa/dashboard" element={<EmpresaDashboard />} />
           
-          {/* Rotas de Gestão */}
-          <Route path="/servicos" element={<ProtectedRoute><ServicosManagement /></ProtectedRoute>} />
-          <Route path="/funcionarios" element={<ProtectedRoute><FuncionariosManagement /></ProtectedRoute>} />
+          {/* Rotas de Gestão - Apenas para usuários tipo 'empresa' */}
+          <Route path="/servicos" element={<TypedProtectedRoute allowedTypes={['empresa']}><ServicosManagement /></TypedProtectedRoute>} />
+          <Route path="/funcionarios" element={<TypedProtectedRoute allowedTypes={['empresa']}><FuncionariosManagement /></TypedProtectedRoute>} />
           
-          {/* Rotas B2C (Clientes) */}
-          <Route path="/cliente" element={<SelecaoEmpresa />} />
-          <Route path="/cliente/empresa/:empresaId" element={<AgendamentoEmpresa />} />
+          {/* Rotas de Dashboard e Exportação - Apenas para usuários tipo 'empresa' */}
+          <Route path="/kpis" element={<TypedProtectedRoute allowedTypes={['empresa']}><DashboardKPIs /></TypedProtectedRoute>} />
+          <Route path="/exportar" element={<TypedProtectedRoute allowedTypes={['empresa']}><ExportData /></TypedProtectedRoute>} />
           
-          {/* Rotas de Funcionários */}
-          <Route path="/funcionario/agenda" element={<FuncionarioAgenda />} />
+          {/* Rotas B2C (Clientes) - Apenas para usuários tipo 'cliente' */}
+          <Route path="/cliente" element={<TypedProtectedRoute allowedTypes={['cliente']}><SelecaoEmpresa /></TypedProtectedRoute>} />
+          <Route path="/cliente/empresa/:empresaId" element={<TypedProtectedRoute allowedTypes={['cliente']}><AgendamentoEmpresa /></TypedProtectedRoute>} />
+          
+          {/* Rotas de Funcionários - Apenas para usuários tipo 'funcionario' */}
+          <Route path="/funcionario/agenda" element={<TypedProtectedRoute allowedTypes={['funcionario']}><FuncionarioAgenda /></TypedProtectedRoute>} />
           
           {/* Rota de fallback para rotas não encontradas */}
           <Route path="*" element={<AccessSelector />} />
         </Routes>
       </Router>
-    </LocalAuthProvider>
+    </MySqlAuthProvider>
   );
 }
 

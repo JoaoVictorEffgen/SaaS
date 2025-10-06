@@ -16,12 +16,12 @@ import {
   ClipboardList,
   RefreshCw
 } from 'lucide-react';
-import { useLocalAuth } from '../contexts/LocalAuthContext';
-import localStorageService from '../services/localStorageService';
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
+import localStorageService from '../../services/localStorageService';
 
 const FuncionarioAgenda = () => {
   const navigate = useNavigate();
-  const { user: currentUser, loading: authLoading, logout } = useLocalAuth();
+  const { user: currentUser, loading: authLoading, logout } = useMySqlAuth();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('agenda');
   const [showNotifications, setShowNotifications] = useState(false);

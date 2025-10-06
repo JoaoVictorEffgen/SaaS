@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useLocalAuth } from '../contexts/LocalAuthContext';
+import { useMySqlAuth } from '../contexts/MySqlAuthContext';
 import { Calendar, Clock, Save, Building } from 'lucide-react';
 
 const CompanySettings = () => {
-  const { user, updateUser } = useLocalAuth();
+  const { user, updateUser } = useMySqlAuth();
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 

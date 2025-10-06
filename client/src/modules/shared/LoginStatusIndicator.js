@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLocalAuth } from '../../contexts/LocalAuthContext';
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { User, Building2, ClipboardList, LogOut, LogIn, X, Home, Calendar } from 'lucide-react';
 
 const LoginStatusIndicator = () => {
-  const { user, logout } = useLocalAuth();
+  const { user, logout } = useMySqlAuth();
   const navigate = useNavigate();
   const [showLoginModal, setShowLoginModal] = useState(false);
 

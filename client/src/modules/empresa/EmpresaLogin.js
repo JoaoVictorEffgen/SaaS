@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useLocalAuth } from '../../contexts/LocalAuthContext';
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 
 const EmpresaLogin = () => {
   const navigate = useNavigate();
-  const { login } = useLocalAuth();
+  const { login } = useMySqlAuth();
   const [formData, setFormData] = useState({
     email: '',
     senha: ''
@@ -16,12 +16,19 @@ const EmpresaLogin = () => {
     setLoading(true);
 
     try {
+      console.log('🔐 EmpresaLogin: Tentando login com:', formData.email);
       const result = await login(formData.email, formData.senha);
+      console.log('🔐 EmpresaLogin: Resultado do login:', result);
+      
       if (result && result.success) {
+        console.log('✅ EmpresaLogin: Login bem-sucedido, navegando para dashboard');
         navigate('/empresa/dashboard');
+      } else {
+        console.log('❌ EmpresaLogin: Login falhou:', result);
+        alert('Credenciais inválidas. Verifique email e senha.');
       }
     } catch (error) {
-      console.error('Erro no login:', error);
+      console.error('❌ EmpresaLogin: Erro no login:', error);
       alert('Erro ao fazer login. Tente novamente.');
     } finally {
       setLoading(false);

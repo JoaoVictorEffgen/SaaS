@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Star, Heart, MapPin, Clock, Users, Calendar, CheckCircle } from 'lucide-react';
 import { isFavorite, toggleFavorite } from '../../services/favoritesService';
 import { formatDistance } from '../../utils/geolocation';
-import { useLocalAuth } from '../../contexts/LocalAuthContext';
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import localStorageService from '../../services/localStorageService';
 
 const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }) => {
   const [isFavorited, setIsFavorited] = useState(false);
   const [agendamentoStatus, setAgendamentoStatus] = useState(null);
-  const { user: currentUser } = useLocalAuth();
+  const { user: currentUser } = useMySqlAuth();
   const navigate = useNavigate();
 
   const checkAgendamentoStatus = useCallback(() => {

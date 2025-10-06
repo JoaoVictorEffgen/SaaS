@@ -8,6 +8,7 @@ import {
   LogOut,
   Calendar,
   Users,
+  Users2,
   DollarSign,
   TrendingUp,
   Clock,
@@ -16,17 +17,19 @@ import {
   Sparkles,
   Edit3,
   Home,
-  Bell
+  Bell,
+  Star
 } from 'lucide-react';
-import { useLocalAuth } from '../../contexts/LocalAuthContext';
-import localStorageService from '../../services/localStorageService';
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
+import apiService from '../../services/apiService';
 
 const EmpresaDashboard = () => {
   const navigate = useNavigate();
-  const { user, logout } = useLocalAuth();
+  const { user, logout } = useMySqlAuth();
   const [currentUser, setCurrentUser] = useState(user);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [currentRankingIndex, setCurrentRankingIndex] = useState(0);
   
   // Memoização dos dados para evitar recálculos desnecessários
   const { agendamentos, funcionarios } = useMemo(() => {
@@ -62,6 +65,15 @@ const EmpresaDashboard = () => {
       setCurrentUser(user);
     }
   }, [navigate, user]);
+
+  // Rotação automática dos rankings a cada 4 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentRankingIndex(prev => (prev + 1) % 3); // Alterna entre 0, 1, 2
+    }, 4000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -137,30 +149,34 @@ const EmpresaDashboard = () => {
         
         // Ler o arquivo como URL
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
           const logoUrl = event.target.result;
           
           if (currentUser) {
-            // Atualizar no localStorageService (para persistência completa)
-            const updatedUser = localStorageService.updateUser(currentUser.id, { 
-              logo_url: logoUrl 
-            });
+            // Atualizar via API (para persistência completa)
+            try {
+              const updatedUser = await apiService.updateProfile({ 
+                logo_url: logoUrl 
+              });
             
-            if (updatedUser) {
-              // Atualizar também na lista de empresas (para exibição nos cards)
-              const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
-              const empresaIndex = empresas.findIndex(emp => emp.id === currentUser.id);
+              if (updatedUser) {
+                // Atualizar também na lista de empresas (para exibição nos cards)
+                const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
+                const empresaIndex = empresas.findIndex(emp => emp.id === currentUser.id);
               
-              if (empresaIndex !== -1) {
-                empresas[empresaIndex].logo_url = logoUrl;
-                localStorage.setItem('empresas', JSON.stringify(empresas));
+                if (empresaIndex !== -1) {
+                  empresas[empresaIndex].logo_url = logoUrl;
+                  localStorage.setItem('empresas', JSON.stringify(empresas));
+                }
+                
+                // Atualizar o currentUser no localStorage
+                localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+                
+                // Atualizar o estado local sem recarregar a página
+                setCurrentUser(updatedUser);
               }
-              
-              // Atualizar o currentUser no localStorage
-              localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-              
-              // Atualizar o estado local sem recarregar a página
-              setCurrentUser(updatedUser);
+            } catch (error) {
+              console.error('Erro ao atualizar logo:', error);
             }
           }
         };
@@ -168,6 +184,55 @@ const EmpresaDashboard = () => {
       }
     };
     input.click();
+  };
+
+  // Função para obter top funcionários por atendimentos
+  const getTopFuncionariosPorAtendimentos = () => {
+    const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
+    const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+    
+    // Filtrar funcionários da empresa atual
+    const funcionariosEmpresa = funcionarios.filter(f => f.empresa_id === currentUser?.id);
+    
+    // Calcular atendimentos por funcionário
+    const funcionariosComAtendimentos = funcionariosEmpresa.map(funcionario => {
+      const totalAtendimentos = agendamentos.filter(a => a.funcionario_id === funcionario.id).length;
+      return {
+        ...funcionario,
+        totalAtendimentos
+      };
+    });
+    
+    // Ordenar por número de atendimentos e pegar top 3
+    return funcionariosComAtendimentos
+      .sort((a, b) => b.totalAtendimentos - a.totalAtendimentos)
+      .slice(0, 3);
+  };
+
+  // Função para obter top funcionários por satisfação
+  const getTopFuncionariosPorSatisfacao = () => {
+    const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
+    const avaliacoes = JSON.parse(localStorage.getItem('avaliacoes') || '[]');
+    
+    // Filtrar funcionários da empresa atual
+    const funcionariosEmpresa = funcionarios.filter(f => f.empresa_id === currentUser?.id);
+    
+    // Calcular satisfação por funcionário
+    const funcionariosComSatisfacao = funcionariosEmpresa.map(funcionario => {
+      const avaliacoesFuncionario = avaliacoes.filter(a => a.funcionario_id === funcionario.id);
+      const satisfacao = avaliacoesFuncionario.length > 0 
+        ? avaliacoesFuncionario.reduce((sum, a) => sum + a.nota, 0) / avaliacoesFuncionario.length
+        : 0;
+      return {
+        ...funcionario,
+        satisfacao
+      };
+    });
+    
+    // Ordenar por satisfação e pegar top 3
+    return funcionariosComSatisfacao
+      .sort((a, b) => b.satisfacao - a.satisfacao)
+      .slice(0, 3);
   };
 
   if (!currentUser || !currentUser.id) {
@@ -432,10 +497,11 @@ const EmpresaDashboard = () => {
           </div>
         </div>
 
+
         {/* Informações da Empresa */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Informações da Empresa</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <h3 className="font-medium text-gray-900 mb-2">Dados Básicos</h3>
               <div className="space-y-2 text-sm text-gray-600">
@@ -457,6 +523,124 @@ const EmpresaDashboard = () => {
                 {currentUser?.dias_funcionamento && currentUser.dias_funcionamento.length > 0 && (
                   <p><strong>Dias:</strong> {currentUser.dias_funcionamento.map(d => ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][d]).join(', ')}</p>
                 )}
+              </div>
+              
+              {/* Ranking dos Melhores Funcionários */}
+              <div className="mt-6">
+                <h4 className="font-medium text-gray-900 mb-3 text-sm">🏆 Funcionário em Destaque</h4>
+                
+                {/* Ranking por Atendimentos - Alternando automaticamente */}
+                <div className="mb-4">
+                  <h5 className="text-xs font-medium text-gray-700 mb-2">Mais Atendimentos</h5>
+                  <div className="flex justify-center">
+                    {(() => {
+                      const topFuncionarios = getTopFuncionariosPorAtendimentos();
+                      const funcionarioAtual = topFuncionarios[currentRankingIndex];
+                      
+                      if (!funcionarioAtual) {
+                        return (
+                          <div className="flex flex-col items-center">
+                            <div className="w-12 h-16 bg-gray-100 rounded border-2 border-gray-300 flex items-center justify-center">
+                              <Users className="w-6 h-6 text-gray-400" />
+                            </div>
+                            <span className="text-xs text-gray-500 mt-1">Nenhum funcionário</span>
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <div className="flex flex-col items-center">
+                          <div className="relative">
+                            <div className="w-12 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded border-2 border-blue-300 flex items-center justify-center">
+                              {funcionarioAtual.foto ? (
+                                <img 
+                                  src={funcionarioAtual.foto} 
+                                  alt={funcionarioAtual.nome}
+                                  className="w-full h-full object-cover rounded"
+                                />
+                              ) : (
+                                <Users className="w-6 h-6 text-blue-600" />
+                              )}
+                            </div>
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                              {currentRankingIndex + 1}
+                            </div>
+                          </div>
+                          <span className="text-xs text-gray-600 mt-1 text-center max-w-12 truncate">
+                            {funcionarioAtual.nome}
+                          </span>
+                          <span className="text-xs text-blue-600 font-medium">
+                            {funcionarioAtual.totalAtendimentos} atendimentos
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+                
+                {/* Ranking por Satisfação - Alternando automaticamente */}
+                <div>
+                  <h5 className="text-xs font-medium text-gray-700 mb-2">Melhor Satisfação</h5>
+                  <div className="flex justify-center">
+                    {(() => {
+                      const topFuncionarios = getTopFuncionariosPorSatisfacao();
+                      const funcionarioAtual = topFuncionarios[currentRankingIndex];
+                      
+                      if (!funcionarioAtual) {
+                        return (
+                          <div className="flex flex-col items-center">
+                            <div className="w-12 h-16 bg-gray-100 rounded border-2 border-gray-300 flex items-center justify-center">
+                              <Star className="w-6 h-6 text-gray-400" />
+                            </div>
+                            <span className="text-xs text-gray-500 mt-1">Nenhum funcionário</span>
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <div className="flex flex-col items-center">
+                          <div className="relative">
+                            <div className="w-12 h-16 bg-gradient-to-br from-green-100 to-green-200 rounded border-2 border-green-300 flex items-center justify-center">
+                              {funcionarioAtual.foto ? (
+                                <img 
+                                  src={funcionarioAtual.foto} 
+                                  alt={funcionarioAtual.nome}
+                                  className="w-full h-full object-cover rounded"
+                                />
+                              ) : (
+                                <Star className="w-6 h-6 text-green-600" />
+                              )}
+                            </div>
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                              {currentRankingIndex + 1}
+                            </div>
+                          </div>
+                          <span className="text-xs text-gray-600 mt-1 text-center max-w-12 truncate">
+                            {funcionarioAtual.nome}
+                          </span>
+                          <span className="text-xs text-green-600 font-medium">
+                            {funcionarioAtual.satisfacao.toFixed(1)}★
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="font-medium text-gray-900 mb-2">Satisfação</h3>
+              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-4 border border-yellow-200">
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl mb-3">
+                    <Star className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-3xl font-bold text-gray-900 mb-1">
+                    {(stats.satisfacao || 0).toFixed(1)}★
+                  </div>
+                  <div className="text-gray-600 text-sm">Avaliação Média</div>
+                </div>
               </div>
             </div>
           </div>

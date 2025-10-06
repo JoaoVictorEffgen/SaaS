@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import ImageUpload from '../shared/ImageUpload';
+// ImageUpload será criado se necessário
 
 const EmpresaCadastro = () => {
   const navigate = useNavigate();
@@ -273,11 +273,10 @@ const EmpresaCadastro = () => {
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-gray-900 border-b pb-2">Logo da Empresa</h2>
               
-              <ImageUpload
-                value={formData.logo_url}
-                onChange={handleLogoChange}
-                placeholder="Clique para fazer upload do logo da empresa"
-              />
+              {/* ImageUpload será implementado posteriormente */}
+              <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                <span className="text-gray-500">Upload de imagem será implementado</span>
+              </div>
             </div>
 
             {/* Horário de Funcionamento */}
