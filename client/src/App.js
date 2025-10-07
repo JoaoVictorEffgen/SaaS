@@ -12,6 +12,7 @@ import {
   EmpresaCadastro,
   EmpresaLogin,
   EmpresaDashboard,
+  ConfiguracoesEmpresa,
   ServicosManagement,
   FuncionariosManagement,
   SelecaoEmpresa,
@@ -26,15 +27,16 @@ function App() {
     <MySqlAuthProvider>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <RedirectHandler />
-        <Routes>
+      <Routes>
           {/* Página Principal */}
-          <Route path="/" element={<AccessSelector />} />
-          
+        <Route path="/" element={<AccessSelector />} />
+        
           {/* Rotas B2B (Empresas) - Apenas para usuários tipo 'empresa' */}
-          <Route path="/empresa/cadastro" element={<EmpresaCadastro />} />
-          <Route path="/empresa/login" element={<EmpresaLogin />} />
-          <Route path="/empresa/dashboard" element={<EmpresaDashboard />} />
-          
+        <Route path="/empresa/cadastro" element={<EmpresaCadastro />} />
+        <Route path="/empresa/login" element={<EmpresaLogin />} />
+        <Route path="/empresa/dashboard" element={<EmpresaDashboard />} />
+        <Route path="/empresa/configuracoes" element={<TypedProtectedRoute allowedTypes={['empresa']}><ConfiguracoesEmpresa /></TypedProtectedRoute>} />
+        
           {/* Rotas de Gestão - Apenas para usuários tipo 'empresa' */}
           <Route path="/servicos" element={<TypedProtectedRoute allowedTypes={['empresa']}><ServicosManagement /></TypedProtectedRoute>} />
           <Route path="/funcionarios" element={<TypedProtectedRoute allowedTypes={['empresa']}><FuncionariosManagement /></TypedProtectedRoute>} />
@@ -52,8 +54,8 @@ function App() {
           
           {/* Rota de fallback para rotas não encontradas */}
           <Route path="*" element={<AccessSelector />} />
-        </Routes>
-      </Router>
+      </Routes>
+    </Router>
     </MySqlAuthProvider>
   );
 }

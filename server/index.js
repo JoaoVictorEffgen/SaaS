@@ -12,9 +12,7 @@ const Empresa = require('./models/Empresa');
 const Servico = require('./models/Servico');
 const Agendamento = require('./models/Agendamento');
 
-// Configurar relacionamentos
-const setupAssociations = require('./models/associations');
-setupAssociations();
+// Relacionamentos são configurados em models/index.js
 
 const authRoutes = require('./routes/auth');
 const empresasRoutes = require('./routes/empresas');
@@ -47,6 +45,22 @@ app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
+});
+
+// Rota raiz
+app.get('/', (req, res) => {
+  res.json({
+    message: 'SaaS Agendamento API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      auth: '/api/auth',
+      empresas: '/api/empresas',
+      users: '/api/users',
+      agendamentos: '/api/agendamentos',
+      health: '/api/health'
+    }
+  });
 });
 
 // Rotas da API

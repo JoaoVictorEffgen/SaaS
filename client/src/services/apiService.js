@@ -4,6 +4,7 @@ class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
     this.token = localStorage.getItem('authToken');
+    console.log('🔧 ApiService inicializado com token:', this.token ? 'Presente' : 'Ausente');
   }
 
   // Método genérico para fazer requisições
@@ -17,22 +18,43 @@ class ApiService {
       ...options
     };
 
-    // Adicionar token se disponível
-    if (this.token) {
-      config.headers.Authorization = `Bearer ${this.token}`;
+    // Adicionar token se disponível (verificar tanto na instância quanto no localStorage)
+    const token = this.token || localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔑 Token sendo enviado:', token.substring(0, 20) + '...');
+    } else {
+      console.log('⚠️ Nenhum token encontrado para a requisição');
     }
+
+    console.log('🌐 Fazendo requisição para:', url);
+    console.log('🔑 Headers:', config.headers);
+    console.log('📦 Body:', options.body);
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      
+      // Verificar se a resposta é JSON válido
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        throw new Error('Resposta inválida do servidor');
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro na requisição');
+        throw new Error(data.error || `Erro ${response.status}: ${response.statusText}`);
       }
 
       return data;
     } catch (error) {
       console.error(`Erro na API ${endpoint}:`, error);
+      
+      // Melhorar mensagens de erro específicas
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Servidor não está respondendo. Verifique sua conexão.');
+      }
+      
       throw error;
     }
   }
@@ -144,7 +166,12 @@ class ApiService {
 
   setToken(token) {
     this.token = token;
-    localStorage.setItem('authToken', token);
+    if (token) {
+      localStorage.setItem('authToken', token);
+    } else {
+      localStorage.removeItem('authToken');
+    }
+    console.log('🔧 Token atualizado no ApiService:', token ? 'Presente' : 'Ausente');
   }
 
   getToken() {

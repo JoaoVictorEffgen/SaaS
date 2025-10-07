@@ -13,20 +13,57 @@ app.use(express.json());
 // Dados mockados para teste
 const users = [
   {
-    id: '1',
-    nome: 'Admin',
-    email: 'admin@agendapro.com',
-    senha: '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8QqHh6e', // admin123
-    plano: 'business',
-    empresa: 'AgendaPro'
+    id: 1,
+    nome: 'Barbearia Moderna',
+    email: 'contato@barbeariamoderna.com',
+    senha: 'empresa123',
+    tipo: 'empresa',
+    telefone: '(11) 99999-9999',
+    cnpj: '12.345.678/0001-90',
+    razao_social: 'Barbearia Moderna Ltda'
   },
   {
-    id: '2',
+    id: 2,
     nome: 'João Silva',
-    email: 'joao@exemplo.com',
-    senha: '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8QqHh6e', // 123456
-    plano: 'free',
-    empresa: 'Consultoria Silva'
+    email: 'joao@barbeariamoderna.com',
+    senha: 'funcionario123',
+    tipo: 'funcionario',
+    cpf: '123.456.789-00',
+    empresa_id: 1,
+    cargo: 'Barbeiro'
+  },
+  {
+    id: 3,
+    nome: 'Maria Santos',
+    email: 'maria@email.com',
+    senha: 'cliente123',
+    tipo: 'cliente',
+    telefone: '(11) 99999-9999',
+    cpf: '987.654.321-00'
+  }
+];
+
+const empresas = [
+  {
+    id: 1,
+    user_id: 1,
+    endereco: 'Rua das Flores, 123',
+    cidade: 'São Paulo',
+    estado: 'SP',
+    cep: '01234-567',
+    descricao: 'A melhor barbearia da cidade',
+    latitude: -23.5505, // Coordenadas de São Paulo
+    longitude: -46.6333,
+    horario_funcionamento: JSON.stringify({
+      segunda: { inicio: "08:00", fim: "18:00" },
+      terca: { inicio: "08:00", fim: "18:00" },
+      quarta: { inicio: "08:00", fim: "18:00" },
+      quinta: { inicio: "08:00", fim: "18:00" },
+      sexta: { inicio: "08:00", fim: "18:00" },
+      sabado: { inicio: "08:00", fim: "16:00" },
+      domingo: null
+    }),
+    logo_url: null
   }
 ];
 
@@ -82,6 +119,21 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// Rota raiz
+app.get('/', (req, res) => {
+  res.json({
+    message: 'SaaS Agendamento API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/api/health',
+      empresas: '/api/empresas',
+      login: '/api/users/login',
+      auth: '/api/auth/login'
+    }
+  });
+});
+
 // Rotas públicas
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -91,7 +143,64 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Login
+// Login - Rota compatível com o frontend
+app.post('/api/users/login', async (req, res) => {
+  try {
+    const { identifier, senha, tipo } = req.body;
+    
+    console.log('🔍 Tentativa de login:', { identifier, tipo });
+    
+    // Buscar usuário por email, telefone, CNPJ ou CPF
+    let user = users.find(u => 
+      u.email === identifier || 
+      u.telefone === identifier || 
+      u.cnpj === identifier ||
+      u.cpf === identifier
+    );
+    
+    // Filtrar por tipo se especificado
+    if (tipo && user && user.tipo !== tipo) {
+      user = null;
+    }
+    
+    if (!user) {
+      console.log('❌ Usuário não encontrado');
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+
+    // Verificar senha (simplificado para teste)
+    if (user.senha !== senha) {
+      console.log('❌ Senha incorreta');
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+
+    const token = generateToken(user.id.toString());
+    
+    console.log('✅ Login bem-sucedido:', user.nome);
+    
+    res.json({
+      user: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        telefone: user.telefone,
+        tipo: user.tipo,
+        cpf: user.cpf,
+        cnpj: user.cnpj,
+        empresa_id: user.empresa_id,
+        cargo: user.cargo,
+        foto_url: user.foto_url
+      },
+      token
+    });
+
+  } catch (error) {
+    console.error('❌ Erro no login:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Login - Rota original (mantida para compatibilidade)
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, senha } = req.body;
@@ -101,12 +210,11 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Usuário não encontrado' });
     }
 
-    const senhaValida = await bcrypt.compare(senha, user.senha);
-    if (!senhaValida) {
+    if (user.senha !== senha) {
       return res.status(401).json({ error: 'Senha incorreta' });
     }
 
-    const token = generateToken(user.id);
+    const token = generateToken(user.id.toString());
     
     res.json({
       message: 'Login realizado com sucesso!',
@@ -238,6 +346,59 @@ app.post('/api/agendamentos', (req, res) => {
   }
 });
 
+// Buscar todas as empresas
+app.get('/api/empresas', (req, res) => {
+  console.log('🔍 Buscando empresas...');
+  
+  // Transformar dados das empresas para o formato esperado pelo frontend
+  const empresasFormatadas = empresas.map(empresa => {
+    const user = users.find(u => u.id === empresa.user_id);
+    return {
+      id: empresa.id,
+      user_id: empresa.user_id,
+      endereco: empresa.endereco,
+      cidade: empresa.cidade,
+      estado: empresa.estado,
+      cep: empresa.cep,
+      descricao: empresa.descricao,
+      latitude: empresa.latitude,
+      longitude: empresa.longitude,
+      horario_funcionamento: empresa.horario_funcionamento,
+      logo_url: empresa.logo_url,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      // Dados do usuário (empresa)
+      nome: user?.nome || 'Empresa',
+      email: user?.email || '',
+      telefone: user?.telefone || '',
+      cnpj: user?.cnpj || ''
+    };
+  });
+  
+  console.log('📊 Empresas encontradas:', empresasFormatadas.length);
+  res.json(empresasFormatadas);
+});
+
+// Buscar empresa por ID
+app.get('/api/empresas/:id', (req, res) => {
+  const empresa = empresas.find(e => e.id == req.params.id);
+  
+  if (!empresa) {
+    return res.status(404).json({ error: 'Empresa não encontrada' });
+  }
+  
+  const user = users.find(u => u.id === empresa.user_id);
+  const empresaCompleta = {
+    ...empresa,
+    nome: user?.nome || 'Empresa',
+    email: user?.email || '',
+    telefone: user?.telefone || '',
+    cnpj: user?.cnpj || ''
+  };
+  
+  res.json(empresaCompleta);
+});
+
 // Rota para agenda pública
 app.get('/api/agendas/public/:userId', (req, res) => {
   const { userId } = req.params;
@@ -266,6 +427,15 @@ app.listen(PORT, () => {
   console.log(`🔗 API: http://localhost:${PORT}/api`);
   console.log(`📱 Health Check: http://localhost:${PORT}/api/health`);
   console.log('\n👥 Usuários de teste:');
-  console.log('   • admin@agendapro.com / admin123');
-  console.log('   • joao@exemplo.com / 123456');
+  console.log('   🏢 EMPRESA:');
+  console.log('      Email: contato@barbeariamoderna.com');
+  console.log('      CNPJ: 12.345.678/0001-90');
+  console.log('      Senha: empresa123');
+  console.log('   👨‍💼 FUNCIONÁRIO:');
+  console.log('      CPF: 123.456.789-00');
+  console.log('      Senha: funcionario123');
+  console.log('   👤 CLIENTE:');
+  console.log('      Email: maria@email.com');
+  console.log('      Telefone: (11) 99999-9999');
+  console.log('      Senha: cliente123');
 }); 

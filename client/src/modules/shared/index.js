@@ -7,3 +7,4 @@ export { default as DashboardKPIs } from './DashboardKPIs';
 export { default as ExportData } from './ExportData';
 // Debug components removidos
 export { default as EmpresaCard } from './EmpresaCard';
+export { default as CompanyLocation } from '../../components/shared/CompanyLocation';

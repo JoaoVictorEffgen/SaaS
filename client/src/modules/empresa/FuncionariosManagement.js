@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, User, Save, X, ArrowLeft } from 'lucide-react';
+import ImageUpload from '../../components/shared/ImageUpload';
 
 const FuncionariosManagement = () => {
   const { user, loading } = useMySqlAuth();
@@ -17,7 +18,7 @@ const FuncionariosManagement = () => {
     telefone: '',
     cpf: '',
     cargo: '',
-    foto: null
+    foto_url: null
   });
 
   useEffect(() => {
@@ -53,14 +54,21 @@ const FuncionariosManagement = () => {
     );
   }
 
-  const loadFuncionarios = () => {
+  const loadFuncionarios = async () => {
     if (!user?.id) return;
     try {
-      // Simular carregamento de funcionários do localStorage
-      const funcionariosData = JSON.parse(localStorage.getItem(`funcionarios_${user.id}`) || '[]');
+      console.log('🔍 Carregando funcionários da empresa:', user.id);
+      
+      // Buscar funcionários via API MySQL
+      const { default: apiService } = await import('../../services/apiService');
+      
+      // Buscar funcionários que pertencem a esta empresa
+      const funcionariosData = await apiService.request(`/users/funcionarios/${user.id}`);
+      
+      console.log('📊 Funcionários encontrados:', funcionariosData);
       setFuncionarios(funcionariosData);
     } catch (error) {
-      console.error('Erro ao carregar funcionários do localStorage:', error);
+      console.error('❌ Erro ao carregar funcionários:', error);
       setFuncionarios([]);
     }
   };
@@ -159,7 +167,7 @@ const FuncionariosManagement = () => {
       telefone: funcionario.telefone || '',
       cpf: funcionario.cpf || '',
       cargo: funcionario.cargo || '',
-      foto: funcionario.foto || null
+      foto_url: funcionario.foto_url || null
     });
     setShowModal(true);
   };
@@ -280,9 +288,9 @@ const FuncionariosManagement = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
-                            {funcionario.foto ? (
+                            {funcionario.foto_url ? (
                               <img 
-                                src={funcionario.foto} 
+                                src={funcionario.foto_url} 
                                 alt={funcionario.nome_completo || funcionario.nome}
                                 className="h-10 w-10 rounded-full object-cover"
                               />
@@ -431,41 +439,14 @@ const FuncionariosManagement = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Foto do Funcionário (opcional)
                     </label>
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                      <div className="space-y-1 text-center">
-                        {formData.foto ? (
-                          <div className="flex flex-col items-center">
-                            <img 
-                              src={formData.foto} 
-                              alt="Preview" 
-                              className="h-20 w-20 rounded-full object-cover mb-2"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setFormData({...formData, foto: null})}
-                              className="text-sm text-red-600 hover:text-red-800"
-                            >
-                              Remover foto
-                            </button>
-                          </div>
-                        ) : (
-                          <div>
-                            <User className="mx-auto h-12 w-12 text-gray-400" />
-                            <div className="flex text-sm text-gray-600">
-                              <label className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                                <span>Adicionar foto</span>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleFileChange}
-                                  className="sr-only"
-                                />
-                              </label>
-                            </div>
-                            <p className="text-xs text-gray-500">PNG, JPG até 5MB</p>
-                          </div>
-                        )}
-                      </div>
+                    <div className="flex justify-center">
+                      <ImageUpload
+                        currentImage={formData.foto_url}
+                        onImageChange={(imageUrl, file) => setFormData({...formData, foto_url: imageUrl})}
+                        type="foto"
+                        size="large"
+                        className="mx-auto"
+                      />
                     </div>
                   </div>
 

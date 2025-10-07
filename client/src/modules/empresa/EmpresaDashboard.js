@@ -11,6 +11,7 @@ import {
   Users2,
   DollarSign,
   TrendingUp,
+  Sun,
   Clock,
   CheckCircle,
   ArrowRight,
@@ -18,10 +19,12 @@ import {
   Edit3,
   Home,
   Bell,
+  Settings,
   Star
 } from 'lucide-react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import apiService from '../../services/apiService';
+import ImageUpload from '../../components/shared/ImageUpload';
 
 const EmpresaDashboard = () => {
   const navigate = useNavigate();
@@ -30,6 +33,7 @@ const EmpresaDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [currentRankingIndex, setCurrentRankingIndex] = useState(0);
+  const [logoUrl, setLogoUrl] = useState(user?.logo_url || null);
   
   // Memoização dos dados para evitar recálculos desnecessários
   const { agendamentos, funcionarios } = useMemo(() => {
@@ -50,11 +54,16 @@ const EmpresaDashboard = () => {
       .filter(a => a.status === 'confirmado')
       .reduce((sum, a) => sum + (parseFloat(a.valor_total) || 0), 0);
 
+    const receitaDia = agendamentos
+      .filter(a => a.data === hoje && a.status === 'confirmado')
+      .reduce((sum, a) => sum + (parseFloat(a.valor_total) || 0), 0);
+
     return {
       totalAgendamentos: agendamentos.length,
       agendamentosHoje,
       funcionarios: funcionarios.length,
-      receitaMes
+      receitaMes,
+      receitaDia
     };
   }, [agendamentos, funcionarios]);
 
@@ -63,6 +72,7 @@ const EmpresaDashboard = () => {
       navigate('/');
     } else {
       setCurrentUser(user);
+      setLogoUrl(user?.logo_url || null);
     }
   }, [navigate, user]);
 
@@ -91,6 +101,51 @@ const EmpresaDashboard = () => {
       console.error('❌ Erro no logout do EmpresaDashboard:', error);
       // Fallback: navegar para login
       navigate('/', { replace: true });
+    }
+  };
+
+  // Função para lidar com upload da logo
+  const handleLogoUpload = async (base64Image, file) => {
+    try {
+      console.log('📷 Upload de logo iniciado...');
+      console.log('👤 Usuário atual:', currentUser);
+      
+      // Verificar se há token no localStorage
+      const token = localStorage.getItem('authToken');
+      console.log('🔑 Token no localStorage:', token ? 'Presente' : 'Ausente');
+      
+      if (!token) {
+        throw new Error('Token de autenticação não encontrado. Faça login novamente.');
+      }
+      
+      // Atualizar logo localmente imediatamente
+      setLogoUrl(base64Image);
+      
+      // Garantir que o apiService tem o token atualizado
+      apiService.setToken(token);
+      
+      // Enviar para o backend via API
+      const response = await apiService.updateProfile({
+        logo_url: base64Image
+      });
+      
+      console.log('📡 Resposta da API:', response);
+      
+      if (response) {
+        console.log('✅ Logo atualizada com sucesso!');
+        // Atualizar o usuário no contexto
+        setCurrentUser(prev => ({ ...prev, logo_url: base64Image }));
+      }
+    } catch (error) {
+      console.error('❌ Erro ao atualizar logo:', error);
+      console.error('❌ Detalhes do erro:', {
+        message: error.message,
+        status: error.status,
+        response: error.response
+      });
+      alert(`Erro ao atualizar logo: ${error.message}`);
+      // Reverter mudança local em caso de erro
+      setLogoUrl(currentUser?.logo_url || null);
     }
   };
 
@@ -133,58 +188,6 @@ const EmpresaDashboard = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showNotifications]);
 
-  const handleLogoUpload = () => {
-    // Criar input de arquivo temporário
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        // Verificar tamanho do arquivo (máximo 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          alert('Arquivo muito grande! Selecione uma imagem menor que 5MB.');
-          return;
-        }
-        
-        // Ler o arquivo como URL
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-          const logoUrl = event.target.result;
-          
-          if (currentUser) {
-            // Atualizar via API (para persistência completa)
-            try {
-              const updatedUser = await apiService.updateProfile({ 
-                logo_url: logoUrl 
-              });
-            
-              if (updatedUser) {
-                // Atualizar também na lista de empresas (para exibição nos cards)
-                const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
-                const empresaIndex = empresas.findIndex(emp => emp.id === currentUser.id);
-              
-                if (empresaIndex !== -1) {
-                  empresas[empresaIndex].logo_url = logoUrl;
-                  localStorage.setItem('empresas', JSON.stringify(empresas));
-                }
-                
-                // Atualizar o currentUser no localStorage
-                localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-                
-                // Atualizar o estado local sem recarregar a página
-                setCurrentUser(updatedUser);
-              }
-            } catch (error) {
-              console.error('Erro ao atualizar logo:', error);
-            }
-          }
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-    input.click();
-  };
 
   // Função para obter top funcionários por atendimentos
   const getTopFuncionariosPorAtendimentos = () => {
@@ -257,32 +260,15 @@ const EmpresaDashboard = () => {
           <div className="flex justify-between items-center">
             {/* Lado Esquerdo - Logo e Título */}
             <div className="flex items-center space-x-4">
-              {/* Logo com opção de trocar */}
-              <div className="relative group">
-                <div className="w-12 h-12 bg-white rounded-full border border-gray-200 flex items-center justify-center shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200">
-                  {currentUser?.logo_url ? (
-                    <img
-                      src={currentUser.logo_url}
-                      alt={`Logo ${currentUser.razaoSocial}`}
-                      className="w-8 h-8 object-contain"
-                    />
-                  ) : (
-                    <div className="w-6 h-4 bg-gray-800 rounded-sm flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">
-                        {currentUser?.razaoSocial?.charAt(0) || 'E'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Botão de editar logo - aparece no hover */}
-                <button 
-                  onClick={handleLogoUpload}
-                  className="absolute -top-1 -right-1 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg hover:bg-blue-700"
-                  title="Alterar logo"
-                >
-                  <Edit3 className="w-3 h-3" />
-                </button>
+              {/* Logo com upload */}
+              <div className="flex flex-col items-center">
+                <ImageUpload
+                  currentImage={logoUrl}
+                  onImageChange={handleLogoUpload}
+                  type="logo"
+                  size="medium"
+                  className="mb-1"
+                />
               </div>
               
               {/* Título */}
@@ -297,7 +283,7 @@ const EmpresaDashboard = () => {
             </div>
             
             {/* Lado Direito - Botões */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 -mt-10">
               {/* Sino de Notificação */}
               <div className="relative">
                 <button
@@ -349,6 +335,15 @@ const EmpresaDashboard = () => {
               </div>
               
               <button
+                onClick={() => navigate('/empresa/configuracoes')}
+                className="flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors duration-200 font-medium"
+                title="Configurações da Empresa"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Configurações
+              </button>
+              
+              <button
                 onClick={() => navigate('/')}
                 className="flex items-center px-4 py-2 bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors duration-200 font-medium"
                 title="Voltar à Página Inicial"
@@ -370,7 +365,7 @@ const EmpresaDashboard = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <div className="group bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-blue-200/50">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
@@ -407,6 +402,19 @@ const EmpresaDashboard = () => {
             <div>
               <p className="text-sm font-medium text-gray-600 mb-1">Funcionários</p>
               <p className="text-3xl font-bold text-gray-900">{stats.funcionarios}</p>
+            </div>
+          </div>
+
+          <div className="group bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-yellow-200/50">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg">
+                <Sun className="h-6 w-6 text-white" />
+              </div>
+              <TrendingUp className="h-5 w-5 text-yellow-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Receita do Dia</p>
+              <p className="text-3xl font-bold text-gray-900">R$ {stats.receitaDia.toFixed(2)}</p>
             </div>
           </div>
 

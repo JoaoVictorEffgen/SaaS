@@ -174,7 +174,7 @@ async function setupDatabase() {
       // Inserir empresa de teste
       await connection.execute(`
         INSERT INTO users (tipo, nome, email, senha, cnpj, razao_social) VALUES 
-        ('empresa', 'Barbearia Moderna', 'contato@barbeariamoderna.com', '$2b$10$example', '12.345.678/0001-90', 'Barbearia Moderna Ltda')
+        ('empresa', 'Barbearia Moderna', 'contato@barbeariamoderna.com', 'empresa123', '12.345.678/0001-90', 'Barbearia Moderna Ltda')
       `);
       
       const [empresaResult] = await connection.execute('SELECT LAST_INSERT_ID() as id');
@@ -189,13 +189,13 @@ async function setupDatabase() {
       // Inserir funcionário de teste
       await connection.execute(`
         INSERT INTO users (tipo, nome, email, senha, cpf, empresa_id, cargo) VALUES 
-        ('funcionario', 'João Silva', 'joao@barbeariamoderna.com', '$2b$10$example', '123.456.789-00', ${empresaId}, 'Barbeiro')
+        ('funcionario', 'João Silva', 'joao@barbeariamoderna.com', 'funcionario123', '123.456.789-00', ${empresaId}, 'Barbeiro')
       `);
       
       // Inserir cliente de teste
       await connection.execute(`
         INSERT INTO users (tipo, nome, email, senha, cpf, telefone) VALUES 
-        ('cliente', 'Maria Santos', 'maria@email.com', '$2b$10$example', '987.654.321-00', '(11) 99999-9999')
+        ('cliente', 'Maria Santos', 'maria@email.com', 'cliente123', '987.654.321-00', '(11) 99999-9999')
       `);
       
       // Inserir serviços

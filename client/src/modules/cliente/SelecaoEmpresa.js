@@ -132,38 +132,85 @@ const SelecaoEmpresa = () => {
   };
 
   useEffect(() => {
-    // Carregar empresas usando o serviço
-    const empresasData = localStorageService.getEmpresas();
-    
-    // Ordenar por nota média (maior para menor) e depois por total de avaliações
-    const empresasOrdenadas = empresasData.sort((a, b) => {
-      const notaA = a.notaMedia || 0;
-      const notaB = b.notaMedia || 0;
-      const avaliacoesA = a.totalAvaliacoes || 0;
-      const avaliacoesB = b.totalAvaliacoes || 0;
-      
-      // Primeiro critério: nota média
-      if (notaA !== notaB) {
-        return notaB - notaA;
+    // Carregar empresas da API MySQL
+    const loadEmpresas = async () => {
+      try {
+        console.log('🔍 Carregando empresas da API...');
+        
+        // Usar apiService para buscar empresas
+        const { default: apiService } = await import('../../services/apiService');
+        const empresasData = await apiService.getEmpresas();
+        
+        console.log('📊 Empresas recebidas da API:', empresasData);
+        
+        if (empresasData && Array.isArray(empresasData)) {
+          // Transformar dados da API para o formato esperado
+          const empresasFormatadas = empresasData.map(empresa => ({
+            id: empresa.id,
+            nome: empresa.nome || empresa.razao_social,
+            descricao: empresa.descricao || 'Descrição não disponível',
+            endereco: empresa.endereco || 'Endereço não disponível',
+            telefone: empresa.telefone || 'Telefone não disponível',
+            horario_funcionamento: empresa.horario_funcionamento || 'Horário comercial',
+            notaMedia: empresa.notaMedia || 0,
+            totalAvaliacoes: empresa.totalAvaliacoes || 0,
+            destaque: empresa.destaque || false,
+            categoria: empresa.categoria || 'Serviços',
+            logo_url: empresa.logo_url || null,
+            cidade: empresa.cidade || 'Cidade não informada',
+            estado: empresa.estado || 'Estado não informado'
+          }));
+          
+          // Ordenar por nota média (maior para menor) e depois por total de avaliações
+          const empresasOrdenadas = empresasFormatadas.sort((a, b) => {
+            const notaA = a.notaMedia || 0;
+            const notaB = b.notaMedia || 0;
+            const avaliacoesA = a.totalAvaliacoes || 0;
+            const avaliacoesB = b.totalAvaliacoes || 0;
+            
+            // Primeiro critério: nota média
+            if (notaA !== notaB) {
+              return notaB - notaA;
+            }
+            // Segundo critério: total de avaliações (mais avaliações = mais confiável)
+            return avaliacoesB - avaliacoesA;
+          });
+          
+          setEmpresas(empresasOrdenadas);
+          
+          // Separar empresas em destaque (nota >= 4.5 e pelo menos 10 avaliações)
+          const destaque = empresasOrdenadas.filter(empresa => 
+            (empresa.notaMedia || 0) >= 4.5 && (empresa.totalAvaliacoes || 0) >= 10
+          );
+          
+          // Separar empresas normais
+          const normais = empresasOrdenadas.filter(empresa => 
+            (empresa.notaMedia || 0) < 4.5 || (empresa.totalAvaliacoes || 0) < 10
+          );
+          
+          setEmpresasDestaque(destaque);
+          setEmpresasNormais(normais);
+          
+          console.log('✅ Empresas carregadas:', empresasOrdenadas.length);
+          console.log('⭐ Empresas em destaque:', destaque.length);
+          console.log('🏢 Empresas normais:', normais.length);
+        } else {
+          console.warn('⚠️ Nenhuma empresa encontrada na API');
+          setEmpresas([]);
+          setEmpresasDestaque([]);
+          setEmpresasNormais([]);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao carregar empresas:', error);
+        // Fallback para localStorage se a API falhar
+        const empresasData = localStorageService.getEmpresas();
+        setEmpresas(empresasData || []);
+        setEmpresasDestaque([]);
+        setEmpresasNormais(empresasData || []);
       }
-      // Segundo critério: total de avaliações (mais avaliações = mais confiável)
-      return avaliacoesB - avaliacoesA;
-    });
+    };
     
-    setEmpresas(empresasOrdenadas);
-    
-    // Separar empresas em destaque (nota >= 4.5 e pelo menos 10 avaliações)
-    const destaque = empresasOrdenadas.filter(empresa => 
-      (empresa.notaMedia || 0) >= 4.5 && (empresa.totalAvaliacoes || 0) >= 10
-    );
-    
-    // Separar empresas normais
-    const normais = empresasOrdenadas.filter(empresa => 
-      (empresa.notaMedia || 0) < 4.5 || (empresa.totalAvaliacoes || 0) < 10
-    );
-    
-    setEmpresasDestaque(destaque);
-    setEmpresasNormais(normais);
+    loadEmpresas();
     
     // Carregar empresas favoritas
     loadEmpresasFavoritas();

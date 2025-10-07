@@ -7,7 +7,7 @@ const Servico = require('./Servico');
 const Agendamento = require('./Agendamento');
 
 // Configurar relacionamentos
-const setupAssociations = require('./associations');
+const setupAssociations = require('./associations-simple');
 setupAssociations();
 
 module.exports = {

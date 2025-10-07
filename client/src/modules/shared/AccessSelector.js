@@ -19,6 +19,7 @@ const AccessSelector = () => {
   useEffect(() => {
     console.log('🔍 Estado do modal cliente:', showClienteModal);
   }, [showClienteModal]);
+
   
   // Estados do formulário de cliente
   const [clienteForm, setClienteForm] = useState({ 
@@ -44,7 +45,8 @@ const AccessSelector = () => {
   const [empresaForm, setEmpresaForm] = useState({ email: '', senha: '', nome: '', telefone: '', endereco: '', cnpj: '' });
   const [funcionarioForm, setFuncionarioForm] = useState({ 
     empresaId: '', 
-    cpf: '' 
+    cpf: '',
+    senha: 'funcionario123' // Senha padrão para funcionários
   });
   const [empresaError, setEmpresaError] = useState('');
   const [funcionarioError, setFuncionarioError] = useState('');
@@ -243,54 +245,24 @@ const AccessSelector = () => {
     try {
       setClienteLoading(true);
       
-      // Limpar qualquer login anterior
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('empresaLogada');
-      localStorage.removeItem('funcionarioLogado');
+      // Usar o contexto de autenticação MySQL
+      const identifier = clienteForm.email || clienteForm.whatsapp;
+      const result = await login(identifier, clienteForm.senha, 'cliente');
       
-      // Verificar apenas clientes (não empresas ou funcionários)
-      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
-      const cliente = clientes.find(c => 
-        (c.email === clienteForm.email || c.whatsapp === clienteForm.whatsapp) && 
-        c.senha === clienteForm.senha
-      );
-      
-      console.log('🔍 Clientes disponíveis:', clientes);
-      console.log('🔍 Buscando cliente com:', clienteForm.email || clienteForm.whatsapp);
-      console.log('🔍 Cliente encontrado:', cliente);
-
-      if (cliente) {
-        // Login bem-sucedido
-        console.log('✅ Cliente encontrado:', cliente);
-        
-        // Salvar no localStorage diretamente e fazer login
-        localStorage.setItem('currentUser', JSON.stringify(cliente));
-        console.log('💾 Cliente salvo no localStorage');
-        
-        // Forçar atualização do contexto
-        window.dispatchEvent(new Event('storage'));
-        window.dispatchEvent(new CustomEvent('userLogin', { detail: cliente }));
-        console.log('🔄 Eventos disparados para atualizar contexto');
+      if (result.success) {
+        console.log('✅ Login bem-sucedido:', result.user);
         
         // Fechar modal e navegar para lista de empresas
         setShowClienteModal(false);
         console.log('🚀 Navegando para /cliente');
         navigate('/cliente');
       } else {
-        // Verificar se o email existe em empresas ou funcionários
-        const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
-        const funcionarios = JSON.parse(localStorage.getItem('funcionarios') || '[]');
-        
-        const empresaExiste = empresas.find(e => e.email === clienteForm.email);
-        const funcionarioExiste = funcionarios.find(f => f.email === clienteForm.email);
-        
-        if (empresaExiste) {
-          setClienteError('Este email é de uma empresa. Use a área "Área da Empresa".');
-        } else if (funcionarioExiste) {
-          setClienteError('Este email é de um funcionário. Use a área "Área do Funcionário".');
-        } else {
-          setClienteError('Email/WhatsApp ou senha incorretos.');
-        }
+        setClienteError(result.error || 'Email/WhatsApp ou senha incorretos.');
+        // Fechar modal após 2 segundos em caso de erro
+        setTimeout(() => {
+          setShowClienteModal(false);
+          setClienteError('');
+        }, 2000);
       }
     } catch (error) {
       console.error('Erro no login:', error);
@@ -500,6 +472,11 @@ const AccessSelector = () => {
         navigate('/empresa/dashboard');
       } else {
         setEmpresaError(result.error || 'Erro no login');
+        // Fechar modal após 2 segundos em caso de erro
+        setTimeout(() => {
+          setShowEmpresaModal(false);
+          setEmpresaError('');
+        }, 2000);
       }
     } catch (error) {
       setEmpresaError(error.message);
@@ -514,67 +491,43 @@ const AccessSelector = () => {
     setFuncionarioLoading(true);
     setFuncionarioError('');
 
+    // Validações
+    if (!funcionarioForm.empresaId) {
+      setFuncionarioError('Por favor, preencha o ID da empresa.');
+      setFuncionarioLoading(false);
+      return;
+    }
+
+    if (!funcionarioForm.cpf) {
+      setFuncionarioError('Por favor, preencha o CPF.');
+      setFuncionarioLoading(false);
+      return;
+    }
+
+    if (!funcionarioForm.senha) {
+      setFuncionarioError('Por favor, preencha a senha.');
+      setFuncionarioLoading(false);
+      return;
+    }
+
     try {
-      console.log('Empresa ID inserido:', funcionarioForm.empresaId);
-      console.log('CPF inserido:', funcionarioForm.cpf);
+      // Usar o contexto de autenticação MySQL
+      // Para funcionários, usar CPF como identifier
+      const result = await login(funcionarioForm.cpf, funcionarioForm.senha, 'funcionario');
 
-      const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
-      
-      // Buscar funcionários da empresa específica
-      const funcionarios = JSON.parse(localStorage.getItem(`funcionarios_${funcionarioForm.empresaId}`) || '[]');
-      
-      console.log('Empresas encontradas:', empresas.length);
-      console.log('Funcionários encontrados:', funcionarios.length);
-      console.log('CPF inserido (formatado):', funcionarioForm.cpf);
-      
-      // Buscar funcionário pelo CPF (sem formatação)
-      const cpfLimpo = funcionarioForm.cpf.replace(/[^\d]/g, '');
-      console.log('CPF limpo (apenas números):', cpfLimpo);
-      console.log('Lista de funcionários:', funcionarios);
-      
-      const empresa = empresas.find(emp => emp.id === funcionarioForm.empresaId);
-      const funcionario = funcionarios.find(func => 
-        func.cpf === cpfLimpo
-      );
-
-      console.log('Empresa encontrada:', empresa ? empresa.nome : 'NÃO ENCONTRADA');
-      console.log('Funcionário encontrado:', funcionario ? funcionario.nome : 'NÃO ENCONTRADO');
-
-      if (!empresa) {
-        throw new Error('Empresa não encontrada');
-      }
-
-      if (!funcionario) {
-        throw new Error('Funcionário não encontrado nesta empresa');
-      }
-
-      // Criar dados do usuário funcionário
-      const userData = {
-        ...funcionario,
-        tipo: 'funcionario',
-        empresa_nome: empresa.nome,
-        email: funcionario.email || `funcionario_${funcionario.cpf}@empresa.com`, // Email fictício se não existir
-        plano: 'business' // Funcionários têm acesso business
-      };
-      
-      console.log('💾 Salvando usuário no localStorage:', userData);
-      
-      // Salvar em sessão específica para funcionários
-      localStorage.setItem('funcionarioSession', JSON.stringify(userData));
-      localStorage.setItem('authToken', 'funcionario_token_' + userData.id);
-
-      // Forçar atualização do contexto
-      window.dispatchEvent(new Event('storage'));
-
-      setShowFuncionarioModal(false);
-      
-      // Aguardar um pouco para garantir que o contexto seja atualizado
-      setTimeout(() => {
-        console.log('🚀 Redirecionando para /funcionario/agenda');
-        console.log('🔍 URL atual antes da navegação:', window.location.href);
+      if (result.success) {
+        console.log('✅ Login do funcionário bem-sucedido:', result.user);
+        
+        setShowFuncionarioModal(false);
         navigate('/funcionario/agenda');
-        console.log('🔍 URL após navegação:', window.location.href);
-      }, 100);
+      } else {
+        setFuncionarioError(result.error || 'ID da empresa, CPF ou senha incorretos.');
+        // Fechar modal após 2 segundos em caso de erro
+        setTimeout(() => {
+          setShowFuncionarioModal(false);
+          setFuncionarioError('');
+        }, 2000);
+      }
 
     } catch (error) {
       console.error('❌ Erro no login:', error);
@@ -614,6 +567,7 @@ const AccessSelector = () => {
             </div>
           </div>
         </div>
+
 
 
 
@@ -1054,6 +1008,16 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
 
 
 
+              <div className="text-center text-sm text-gray-600 mb-4">
+                <p className="mb-2">🏢 Acesse sua conta empresarial e gerencie seus negócios</p>
+                <p className="text-xs bg-gray-100 p-2 rounded">
+                  <strong>Credenciais de teste:</strong><br/>
+                  Email: contato@barbeariamoderna.com<br/>
+                  CNPJ: 12.345.678/0001-90<br/>
+                  Senha: empresa123
+                </p>
+              </div>
+
               <div className="flex items-center justify-between pt-4">
                 <Link
                   to="/empresa/cadastro"
@@ -1115,12 +1079,12 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                   type="text"
                   value={funcionarioForm.empresaId}
                   onChange={(e) => setFuncionarioForm({ ...funcionarioForm, empresaId: e.target.value })}
-                  placeholder="Digite o ID da empresa"
+                  placeholder="Ex: BarbeariaModerna1"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Exemplo: emp_teste_001
+                  Para teste: BarbeariaModerna1
                 </p>
               </div>
 
@@ -1132,14 +1096,38 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                   type="text"
                   value={funcionarioForm.cpf}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é número
+                    let value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é número
+                    if (value.length >= 11) {
+                      // Formatar CPF: 123.456.789-00
+                      value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+                    }
                     setFuncionarioForm({ ...funcionarioForm, cpf: value });
                   }}
-                  placeholder="00000000000"
+                  placeholder="123.456.789-00"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   required
-                  maxLength={11}
+                  maxLength={14}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Para teste: 123.456.789-00
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Senha
+                </label>
+                <input
+                  type="password"
+                  value={funcionarioForm.senha}
+                  onChange={(e) => setFuncionarioForm({ ...funcionarioForm, senha: e.target.value })}
+                  placeholder="Digite sua senha"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Para teste: funcionario123
+                </p>
               </div>
 
               <div className="pt-4">
@@ -1153,7 +1141,13 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
               </div>
 
               <div className="text-center text-sm text-gray-600">
-                📋 Acesse sua agenda pessoal e visualize todos os seus agendamentos
+                <p className="mb-2">📋 Acesse sua agenda pessoal e visualize todos os seus agendamentos</p>
+                <p className="text-xs bg-gray-100 p-2 rounded">
+                  <strong>Credenciais de teste:</strong><br/>
+                  ID Empresa: BarbeariaModerna1<br/>
+                  CPF: 123.456.789-00<br/>
+                  Senha: funcionario123
+                </p>
               </div>
             </form>
           </div>

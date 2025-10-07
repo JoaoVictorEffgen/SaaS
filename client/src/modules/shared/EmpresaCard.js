@@ -1,14 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, MapPin, Clock, Users, Heart } from 'lucide-react';
+import { Star, MapPin, Clock, Users, Heart, Navigation } from 'lucide-react';
+import CompanyLocation from '../../components/shared/CompanyLocation';
 
 const EmpresaCard = ({ empresa, onToggleFavorite, isFavorite = false }) => {
+  const [showLocation, setShowLocation] = useState(false);
+
   const handleFavoriteClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (onToggleFavorite) {
       onToggleFavorite(empresa.id);
     }
+  };
+
+  const handleLocationClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowLocation(true);
   };
 
   return (
@@ -20,9 +29,17 @@ const EmpresaCard = ({ empresa, onToggleFavorite, isFavorite = false }) => {
         {/* Header com logo e favorito */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-              {empresa.nome?.charAt(0) || 'E'}
-            </div>
+            {empresa.logo_url ? (
+              <img
+                src={empresa.logo_url}
+                alt={`Logo ${empresa.nome}`}
+                className="w-12 h-12 rounded-lg object-cover"
+              />
+            ) : (
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                {empresa.nome?.charAt(0) || 'E'}
+              </div>
+            )}
             <div>
               <h3 className="text-lg font-semibold text-gray-900">{empresa.nome}</h3>
               <p className="text-sm text-gray-600">{empresa.especializacao}</p>
@@ -49,9 +66,20 @@ const EmpresaCard = ({ empresa, onToggleFavorite, isFavorite = false }) => {
         {/* Informações */}
         <div className="space-y-2 mb-4">
           {empresa.endereco && (
-            <div className="flex items-center text-gray-600 text-sm">
-              <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-              <span className="truncate">{empresa.endereco}</span>
+            <div className="flex items-center justify-between text-gray-600 text-sm">
+              <div className="flex items-center flex-1 min-w-0">
+                <MapPin className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+                <span className="truncate">{empresa.endereco}</span>
+              </div>
+              {(empresa.latitude && empresa.longitude) && (
+                <button
+                  onClick={handleLocationClick}
+                  className="ml-2 p-1 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors flex-shrink-0"
+                  title="Ver localização"
+                >
+                  <Navigation className="w-4 h-4" />
+                </button>
+              )}
             </div>
           )}
           
@@ -85,6 +113,14 @@ const EmpresaCard = ({ empresa, onToggleFavorite, isFavorite = false }) => {
           </span>
         </div>
       </div>
+
+      {/* Modal de Localização */}
+      {showLocation && (
+        <CompanyLocation 
+          empresa={empresa} 
+          onClose={() => setShowLocation(false)} 
+        />
+      )}
     </Link>
   );
 };

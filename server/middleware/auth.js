@@ -15,7 +15,8 @@ const authenticateToken = async (req, res, next) => {
     }
 
     // Verificar token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const jwtSecret = process.env.JWT_SECRET || 'seu_jwt_secret_muito_seguro_aqui_2024';
+    const decoded = jwt.verify(token, jwtSecret);
     
     // Buscar usuário no banco
     const user = await User.findByPk(decoded.userId);
@@ -27,7 +28,7 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    if (user.status !== 'ativo') {
+    if (!user.ativo) {
       return res.status(403).json({
         error: 'Usuário inativo',
         message: 'Sua conta está inativa. Entre em contato com o suporte.'

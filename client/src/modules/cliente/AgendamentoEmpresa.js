@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, Navigate, useNavigate } from 'react-router-dom';
-import { Calendar, Users, ArrowLeft, MessageCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Users, ArrowLeft, MessageCircle, CheckCircle, ChevronLeft, ChevronRight, Navigation, X } from 'lucide-react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import WhatsAppChat from '../shared/WhatsAppChat';
-import notificationService from '../../services/notificationService';
+import CompanyLocation from '../../components/shared/CompanyLocation';
 
 const AgendamentoEmpresa = () => {
   const { empresaId } = useParams();
@@ -15,7 +15,10 @@ const AgendamentoEmpresa = () => {
   const [servicos, setServicos] = useState([]);
   const [showWhatsAppChat, setShowWhatsAppChat] = useState(false);
   const [agendamentoConfirmado, setAgendamentoConfirmado] = useState(null);
+  const [agendamentoStatus, setAgendamentoStatus] = useState('pendente'); // 'pendente' ou 'confirmado'
   const [showCalendar, setShowCalendar] = useState(false);
+  const [lembreteReagendamento, setLembreteReagendamento] = useState(null);
+  const [showLocation, setShowLocation] = useState(false);
   
   const [quickBooking, setQuickBooking] = useState({
     nome: user?.nome || '',
@@ -23,10 +26,21 @@ const AgendamentoEmpresa = () => {
     data: '',
     hora: '',
     funcionario_id: '',
-    servicos: [],
-    recorrente: false,
+    servicos: []
+  });
+
+  // Estados para agendamento recorrente (após primeiro agendamento)
+  const [showRecurringOptions, setShowRecurringOptions] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [recurringConfig, setRecurringConfig] = useState({
+    ativo: false,
+    total_agendamentos: 3, // 3, 5 ou 7
     tipo_recorrencia: 'semanal',
-    fim_recorrencia: ''
+    dias_semana: [], // Para agendamento semanal
+    dia_mes: 1, // Para agendamento mensal
+    intervalo_dias: 15, // Para agendamento quinzenal
+    agendamentos_concluidos: 0,
+    proximo_agendamento: null
   });
 
   // Hooks para o calendário
@@ -63,8 +77,14 @@ const AgendamentoEmpresa = () => {
         nome: user.nome || '',
         telefone: user.telefone || user.whatsapp || ''
       }));
+
+      // Verificar lembrete de reagendamento
+      const lembrete = verificarLembreteReagendamento(user.id);
+      if (lembrete.sugerir) {
+        setLembreteReagendamento(lembrete);
+      }
     }
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fechar calendário ao clicar fora
   useEffect(() => {
@@ -79,6 +99,49 @@ const AgendamentoEmpresa = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showCalendar]);
+
+  // Inicializar dia da semana quando o modal de recorrência for aberto
+  useEffect(() => {
+    if (showRecurringOptions && quickBooking.data && recurringConfig.tipo_recorrencia === 'semanal') {
+      const dataSelecionada = new Date(quickBooking.data);
+      const diaSemana = dataSelecionada.getDay();
+      
+      // Sempre atualizar o dia da semana baseado na data selecionada
+      setRecurringConfig(prev => ({
+        ...prev,
+        dias_semana: [diaSemana]
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showRecurringOptions, quickBooking.data, recurringConfig.tipo_recorrencia]);
+
+  // Função para marcar agendamento como realizado e verificar série
+  const marcarAgendamentoRealizado = (agendamentoId) => {
+    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
+    const agendamentoIndex = agendamentos.findIndex(a => a.id === agendamentoId);
+    
+    if (agendamentoIndex !== -1) {
+      // Marcar como realizado
+      agendamentos[agendamentoIndex].status = 'realizado';
+      agendamentos[agendamentoIndex].data_conclusao = new Date().toISOString();
+      
+      // Salvar alterações
+      localStorage.setItem(`agendamentos_${empresaId}`, JSON.stringify(agendamentos));
+      
+      // Verificar se é o último da série recorrente
+      if (verificarUltimoAgendamentoRecorrente(agendamentoId)) {
+        enviarNotificacaoSerieConcluida(agendamentos[agendamentoIndex]);
+      }
+    }
+  };
+
+  // Expor função globalmente para uso em outras partes do sistema
+  useEffect(() => {
+    window.marcarAgendamentoRealizado = marcarAgendamentoRealizado;
+    return () => {
+      delete window.marcarAgendamentoRealizado;
+    };
+  }, [empresaId, marcarAgendamentoRealizado]);
 
   // Verificar se o usuário está logado DEPOIS de todos os hooks
   console.log('🔍 AgendamentoEmpresa - Verificando usuário:', user);
@@ -114,6 +177,214 @@ const AgendamentoEmpresa = () => {
     }
     
     return horarios;
+  };
+
+
+  // Função para obter nome do dia da semana
+  const getNomeDiaSemana = (numeroDia) => {
+    const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    return dias[numeroDia];
+  };
+
+  // Função para alternar dia da semana na seleção (apenas 1 dia)
+  const toggleDiaSemana = (dia) => {
+    setRecurringConfig(prev => ({
+      ...prev,
+      dias_semana: [dia] // Sempre substitui por apenas este dia
+    }));
+  };
+
+
+  // Nova função para confirmar agendamento (primeiro agendamento normal)
+  const handleConfirmarAgendamento = () => {
+    // Validar campos obrigatórios
+    if (!quickBooking.nome || !quickBooking.telefone || !quickBooking.data || 
+        !quickBooking.hora || !quickBooking.funcionario_id || quickBooking.servicos.length === 0) {
+      alert('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    // Criar o primeiro agendamento
+    const novoAgendamento = {
+      id: Date.now(),
+      cliente_nome: quickBooking.nome,
+      cliente_telefone: quickBooking.telefone,
+      cliente_email: user.email,
+      data: quickBooking.data,
+      hora: quickBooking.hora,
+      funcionario_id: quickBooking.funcionario_id,
+      empresa_id: empresaId,
+      servicos: quickBooking.servicos,
+      valor_total: calcularValorTotal(),
+      status: 'pendente',
+      data_criacao: new Date().toISOString()
+    };
+
+    // Salvar agendamento
+    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
+    agendamentos.push(novoAgendamento);
+    localStorage.setItem(`agendamentos_${empresaId}`, JSON.stringify(agendamentos));
+
+    // Definir status como pendente
+    setAgendamentoStatus('pendente');
+
+    // Mostrar opções de recorrência
+    setShowRecurringOptions(true);
+  };
+
+  // Função para calcular datas recorrentes para prévia
+  const calcularDatasRecorrentes = () => {
+    if (!quickBooking.data || !recurringConfig.total_agendamentos) return [];
+    
+    const datas = [];
+    const dataBase = new Date(quickBooking.data + 'T00:00:00');
+    
+    // Para recorrência semanal, usar os dias selecionados
+    if (recurringConfig.tipo_recorrencia === 'semanal' && recurringConfig.dias_semana?.length > 0) {
+      // Ordenar os dias da semana selecionados
+      const diasOrdenados = [...recurringConfig.dias_semana].sort((a, b) => a - b);
+      
+      // Começar da data base exata
+      let dataAtual = new Date(dataBase);
+      let contador = 0;
+      
+      // Gerar as datas baseadas no número total de agendamentos
+      while (contador < recurringConfig.total_agendamentos) {
+        const diaSemanaAtual = dataAtual.getDay();
+        
+        if (diasOrdenados.includes(diaSemanaAtual)) {
+          datas.push(new Date(dataAtual));
+          contador++;
+        }
+        
+        // Avançar para o próximo dia
+        dataAtual.setDate(dataAtual.getDate() + 1);
+        
+        // Evitar loop infinito (máximo 100 dias)
+        if (contador === 0 && dataAtual.getTime() - dataBase.getTime() > 100 * 24 * 60 * 60 * 1000) {
+          break;
+        }
+      }
+    } else {
+      // Para outros tipos de recorrência ou semanal sem dias selecionados
+      for (let i = 0; i < recurringConfig.total_agendamentos; i++) {
+        let proximaData = new Date(dataBase);
+        
+        switch (recurringConfig.tipo_recorrencia) {
+          case 'semanal':
+            proximaData.setDate(proximaData.getDate() + (7 * i));
+            break;
+          case 'quinzenal':
+            proximaData.setDate(proximaData.getDate() + (15 * i));
+            break;
+          case 'mensal':
+            proximaData.setMonth(proximaData.getMonth() + i);
+            break;
+          default:
+            proximaData.setDate(proximaData.getDate() + (7 * i));
+        }
+        
+        datas.push(proximaData);
+      }
+    }
+    
+    return datas;
+  };
+
+  // Função para confirmar recorrência e criar os agendamentos adicionais
+  const handleConfirmarRecorrencia = () => {
+    if (recurringConfig.total_agendamentos === 0) {
+      alert('Por favor, selecione o número de agendamentos.');
+      return;
+    }
+
+    // Criar agendamentos recorrentes
+    const agendamentosRecorrentes = [];
+    const dataBase = new Date(quickBooking.data);
+    
+    for (let i = 1; i < recurringConfig.total_agendamentos; i++) {
+      let proximaData = new Date(dataBase);
+      
+      switch (recurringConfig.tipo_recorrencia) {
+        case 'semanal':
+          proximaData.setDate(proximaData.getDate() + (7 * i));
+          break;
+        case 'quinzenal':
+          proximaData.setDate(proximaData.getDate() + (15 * i));
+          break;
+        case 'mensal':
+          proximaData.setMonth(proximaData.getMonth() + i);
+          break;
+        default:
+          proximaData.setDate(proximaData.getDate() + (7 * i));
+      }
+
+      const agendamentoRecorrente = {
+        id: Date.now() + i,
+        cliente_nome: quickBooking.nome,
+        cliente_telefone: quickBooking.telefone,
+        cliente_email: user.email,
+        data: proximaData.toISOString().split('T')[0],
+        hora: quickBooking.hora,
+        funcionario_id: quickBooking.funcionario_id,
+        empresa_id: empresaId,
+        servicos: quickBooking.servicos,
+        valor_total: calcularValorTotal(),
+        status: 'pendente',
+        data_criacao: new Date().toISOString(),
+        recorrente: true,
+        serie_recorrente_id: Date.now(), // ID para agrupar agendamentos da mesma série
+        posicao_serie: i + 1,
+        total_agendamentos: recurringConfig.total_agendamentos
+      };
+
+      agendamentosRecorrentes.push(agendamentoRecorrente);
+    }
+
+    // Salvar agendamentos recorrentes
+    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
+    agendamentos.push(...agendamentosRecorrentes);
+    localStorage.setItem(`agendamentos_${empresaId}`, JSON.stringify(agendamentos));
+
+    // Fechar modal e mostrar confirmação
+    setShowRecurringOptions(false);
+    setAgendamentoConfirmado({
+      empresa_nome: empresa.nome,
+      data: new Date(quickBooking.data + 'T00:00:00').toLocaleDateString('pt-BR'),
+      hora: quickBooking.hora,
+      servicos: quickBooking.servicos.map(s => s.nome).join(', '),
+      valor_total: calcularValorTotal(),
+      recorrente: true,
+      total_agendamentos: recurringConfig.total_agendamentos,
+      agendamentos_criados: recurringConfig.total_agendamentos
+    });
+  };
+
+  // Função para verificar se deve sugerir reagendamento após 5 conclusões
+  const verificarLembreteReagendamento = (clienteId) => {
+    const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+    const agendamentosCliente = agendamentos.filter(ag => 
+      ag.cliente_email === user.email && ag.status === 'realizado'
+    );
+    
+    // Se o cliente tem 5 ou mais agendamentos realizados, sugerir reagendamento
+    if (agendamentosCliente.length >= 5) {
+      const ultimoAgendamento = agendamentosCliente[agendamentosCliente.length - 1];
+      const diasDesdeUltimo = Math.floor(
+        (new Date() - new Date(ultimoAgendamento.data)) / (1000 * 60 * 60 * 24)
+      );
+      
+      // Se passou mais de 7 dias desde o último agendamento, sugerir reagendamento
+      if (diasDesdeUltimo > 7) {
+        return {
+          sugerir: true,
+          diasDesdeUltimo,
+          totalRealizados: agendamentosCliente.length
+        };
+      }
+    }
+    
+    return { sugerir: false };
   };
 
   const verificarDisponibilidadeFuncionario = (horario) => {
@@ -251,53 +522,6 @@ const AgendamentoEmpresa = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!quickBooking.data || !quickBooking.hora || !quickBooking.funcionario_id || quickBooking.servicos.length === 0) {
-      alert('Por favor, preencha todos os campos obrigatórios.');
-      return;
-    }
-    
-      const novoAgendamento = {
-      id: Date.now(),
-        empresa_id: empresaId,
-      cliente_nome: user.nome,
-      cliente_email: user.email || `cliente_${Date.now()}@email.com`,
-      cliente_telefone: user.telefone || user.whatsapp,
-      data: quickBooking.data,
-      hora: quickBooking.hora,
-      funcionario_id: quickBooking.funcionario_id,
-      servicos: quickBooking.servicos,
-      status: 'em_aprovacao', // Novo status inicial
-      observacoes: '',
-      valor_total: quickBooking.servicos.reduce((total, servico) => total + (servico.preco || 0), 0),
-        data_criacao: new Date().toISOString()
-      };
-
-    // Salvar em ambas as chaves para garantir compatibilidade
-    const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-    agendamentos.push(novoAgendamento);
-    localStorage.setItem('agendamentos', JSON.stringify(agendamentos));
-    
-    // Também salvar na chave específica da empresa para relatórios
-    const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
-    agendamentosEmpresa.push(novoAgendamento);
-    localStorage.setItem(`agendamentos_${empresaId}`, JSON.stringify(agendamentosEmpresa));
-
-    // Salvar agendamento confirmado para mostrar resumo destacado
-    setAgendamentoConfirmado({
-      ...novoAgendamento,
-      empresa_nome: empresa.nome,
-      funcionario_nome: funcionarios.find(f => f.id === quickBooking.funcionario_id)?.nome
-    });
-
-    // Enviar notificações
-    const funcionario = funcionarios.find(f => f.id === quickBooking.funcionario_id);
-    await enviarNotificacoes(novoAgendamento, empresa, funcionario, user);
-    
-    // O modal agora é fechado pelos botões "Voltar ao Início" ou "Novo Agendamento"
-  };
 
   const toggleServico = (servico) => {
     const servicosAtualizados = quickBooking.servicos.includes(servico)
@@ -310,6 +534,61 @@ const AgendamentoEmpresa = () => {
   const calcularValorTotal = () => {
     return quickBooking.servicos.reduce((total, servico) => total + (servico.preco || 0), 0);
   };
+
+  const calcularTempoTotal = () => {
+    return quickBooking.servicos.reduce((total, servico) => total + (servico.duracao || 0), 0);
+  };
+
+  // Função para verificar se é o último agendamento da série recorrente
+  const verificarUltimoAgendamentoRecorrente = (agendamentoId) => {
+    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
+    const agendamento = agendamentos.find(a => a.id === agendamentoId);
+    
+    if (!agendamento || !agendamento.serie_recorrente_id) {
+      return false;
+    }
+
+    // Buscar todos os agendamentos da mesma série
+    const agendamentosSerie = agendamentos.filter(a => 
+      a.serie_recorrente_id === agendamento.serie_recorrente_id && 
+      a.status === 'realizado'
+    );
+
+    // Se todos os agendamentos da série foram concluídos
+    return agendamentosSerie.length === agendamento.total_agendamentos;
+  };
+
+  // Função para enviar notificação de conclusão da série
+  const enviarNotificacaoSerieConcluida = (agendamento) => {
+    const notificacao = {
+      id: Date.now(),
+      tipo: 'serie_concluida',
+      titulo: '🎉 Série de Agendamentos Concluída!',
+      mensagem: `Parabéns! Você concluiu todos os ${agendamento.total_agendamentos} agendamentos da sua série recorrente. Obrigado pela confiança!`,
+      data: new Date().toISOString(),
+      lida: false,
+      agendamento_id: agendamento.id,
+      empresa_id: empresaId
+    };
+
+    // Salvar notificação
+    const notificacoes = JSON.parse(localStorage.getItem(`notificacoes_${user.id}`) || '[]');
+    notificacoes.unshift(notificacao);
+    localStorage.setItem(`notificacoes_${user.id}`, JSON.stringify(notificacoes));
+
+    // Disparar evento para atualizar contadores
+    window.dispatchEvent(new CustomEvent('notificacaoNova', { detail: notificacao }));
+
+    // Enviar WhatsApp (opcional)
+    if (user.telefone || user.whatsapp) {
+      const telefone = (user.whatsapp || user.telefone).replace(/\D/g, '');
+      const mensagemWhatsApp = `🎉 *Parabéns!*\n\nVocê concluiu todos os ${agendamento.total_agendamentos} agendamentos da sua série recorrente na ${empresa.nome}!\n\nObrigado pela confiança em nossos serviços! 🙏\n\nGostaria de agendar uma nova série?`;
+      const whatsappLink = `https://wa.me/55${telefone}?text=${encodeURIComponent(mensagemWhatsApp)}`;
+      window.open(whatsappLink, '_blank');
+    }
+  };
+
+
 
   // Funções para o calendário
   const formatarDataParaExibicao = (data) => {
@@ -476,6 +755,15 @@ const AgendamentoEmpresa = () => {
                   <p className="text-white text-opacity-90 drop-shadow-md">Agende seu atendimento</p>
                     </div>
                   </div>
+
+                  {/* Botão de Localização */}
+                  <button
+                    onClick={() => setShowLocation(true)}
+                    className="absolute top-4 right-4 bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-3 hover:bg-opacity-30 transition-all duration-200 border border-white border-opacity-30"
+                    title="Ver localização"
+                  >
+                    <Navigation className="w-5 h-5 text-white" />
+                  </button>
             </div>
             
               <button
@@ -491,6 +779,30 @@ const AgendamentoEmpresa = () => {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Lembrete de Reagendamento */}
+        {lembreteReagendamento && (
+          <div className="mb-6 bg-gradient-to-r from-orange-100 to-yellow-100 border border-orange-300 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="text-3xl">🎉</div>
+                <div>
+                  <h3 className="font-bold text-orange-800">Cliente VIP!</h3>
+                  <p className="text-orange-700 text-sm">
+                    Você já realizou {lembreteReagendamento.totalRealizados} agendamentos conosco! 
+                    Que tal marcar um novo serviço? Faz {lembreteReagendamento.diasDesdeUltimo} dias desde seu último agendamento.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setLembreteReagendamento(null)}
+                className="text-orange-600 hover:text-orange-800"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Header com ícone e título */}
           <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -771,7 +1083,7 @@ const AgendamentoEmpresa = () => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Data:</span>
-                  <span className="font-semibold">{new Date(quickBooking.data).toLocaleDateString('pt-BR')}</span>
+                  <span className="font-semibold">{new Date(quickBooking.data + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Horário:</span>
@@ -789,6 +1101,10 @@ const AgendamentoEmpresa = () => {
                     {quickBooking.servicos.map(s => s.nome).join(', ')}
                   </span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tempo total:</span>
+                  <span className="font-semibold">{calcularTempoTotal()} minutos</span>
+                </div>
                 <div className="flex justify-between text-lg font-bold text-green-600 border-t pt-3">
                   <span>Total:</span>
                   <span>R$ {calcularValorTotal().toFixed(2)}</span>
@@ -799,14 +1115,12 @@ const AgendamentoEmpresa = () => {
 
           {/* Botão de Confirmar */}
           {quickBooking.servicos.length > 0 && (
-            <form onSubmit={handleSubmit}>
             <button
-                type="submit"
+                onClick={handleConfirmarAgendamento}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 px-6 rounded-xl text-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
             >
                 Confirmar Agendamento
             </button>
-            </form>
           )}
                   </div>
                 </div>
@@ -818,6 +1132,327 @@ const AgendamentoEmpresa = () => {
           onClose={() => setShowWhatsAppChat(false)}
           empresa={empresa}
         />
+      )}
+
+      {/* Modal de Localização */}
+      {showLocation && empresa && (
+        <CompanyLocation 
+          empresa={empresa} 
+          onClose={() => setShowLocation(false)} 
+        />
+      )}
+
+      {/* Modal de Opções Recorrentes */}
+      {showRecurringOptions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <Calendar className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">
+                      {agendamentoStatus === 'pendente' ? 'Agendamento Aguardando Confirmação!' : 'Agendamento Confirmado!'}
+                    </h3>
+                    <p className="text-green-200 text-sm">
+                      {agendamentoStatus === 'pendente' 
+                        ? 'Tornar este agendamento recorrente?' 
+                        : 'Tornar este agendamento recorrente?'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowRecurringOptions(false);
+                  }}
+                  className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-white/30 transition-colors"
+                >
+                  <X className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                  {agendamentoStatus === 'pendente' 
+                    ? 'Agendamento Criado com Sucesso!' 
+                    : 'Agendamento Confirmado!'}
+                </h4>
+                <p className="text-gray-600">
+                  {agendamentoStatus === 'pendente'
+                    ? 'Seu agendamento foi criado e está aguardando confirmação. Deseja tornar este agendamento recorrente?'
+                    : 'Agendamento confirmado! Deseja tornar este agendamento recorrente?'}
+                </p>
+              </div>
+
+              {/* Opções de Recorrência */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Número de agendamentos (3, 5 ou 7)
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[3, 5, 7].map(num => (
+                      <button
+                        key={num}
+                        onClick={() => setRecurringConfig(prev => ({ ...prev, total_agendamentos: num }))}
+                        className={`p-3 rounded-lg border-2 transition-all ${
+                          recurringConfig.total_agendamentos === num
+                            ? 'bg-blue-500 border-blue-500 text-white'
+                            : 'bg-white border-gray-300 text-gray-700 hover:border-blue-300'
+                        }`}
+                      >
+                        <div className="text-center">
+                          <div className="text-lg font-bold">{num}</div>
+                          <div className="text-xs">agendamentos</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de recorrência
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { value: 'semanal', label: 'Semanal', icon: '📅' },
+                      { value: 'quinzenal', label: 'Quinzenal', icon: '📆' },
+                      { value: 'mensal', label: 'Mensal', icon: '🗓️' }
+                    ].map(tipo => (
+                      <button
+                        key={tipo.value}
+                        onClick={() => setRecurringConfig(prev => ({ ...prev, tipo_recorrencia: tipo.value }))}
+                        className={`p-3 rounded-lg border-2 transition-all ${
+                          recurringConfig.tipo_recorrencia === tipo.value
+                            ? 'bg-blue-500 border-blue-500 text-white'
+                            : 'bg-white border-gray-300 text-gray-700 hover:border-blue-300'
+                        }`}
+                      >
+                        <div className="text-center">
+                          <div className="text-lg mb-1">{tipo.icon}</div>
+                          <div className="text-sm font-medium">{tipo.label}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dias da Semana (para recorrência semanal) */}
+                {recurringConfig.tipo_recorrencia === 'semanal' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Dia da semana
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: 1, label: 'Seg' },
+                        { value: 2, label: 'Ter' },
+                        { value: 3, label: 'Qua' },
+                        { value: 4, label: 'Qui' },
+                        { value: 5, label: 'Sex' },
+                        { value: 6, label: 'Sáb' },
+                        { value: 0, label: 'Dom' }
+                      ].map(dia => (
+                        <button
+                          key={dia.value}
+                          onClick={() => toggleDiaSemana(dia.value)}
+                          className={`p-2 rounded-lg text-sm font-medium transition-all ${
+                            recurringConfig.dias_semana?.includes(dia.value)
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {dia.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Preview das Datas */}
+              {quickBooking.data && quickBooking.hora && recurringConfig.total_agendamentos > 0 && (
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-medium text-gray-900 mb-3">Prévia dos Agendamentos:</h4>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {calcularDatasRecorrentes().map((data, index) => (
+                      <div key={index} className="flex justify-between text-sm">
+                        <span className="text-gray-600">
+                          Agendamento {index + 1}:
+                        </span>
+                        <span className="font-medium">
+                          {data.toLocaleDateString('pt-BR')} às {quickBooking.hora}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Botões de Ação */}
+              <div className="space-y-3 pt-4">
+                <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => {
+                    setShowSummary(true);
+                  }}
+                  className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Ver Resumo (Apenas Este)
+                </button>
+                <button
+                  onClick={handleConfirmarRecorrencia}
+                  disabled={recurringConfig.total_agendamentos === 0}
+                  className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {agendamentoStatus === 'pendente' ? 'Tornar Recorrente (Pendente)' : 'Tornar Recorrente'}
+                </button>
+                </div>
+                
+                {/* Botão de Confirmação */}
+                <button
+                  onClick={() => {
+                    setShowRecurringOptions(false);
+                    setAgendamentoConfirmado({
+                      empresa_nome: empresa.nome,
+                      data: new Date(quickBooking.data + 'T00:00:00').toLocaleDateString('pt-BR'),
+                      hora: quickBooking.hora,
+                      servicos: quickBooking.servicos.map(s => s.nome).join(', '),
+                      valor_total: calcularValorTotal(),
+                      status: agendamentoStatus
+                    });
+                  }}
+                  className="w-full px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-lg"
+                >
+                  ✅ Confirmar Agendamento
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Resumo (Apenas Este) */}
+      {showSummary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <Calendar className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Resumo do Agendamento</h3>
+                    <p className="text-blue-200 text-sm">Confira os detalhes antes de confirmar</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSummary(false)}
+                  className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-white/30 transition-colors"
+                >
+                  <X className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            </div>
+
+            {/* Conteúdo do Modal */}
+            <div className="p-6 space-y-4">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="w-8 h-8 text-blue-600" />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                  Agendamento Único
+                </h4>
+                <p className="text-gray-600">
+                  Este é um agendamento único, não recorrente.
+                </p>
+              </div>
+
+              {/* Resumo do Agendamento */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <h5 className="font-semibold text-gray-900 mb-3">📋 Detalhes do Agendamento:</h5>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">📅 Data:</span>
+                  <span className="font-medium">
+                    {new Date(quickBooking.data + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">🕐 Horário:</span>
+                  <span className="font-medium">{quickBooking.hora}</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">👨‍💼 Funcionário:</span>
+                  <span className="font-medium">
+                    {funcionarios.find(f => f.id === quickBooking.funcionario_id)?.nome || 'Não selecionado'}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">🛠️ Serviços:</span>
+                  <span className="font-medium text-right max-w-48">
+                    {quickBooking.servicos.map(s => s.nome).join(', ')}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">⏱️ Tempo total:</span>
+                  <span className="font-medium">{calcularTempoTotal()} minutos</span>
+                </div>
+                
+                <div className="flex justify-between items-center border-t pt-3">
+                  <span className="text-gray-600 font-semibold">💰 Valor Total:</span>
+                  <span className="font-bold text-green-600 text-lg">
+                    R$ {calcularValorTotal().toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="grid grid-cols-2 gap-3 pt-4">
+                <button
+                  onClick={() => setShowSummary(false)}
+                  className="px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Voltar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSummary(false);
+                    setShowRecurringOptions(false);
+                    setAgendamentoConfirmado({
+                      empresa_nome: empresa.nome,
+                      data: new Date(quickBooking.data + 'T00:00:00').toLocaleDateString('pt-BR'),
+                      hora: quickBooking.hora,
+                      servicos: quickBooking.servicos.map(s => s.nome).join(', '),
+                      valor_total: calcularValorTotal(),
+                      status: agendamentoStatus
+                    });
+                  }}
+                  className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  ✅ Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Resumo Destacado após Confirmação */}
@@ -834,8 +1469,19 @@ const AgendamentoEmpresa = () => {
             {/* Card de Resumo */}
             <div className="bg-gradient-to-b from-green-50 to-green-100 rounded-xl p-4 mb-6 shadow-sm">
               <h4 className="font-bold text-gray-900 mb-4 flex items-center">
-                📋 Resumo do Agendamento
+                📋 {(agendamentoConfirmado.recorrente || false) ? 'Resumo dos Agendamentos' : 
+                    (agendamentoConfirmado.status === 'pendente' ? 'Resumo do Agendamento (Aguardando Confirmação)' : 'Resumo do Agendamento')}
               </h4>
+              
+              {(agendamentoConfirmado.recorrente || false) && (
+                <div className="bg-blue-100 border border-blue-300 rounded-lg p-3 mb-4">
+                  <div className="flex items-center justify-center">
+                    <span className="text-blue-800 font-semibold">
+                      🔄 {agendamentoConfirmado.agendamentos_criados || 0} agendamentos criados automaticamente!
+                    </span>
+                  </div>
+                </div>
+              )}
               
               <div className="space-y-3">
                 <div className="flex justify-between items-center bg-green-50 rounded-lg p-3">
@@ -861,14 +1507,38 @@ const AgendamentoEmpresa = () => {
                 <div className="flex justify-between items-center bg-green-50 rounded-lg p-3">
                   <span className="text-gray-700 flex items-center">🛠️ <span className="ml-2">Serviços:</span></span>
                   <span className="font-bold text-gray-900 text-right">
-                    {agendamentoConfirmado.servicos.map(s => s.nome).join(', ')}
+                    {Array.isArray(agendamentoConfirmado.servicos) 
+                      ? agendamentoConfirmado.servicos.map(s => s.nome).join(', ')
+                      : agendamentoConfirmado.servicos || 'N/A'}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center bg-green-200 rounded-lg p-4 border border-green-300">
                   <span className="font-bold text-green-700 flex items-center">💰 <span className="ml-2">Total:</span></span>
-                  <span className="text-xl font-bold text-green-600">R$ {agendamentoConfirmado.valor_total.toFixed(2)}</span>
+                  <span className="text-xl font-bold text-green-600">R$ {(agendamentoConfirmado.valor_total || 0).toFixed(2)}</span>
+                </div>
+
+                {/* Informações sobre agendamentos recorrentes */}
+                {(agendamentoConfirmado.total_recorrentes || 0) > 1 && (
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 mt-4">
+                    <div className="flex items-center justify-center mb-2">
+                      <span className="text-2xl mr-2">🔄</span>
+                      <span className="font-bold text-blue-700">Agendamento Recorrente</span>
                     </div>
+                    <div className="text-center space-y-1">
+                      <p className="text-blue-600 font-medium">
+                        {agendamentoConfirmado.total_recorrentes || 0} agendamentos criados
+                      </p>
+                      <p className="text-sm text-blue-500">
+                        Tipo: {agendamentoConfirmado.tipo_recorrencia === 'semanal' ? 'Semanal' : 
+                               agendamentoConfirmado.tipo_recorrencia === 'quinzenal' ? 'Quinzenal' : 'Mensal'}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        Você receberá lembretes antes de cada agendamento
+                      </p>
+                    </div>
+                  </div>
+                )}
                     </div>
                   </div>
 

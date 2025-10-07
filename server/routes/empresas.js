@@ -1,35 +1,44 @@
 const express = require('express');
 const router = express.Router();
 const { Empresa, User } = require('../models');
-const auth = require('../middleware/auth');
+const { authenticateToken: auth } = require('../middleware/auth');
 
 // GET /api/empresas - Listar todas as empresas
 router.get('/', async (req, res) => {
   try {
-    const empresas = await Empresa.findAll({
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['nome', 'email', 'telefone']
-      }]
-    });
-    res.json(empresas);
+    console.log('🔍 Buscando todas as empresas...');
+    
+    // Buscar todas as empresas
+    const empresas = await Empresa.findAll();
+    
+    console.log('📊 Empresas encontradas:', empresas.length);
+    
+    // Transformar dados das empresas
+    const empresasFormatadas = empresas.map(empresa => ({
+      id: empresa.id,
+      user_id: empresa.user_id,
+      endereco: empresa.endereco,
+      cidade: empresa.cidade,
+      estado: empresa.estado,
+      cep: empresa.cep,
+      descricao: empresa.descricao,
+      horario_funcionamento: empresa.horario_funcionamento,
+      logo_url: empresa.logo_url,
+      created_at: empresa.created_at,
+      updated_at: empresa.updated_at
+    }));
+    
+    res.json(empresasFormatadas);
   } catch (error) {
-    console.error('Erro ao buscar empresas:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    console.error('❌ Erro ao buscar empresas:', error);
+    res.status(500).json({ error: 'Erro interno do servidor', message: error.message });
   }
 });
 
 // GET /api/empresas/:id - Buscar empresa por ID
 router.get('/:id', async (req, res) => {
   try {
-    const empresa = await Empresa.findByPk(req.params.id, {
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['nome', 'email', 'telefone']
-      }]
-    });
+    const empresa = await Empresa.findByPk(req.params.id);
     
     if (!empresa) {
       return res.status(404).json({ error: 'Empresa não encontrada' });

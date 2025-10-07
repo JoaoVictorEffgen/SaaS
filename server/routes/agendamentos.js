@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Agendamento, User, Empresa, Servico } = require('../models');
 const { Op } = require('sequelize');
-const auth = require('../middleware/auth');
+const { authenticateToken: auth } = require('../middleware/auth');
 
 // GET /api/agendamentos - Listar agendamentos
 router.get('/', auth, async (req, res) => {

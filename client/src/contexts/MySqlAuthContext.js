@@ -14,6 +14,7 @@ export const useMySqlAuth = () => {
 export const MySqlAuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [subscription, setSubscription] = useState({
     plano: 'free',
     status: 'inativo',
@@ -61,10 +62,16 @@ export const MySqlAuthProvider = ({ children }) => {
     loadUserFromToken();
   }, []);
 
+  // Função para limpar erros
+  const clearError = () => {
+    setError(null);
+  };
+
   // Login via MySQL
   const login = async (identifier, senha, tipo = null) => {
     try {
       setLoading(true);
+      setError(null); // Limpar erros anteriores
       console.log('MySqlAuth - Login via MySQL:', identifier, tipo);
       
       const result = await apiService.login(identifier, senha, tipo);
@@ -86,11 +93,15 @@ export const MySqlAuthProvider = ({ children }) => {
         console.log('✅ Login MySQL bem-sucedido:', userData);
         return { success: true, user: userData };
       } else {
-        return { success: false, error: result?.error || 'Credenciais inválidas' };
+        const errorMsg = result?.error || 'Credenciais inválidas';
+        setError(errorMsg);
+        return { success: false, error: errorMsg };
       }
     } catch (error) {
       console.error('❌ Erro no login MySQL:', error);
-      return { success: false, error: error.message || 'Erro ao fazer login' };
+      const errorMsg = error.message || 'Erro ao fazer login';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
     }
@@ -148,10 +159,12 @@ export const MySqlAuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
+    error,
     subscription,
     login,
     register,
     logout,
+    clearError,
     apiService
   };
 
