@@ -694,88 +694,101 @@ const AgendamentoEmpresa = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Header */}
-      <div className="relative overflow-hidden border-b border-gray-200">
-        {/* Background da Logo */}
-        {empresa.logo_url ? (
-          <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{
-              backgroundImage: `url(${empresa.logo_url})`,
-              filter: 'brightness(0.3) blur(1px)',
-              transform: 'scale(1.1)'
-            }}
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 opacity-80" />
-        )}
+      {/* Header Moderno com Design Aprimorado */}
+      <div className="relative bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 overflow-hidden min-h-[140px] border-b border-gray-700">
+        {/* Background Pattern Sutil */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundSize: '60px 60px'
+          }} />
+        </div>
         
-        {/* Overlay escuro para contraste */}
-        <div className="absolute inset-0 bg-black bg-opacity-40" />
+        {/* Overlay Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-black/40" />
         
         {/* Conteúdo do Header */}
-        <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
+        <div className="relative z-10 max-w-6xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
+            {/* Lado Esquerdo - Navegação e Info da Empresa */}
             <div className="flex items-center space-x-4">
+              {/* Botão Voltar */}
               <Link 
                 to="/cliente" 
-                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
+                className="group p-3 bg-white/10 backdrop-blur-sm rounded-xl hover:bg-white/20 transition-all duration-300 border border-white/20 hover:border-white/30 shadow-lg"
+                title="Voltar"
               >
-                <ArrowLeft className="w-5 h-5 text-white" />
+                <ArrowLeft className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
               </Link>
               
-              {/* Informações da Empresa */}
-                  <div className="flex items-center space-x-3">
-                {/* Logo pequena no canto */}
+              {/* Logo e Info da Empresa */}
+              <div className="flex items-center space-x-4">
+                {/* Logo da Empresa */}
                 {empresa.logo_url ? (
-                  <div className="w-12 h-12 rounded-lg overflow-hidden shadow-lg border-2 border-white border-opacity-30">
-                    <img
-                      src={empresa.logo_url}
-                      alt={`Logo ${empresa.nome}`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
-                      }}
-                    />
-                    <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg hidden">
-                      {empresa.nome.charAt(0).toUpperCase()}
+                  <div className="relative group">
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-2xl border-3 border-white/30 bg-white/10 backdrop-blur-sm">
+                      <img
+                        src={empresa.logo_url}
+                        alt={`Logo ${empresa.nome}`}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl hidden">
+                        {empresa.nome.charAt(0).toUpperCase()}
+                      </div>
                     </div>
+                    {/* Efeito de brilho */}
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
                 ) : (
-                  <div className="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-lg flex items-center justify-center shadow-lg border-2 border-white border-opacity-30">
-                    <span className="text-white font-bold text-lg">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl border-3 border-white/30 backdrop-blur-sm">
+                    <span className="text-white font-bold text-xl">
                       {empresa.nome.charAt(0).toUpperCase()}
                     </span>
-          </div>
-        )}
-
-                    <div>
-                  <h1 className="text-3xl font-bold text-white drop-shadow-lg">{empresa.nome}</h1>
-                  <p className="text-white text-opacity-90 drop-shadow-md">Agende seu atendimento</p>
-                    </div>
                   </div>
+                )}
 
-                  {/* Botão de Localização */}
-                  <button
-                    onClick={() => setShowLocation(true)}
-                    className="absolute top-4 right-4 bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-3 hover:bg-opacity-30 transition-all duration-200 border border-white border-opacity-30"
-                    title="Ver localização"
-                  >
-                    <Navigation className="w-5 h-5 text-white" />
-                  </button>
-            </div>
-            
-              <button
-                onClick={() => setShowWhatsAppChat(true)}
-              className="flex items-center px-6 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors shadow-lg backdrop-blur-sm border border-white border-opacity-20"
-            >
-              <MessageCircle className="w-5 h-5 mr-2" />
-              WhatsApp
-            </button>
+                {/* Informações da Empresa */}
+                <div className="text-white">
+                  <h1 className="text-2xl font-bold mb-1 drop-shadow-lg tracking-tight">
+                    {empresa.nome}
+                  </h1>
+                  <p className="text-white/80 text-sm font-medium drop-shadow-md">
+                    Agende seu atendimento
+                  </p>
                 </div>
               </div>
+            </div>
+
+            {/* Lado Direito - Ações */}
+            <div className="flex items-center space-x-3">
+              {/* Botão Localização */}
+              <button
+                onClick={() => setShowLocation(true)}
+                className="group p-3 bg-white/10 backdrop-blur-sm rounded-xl hover:bg-white/20 transition-all duration-300 border border-white/20 hover:border-white/30 shadow-lg"
+                title="Ver localização"
+              >
+                <Navigation className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+              </button>
+
+              {/* Botão WhatsApp */}
+              <button
+                onClick={() => setShowWhatsAppChat(true)}
+                className="group flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-xl hover:shadow-2xl border border-green-400/30 hover:border-green-300/50 backdrop-blur-sm"
+              >
+                <MessageCircle className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                <span className="font-semibold">WhatsApp</span>
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* Linha decorativa inferior */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      </div>
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
