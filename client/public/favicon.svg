@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563eb;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Fundo com bordas arredondadas -->
+  <rect width="32" height="32" rx="6.4" fill="url(#grad)"/>
+  
+  <!-- Ícone de Calendário -->
+  <g transform="translate(6.4, 6.4)">
+    <!-- Corpo do calendário -->
+    <rect x="0" y="3.84" width="19.2" height="13.44" rx="1.92" fill="white"/>
+    
+    <!-- Topo do calendário -->
+    <rect x="0" y="0" width="19.2" height="5.76" fill="white"/>
+    
+    <!-- Argolas -->
+    <circle cx="3.84" cy="1.6" r="1.44" fill="#3b82f6"/>
+    <circle cx="15.36" cy="1.6" r="1.44" fill="#3b82f6"/>
+    
+    <!-- Linhas do calendário -->
+    <line x1="2.88" y1="8.64" x2="16.32" y2="8.64" stroke="#3b82f6" stroke-width="0.96"/>
+    <line x1="2.88" y1="11.52" x2="16.32" y2="11.52" stroke="#3b82f6" stroke-width="0.96"/>
+    <line x1="2.88" y1="14.4" x2="16.32" y2="14.4" stroke="#3b82f6" stroke-width="0.96"/>
+  </g>
+</svg>

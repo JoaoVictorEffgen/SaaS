@@ -28,7 +28,8 @@ const AccessSelector = () => {
     email: '', 
     senha: '', 
     confirmarSenha: '',
-    whatsapp: '' 
+    whatsapp: '',
+    metodoVerificacao: 'whatsapp' // 'whatsapp' ou 'sms'
   });
   const [clienteError, setClienteError] = useState('');
   const [isCadastroMode, setIsCadastroMode] = useState(false);
@@ -46,7 +47,7 @@ const AccessSelector = () => {
   const [funcionarioForm, setFuncionarioForm] = useState({ 
     companyIdentifier: '', // ID ou email da empresa
     identifier: '', // CPF ou email do funcionário
-    senha: 'funcionario123' // Senha padrão para funcionários
+    senha: '' // Senha do funcionário
   });
   const [empresaError, setEmpresaError] = useState('');
   const [funcionarioError, setFuncionarioError] = useState('');
@@ -166,24 +167,8 @@ const AccessSelector = () => {
   useEffect(() => {
     loadEmpresasDestaque();
     
-    // Criar cliente de teste único com email diferente
-    const clienteTeste = {
-      id: 1,
-      nome: 'João',
-      sobrenome: 'Silva',
-      email: 'cliente@teste.com',
-      whatsapp: '11999999999',
-      senha: '123456',
-      tipo: 'cliente',
-      favoritos: []
-    };
-
     // Limpar qualquer currentUser existente primeiro
     localStorage.removeItem('currentUser');
-    
-    // Salvar cliente de teste no localStorage (sempre atualizar)
-    localStorage.setItem('clientes', JSON.stringify([clienteTeste]));
-    console.log('✅ Cliente de teste criado:', clienteTeste);
     
     // Verificar se há um cliente logado
     const clientLoggedIn = user && user.tipo === 'cliente';
@@ -207,7 +192,7 @@ const AccessSelector = () => {
   const openFuncionarioModal = () => {
     setShowFuncionarioModal(true);
     setFuncionarioError('');
-    setFuncionarioForm({ companyIdentifier: '', identifier: '', senha: 'funcionario123' });
+    setFuncionarioForm({ companyIdentifier: '', identifier: '', senha: '' });
   };
 
   const handleClienteLogin = async (e) => {
@@ -335,9 +320,14 @@ const AccessSelector = () => {
       setCodigosGerados({ whatsapp: codigoWhatsApp, sms: codigoSMS });
       
       // Simular envio dos códigos
-      console.log(`📱 Código WhatsApp enviado para ${clienteForm.whatsapp}: ${codigoWhatsApp}`);
-      console.log(`💬 Código SMS enviado para ${clienteForm.whatsapp}: ${codigoSMS}`);
-      console.log(`🔑 Use qualquer um dos códigos acima para confirmar a conta`);
+      if (clienteForm.metodoVerificacao === 'whatsapp') {
+        console.log(`📱 Código WhatsApp enviado para ${clienteForm.whatsapp}: ${codigoWhatsApp}`);
+        console.log(`🔑 Use o código WhatsApp acima para confirmar a conta`);
+      } else {
+        console.log(`💬 Código SMS enviado para ${clienteForm.whatsapp}: ${codigoSMS}`);
+        console.log(`🔑 Use o código SMS acima para confirmar a conta`);
+      }
+      console.log(`⚠️ MODO TESTE: Códigos não são enviados realmente`);
       
       // Salvar dados temporariamente
       localStorage.setItem('clienteTemp', JSON.stringify(clienteForm));
@@ -1028,10 +1018,9 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
               <div className="text-center text-sm text-gray-600 mb-4">
                 <p className="mb-2">🏢 Acesse sua conta empresarial e gerencie seus negócios</p>
                 <p className="text-xs bg-gray-100 p-2 rounded">
-                  <strong>Credenciais de teste:</strong><br/>
-                  Email: contato@barbeariamoderna.com<br/>
-                  CNPJ: 12.345.678/0001-90<br/>
-                  Senha: empresa123
+                  <strong>Dados necessários:</strong><br/>
+                  Email ou CNPJ da empresa<br/>
+                  Senha da empresa
                 </p>
               </div>
 
@@ -1096,13 +1085,13 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                   type="text"
                   value={funcionarioForm.companyIdentifier}
                   onChange={(e) => setFuncionarioForm({ ...funcionarioForm, companyIdentifier: e.target.value })}
-                  placeholder="Ex: barbeariamoderna1234 ou contato@empresa.com"
+                  placeholder="ID da empresa ou email do dono"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Para teste: jet@empresa.com (email da empresa) ou ID gerado automaticamente
-                </p>
+           <p className="text-xs text-gray-500 mt-1">
+             Digite o ID da empresa ou o email do dono
+           </p>
               </div>
 
               <div>
@@ -1115,12 +1104,12 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                   onChange={(e) => {
                     setFuncionarioForm({ ...funcionarioForm, identifier: e.target.value });
                   }}
-                  placeholder="123.456.789-00 ou email@funcionario.com"
+                  placeholder="CPF ou email do funcionário"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Para teste: 123.456.789-00
+                  Digite o CPF ou email do funcionário
                 </p>
               </div>
 
@@ -1137,7 +1126,7 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Para teste: funcionario123
+                  Digite a senha do funcionário
                 </p>
               </div>
 
@@ -1154,10 +1143,10 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
               <div className="text-center text-sm text-gray-600">
                 <p className="mb-2">📋 Acesse sua agenda pessoal e visualize todos os seus agendamentos</p>
                 <p className="text-xs bg-gray-100 p-2 rounded">
-                  <strong>Credenciais de teste:</strong><br/>
-                  ID Empresa: BarbeariaModerna1<br/>
-                  CPF: 123.456.789-00<br/>
-                  Senha: funcionario123
+                  <strong>Dados necessários:</strong><br/>
+                  ID da empresa ou email do dono<br/>
+                  CPF ou email do funcionário<br/>
+                  Senha do funcionário
                 </p>
               </div>
             </form>
@@ -1282,7 +1271,7 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                          }
                        }}
                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                       placeholder="seu@email.com ou (11) 99999-9999"
+                       placeholder="Email ou WhatsApp"
                        required
                      />
                    </div>
@@ -1337,7 +1326,7 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                          value={clienteForm.nome}
                          onChange={(e) => setClienteForm({ ...clienteForm, nome: e.target.value })}
                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                         placeholder="João"
+                         placeholder="Nome"
                          required
                        />
                      </div>
@@ -1350,7 +1339,7 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                          value={clienteForm.sobrenome}
                          onChange={(e) => setClienteForm({ ...clienteForm, sobrenome: e.target.value })}
                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                         placeholder="Silva"
+                         placeholder="Sobrenome"
                          required
                        />
                      </div>
@@ -1365,7 +1354,7 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                        value={clienteForm.email}
                        onChange={(e) => setClienteForm({ ...clienteForm, email: e.target.value })}
                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                       placeholder="seu@email.com"
+                       placeholder="Email"
                        required
                      />
                    </div>
@@ -1379,9 +1368,55 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                        value={clienteForm.whatsapp}
                        onChange={(e) => setClienteForm({ ...clienteForm, whatsapp: e.target.value })}
                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                       placeholder="(11) 99999-9999"
+                       placeholder="WhatsApp"
                        required
                      />
+                   </div>
+
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Método de Verificação *
+                     </label>
+                     <div className="grid grid-cols-2 gap-3">
+                       <button
+                         type="button"
+                         onClick={() => setClienteForm({ ...clienteForm, metodoVerificacao: 'whatsapp' })}
+                         className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                           clienteForm.metodoVerificacao === 'whatsapp'
+                             ? 'border-green-500 bg-green-50 text-green-700'
+                             : 'border-gray-300 bg-white text-gray-700 hover:border-green-300'
+                         }`}
+                       >
+                         <div className="flex items-center justify-center space-x-2">
+                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+                           </svg>
+                           <span>WhatsApp</span>
+                         </div>
+                       </button>
+                       <button
+                         type="button"
+                         onClick={() => setClienteForm({ ...clienteForm, metodoVerificacao: 'sms' })}
+                         className={`p-3 border-2 rounded-lg text-sm font-medium transition-all ${
+                           clienteForm.metodoVerificacao === 'sms'
+                             ? 'border-blue-500 bg-blue-50 text-blue-700'
+                             : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                         }`}
+                       >
+                         <div className="flex items-center justify-center space-x-2">
+                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                           </svg>
+                           <span>SMS</span>
+                         </div>
+                       </button>
+                     </div>
+                     <p className="text-xs text-gray-500 mt-1">
+                       {clienteForm.metodoVerificacao === 'whatsapp' 
+                         ? '📱 Código será enviado via WhatsApp' 
+                         : '💬 Código será enviado via SMS'
+                       }
+                     </p>
                    </div>
 
                    <div>
@@ -1440,7 +1475,10 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                      </div>
                      <h4 className="text-lg font-semibold text-gray-900 mb-2">Confirme seu número</h4>
                      <p className="text-sm text-gray-600 mb-4">
-                       Enviamos códigos de 6 dígitos para<br />
+                       {clienteForm.metodoVerificacao === 'whatsapp' 
+                         ? '📱 Código enviado via WhatsApp para'
+                         : '💬 Código enviado via SMS para'
+                       }<br />
                        <span className="font-medium">{clienteForm.whatsapp}</span>
                      </p>
                      
@@ -1471,7 +1509,7 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                      </div>
                      
                      <p className="text-xs text-gray-500">
-                       Use qualquer um dos códigos enviados
+                       ⚠️ MODO TESTE: Verifique o console do navegador para ver o código
                      </p>
                    </div>
 

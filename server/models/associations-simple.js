@@ -38,12 +38,12 @@ function setupAssociations() {
 
   // 2. USER (todos os tipos: empresa, cliente, funcionario)
   // Funcionários pertencem a uma empresa
-  User.belongsTo(User, {
+  User.belongsTo(Empresa, {
     foreignKey: 'empresa_id',
-    as: 'empresaDono'
+    as: 'empresaDoFuncionario'
   });
   
-  User.hasMany(User, {
+  Empresa.hasMany(User, {
     foreignKey: 'empresa_id',
     as: 'funcionarios'
   });

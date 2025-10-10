@@ -3,8 +3,9 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const Sequelize = require('sequelize');
 const { sequelize, User, Empresa, Servico, Agendamento } = require('./models');
-const { Op } = require('sequelize');
+const { Op } = Sequelize;
 const { uploadLogo, serveImage, getImageUrl } = require('./upload-service');
 
 // Função para gerar ID da empresa (nome + 4 dígitos aleatórios)
@@ -476,43 +477,20 @@ const startServer = async () => {
     await sequelize.sync({ alter: true });
     console.log('✅ Tabelas MySQL sincronizadas');
     
-    // Configurar banco de dados em produção
-    async function initializeDatabase() {
-      if (process.env.NODE_ENV === 'production') {
-        console.log('🔧 Configurando banco de dados para produção...');
-        try {
-          const setupDB = require('./setup-production-db');
-          await setupDB();
-        } catch (error) {
-          console.log('ℹ️ Banco já configurado ou erro na configuração:', error.message);
-        }
-      }
-    }
-
-    // Iniciar servidor
-    async function startServer() {
-      await initializeDatabase();
-      
-      app.listen(PORT, () => {
-        console.log(`🚀 Servidor MySQL rodando na porta ${PORT}`);
-        console.log(`🔗 API: http://localhost:${PORT}/api`);
-        console.log(`📱 Health Check: http://localhost:${PORT}/api/health`);
-        
-        if (process.env.NODE_ENV === 'production') {
-          console.log('\n👥 Usuários de teste:');
-          console.log('   🏢 EMPRESA: teste@empresa.com / empresa123');
-          console.log('   👨‍💼 FUNCIONÁRIO: 123.456.789-00 / funcionario123');
-          console.log('   👤 CLIENTE: cliente@teste.com / cliente123');
-          console.log('\n🔗 ID da Empresa: teste1234');
-        } else {
-          console.log('\n👥 Usuários de teste (se existirem):');
-          console.log('   🏢 EMPRESA: contato@barbeariamoderna.com / empresa123');
-          console.log('   👨‍💼 FUNCIONÁRIO: 123.456.789-00 / funcionario123');
-          console.log('   👤 CLIENTE: maria@email.com / cliente123');
-          console.log('\n💡 Para criar dados de teste, execute: npm run setup-db');
-        }
-      });
-    }
+// Iniciar servidor
+function startServer() {
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor MySQL rodando na porta ${PORT}`);
+    console.log(`🔗 API: http://localhost:${PORT}/api`);
+    console.log(`📱 Health Check: http://localhost:${PORT}/api/health`);
+    
+    console.log('\n👥 Usuários de teste (se existirem):');
+    console.log('   🏢 EMPRESA: contato@barbeariamoderna.com / empresa123');
+    console.log('   👨‍💼 FUNCIONÁRIO: 123.456.789-00 / funcionario123');
+    console.log('   👤 CLIENTE: maria@email.com / cliente123');
+    console.log('\n💡 Para criar dados de teste, execute: npm run setup-db');
+  });
+}
 
     startServer();
     

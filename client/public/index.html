@@ -2,7 +2,8 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="%PUBLIC_URL%/favicon.svg" />
+    <link rel="alternate icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
@@ -14,6 +15,14 @@
     />
     <meta name="keywords" content="agendamento, online, agenda, consultas, profissionais, empresas, SaaS" />
     <meta name="author" content="AgendaPro" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AgendaPro" />
+    <meta name="application-name" content="AgendaPro" />
+    <meta name="format-detection" content="telephone=no" />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
@@ -29,8 +38,10 @@
     <meta property="twitter:description" content="Transforme sua agenda em uma ferramenta poderosa. Deixe seus clientes agendarem online 24/7." />
     <meta property="twitter:image" content="%PUBLIC_URL%/og-image.jpg" />
 
-    <!-- Favicon -->
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <!-- Favicon e PWA Icons -->
+    <link rel="icon" type="image/svg+xml" href="%PUBLIC_URL%/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="192x192" href="%PUBLIC_URL%/icon-192.svg" />
+    <link rel="apple-touch-icon" sizes="512x512" href="%PUBLIC_URL%/icon-512.svg" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     
     <!-- Preconnect para performance -->
@@ -67,27 +78,62 @@
         }
       });
 
-      // Registrar Service Worker para PWA
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('/sw.js')
-            .then(function(registration) {
-              console.log('ServiceWorker registrado com sucesso:', registration.scope);
-            })
-            .catch(function(error) {
-              console.log('Falha ao registrar ServiceWorker:', error);
-            });
+      // PWA - Detectar se está instalado
+      let deferredPrompt;
+      
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        console.log('📱 PWA: Prompt de instalação disponível');
+        
+        // Criar banner de instalação (opcional)
+        showInstallPromotion();
+      });
+
+      function showInstallPromotion() {
+        // Criar banner de instalação
+        const banner = document.createElement('div');
+        banner.id = 'pwa-install-banner';
+        banner.innerHTML = `
+          <div style="position: fixed; bottom: 20px; left: 20px; right: 20px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 10000; display: flex; align-items: center; justify-content: space-between; max-width: 500px; margin: 0 auto;">
+            <div style="flex: 1;">
+              <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">📱 Instalar AgendaPro</div>
+              <div style="font-size: 14px; opacity: 0.9;">Adicione à tela inicial para acesso rápido</div>
+            </div>
+            <button id="pwa-install-btn" style="background: white; color: #3b82f6; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-left: 15px; font-size: 14px;">
+              Instalar
+            </button>
+            <button id="pwa-close-btn" style="background: transparent; color: white; border: none; padding: 8px; cursor: pointer; margin-left: 10px; font-size: 20px;">
+              ✕
+            </button>
+          </div>
+        `;
+        document.body.appendChild(banner);
+
+        // Botão de instalar
+        document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`📱 PWA: Resultado da instalação: ${outcome}`);
+            deferredPrompt = null;
+            document.getElementById('pwa-install-banner').remove();
+          }
+        });
+
+        // Botão de fechar
+        document.getElementById('pwa-close-btn').addEventListener('click', () => {
+          document.getElementById('pwa-install-banner').remove();
         });
       }
 
-      // Solicitar permissão para notificações
-      if ('Notification' in window && 'serviceWorker' in navigator) {
-        Notification.requestPermission().then(function(permission) {
-          if (permission === 'granted') {
-            console.log('Permissão para notificações concedida');
-          }
-        });
-      }
+      // Detectar quando foi instalado
+      window.addEventListener('appinstalled', () => {
+        console.log('✅ PWA: App instalado com sucesso!');
+        deferredPrompt = null;
+        const banner = document.getElementById('pwa-install-banner');
+        if (banner) banner.remove();
+      });
     </script>
   </body>
 </html> 
