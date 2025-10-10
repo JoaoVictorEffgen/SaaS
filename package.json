@@ -9,7 +9,10 @@
     "client": "cd client && npm start",
     "build": "cd client && npm run build",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
-    "setup-db": "cd server && npm run setup-db"
+    "setup-db": "cd server && npm run setup-db",
+    "start": "node server/mysql-server.js",
+    "railway-build": "npm install --prefix server && npm install --prefix client && npm run build",
+    "railway-start": "node server/mysql-server.js"
   },
   "keywords": [
     "saas",
