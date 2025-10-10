@@ -66,6 +66,11 @@ const Empresa = sequelize.define('Empresa', {
   ativo: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  identificador_empresa: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    unique: true
   }
 }, {
   tableName: 'empresas',

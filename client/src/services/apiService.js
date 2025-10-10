@@ -68,8 +68,15 @@ class ApiService {
   }
 
   // ===== AUTENTICAÇÃO =====
-  async login(identifier, senha, tipo = null) {
-    const data = await this.post('/users/login', { identifier, senha, tipo });
+  async login(identifier, senha, tipo = null, companyIdentifier = null) {
+    const requestData = { identifier, senha, tipo };
+    
+    // Adicionar companyIdentifier apenas se fornecido (para funcionários)
+    if (companyIdentifier) {
+      requestData.companyIdentifier = companyIdentifier;
+    }
+    
+    const data = await this.post('/users/login', requestData);
 
     if (data.token) {
       this.token = data.token;

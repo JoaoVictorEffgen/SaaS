@@ -4,10 +4,28 @@ const Servico = require('./Servico');
 const Agendamento = require('./Agendamento');
 
 // Relacionamentos simplificados e corretos
+let associationsSetup = false;
+
 function setupAssociations() {
+  if (associationsSetup) {
+    return;
+  }
+  
   console.log('🔧 Configurando relacionamentos...');
   
   // 1. EMPRESA - pode existir independentemente
+  // Empresa pertence a um usuário (empresa)
+  Empresa.belongsTo(User, {
+    foreignKey: 'user_id',
+    as: 'owner'
+  });
+  
+  // Usuário pode ter uma empresa (se for tipo empresa)
+  User.hasOne(Empresa, {
+    foreignKey: 'user_id',
+    as: 'empresa'
+  });
+  
   Empresa.hasMany(Servico, {
     foreignKey: 'empresa_id',
     as: 'servicos'
@@ -65,6 +83,7 @@ function setupAssociations() {
   });
 
   console.log('✅ Relacionamentos configurados com sucesso!');
+  associationsSetup = true;
 }
 
 module.exports = setupAssociations;

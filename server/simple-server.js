@@ -200,6 +200,89 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
+// Cadastro de empresa
+app.post('/api/users/register', async (req, res) => {
+  try {
+    const { razaoSocial, email, senha, telefone, cnpj, endereco, cep, cidade, estado, especializacao, horario_inicio, horario_fim, dias_funcionamento, logo_url } = req.body;
+    
+    console.log('🔍 Tentativa de cadastro de empresa:', { email, razaoSocial });
+    
+    // Verificar se email já existe
+    if (users.find(u => u.email === email)) {
+      return res.status(409).json({ error: 'E-mail já cadastrado' });
+    }
+
+    // Criar novo usuário empresa
+    const newUser = {
+      id: users.length + 1,
+      nome: razaoSocial,
+      email: email,
+      senha: senha, // Em produção, usar bcrypt
+      tipo: 'empresa',
+      telefone: telefone,
+      cnpj: cnpj,
+      razao_social: razaoSocial,
+      especializacao: especializacao,
+      endereco: endereco,
+      horario_inicio: horario_inicio,
+      horario_fim: horario_fim,
+      dias_funcionamento: dias_funcionamento,
+      logo_url: logo_url
+    };
+
+    users.push(newUser);
+
+    // Criar dados da empresa
+    const newEmpresa = {
+      id: empresas.length + 1,
+      user_id: newUser.id,
+      endereco: endereco,
+      cidade: cidade || 'São Paulo',
+      estado: estado || 'SP',
+      cep: cep || '00000-000',
+      descricao: especializacao,
+      latitude: -23.5505, // TODO: Integrar com API de geolocalização por CEP
+      longitude: -46.6333, // TODO: Integrar com API de geolocalização por CEP
+      horario_funcionamento: JSON.stringify({
+        segunda: dias_funcionamento.includes(1) ? { inicio: horario_inicio, fim: horario_fim } : null,
+        terca: dias_funcionamento.includes(2) ? { inicio: horario_inicio, fim: horario_fim } : null,
+        quarta: dias_funcionamento.includes(3) ? { inicio: horario_inicio, fim: horario_fim } : null,
+        quinta: dias_funcionamento.includes(4) ? { inicio: horario_inicio, fim: horario_fim } : null,
+        sexta: dias_funcionamento.includes(5) ? { inicio: horario_inicio, fim: horario_fim } : null,
+        sabado: dias_funcionamento.includes(6) ? { inicio: horario_inicio, fim: horario_fim } : null,
+        domingo: dias_funcionamento.includes(0) ? { inicio: horario_inicio, fim: horario_fim } : null
+      }),
+      logo_url: logo_url
+    };
+
+    empresas.push(newEmpresa);
+
+    const token = generateToken(newUser.id.toString());
+    
+    console.log('✅ Empresa cadastrada com sucesso:', newUser.nome);
+    
+    res.json({
+      user: {
+        id: newUser.id,
+        nome: newUser.nome,
+        email: newUser.email,
+        telefone: newUser.telefone,
+        tipo: newUser.tipo,
+        cnpj: newUser.cnpj,
+        especializacao: newUser.especializacao,
+        endereco: newUser.endereco,
+        logo_url: newUser.logo_url
+      },
+      token,
+      success: true
+    });
+
+  } catch (error) {
+    console.error('❌ Erro no cadastro:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
 // Login - Rota original (mantida para compatibilidade)
 app.post('/api/auth/login', async (req, res) => {
   try {

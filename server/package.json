@@ -8,6 +8,8 @@
     "dev": "nodemon index.js",
     "simple": "node simple-server.js",
     "simple-dev": "nodemon simple-server.js",
+    "mysql": "node mysql-server.js",
+    "mysql-dev": "nodemon mysql-server.js",
     "setup-db": "node scripts/setup-database.js",
     "migrate": "sequelize-cli db:migrate",
     "seed": "sequelize-cli db:seed:all"

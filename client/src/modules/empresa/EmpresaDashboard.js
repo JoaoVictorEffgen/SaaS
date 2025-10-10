@@ -33,7 +33,7 @@ const EmpresaDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [currentRankingIndex, setCurrentRankingIndex] = useState(0);
-  const [logoUrl, setLogoUrl] = useState(user?.logo_url || null);
+  const [logoUrl, setLogoUrl] = useState(null);
   
   // Memoização dos dados para evitar recálculos desnecessários
   const { agendamentos, funcionarios } = useMemo(() => {
@@ -72,9 +72,30 @@ const EmpresaDashboard = () => {
       navigate('/');
     } else {
       setCurrentUser(user);
-      setLogoUrl(user?.logo_url || null);
+      // Buscar logo da empresa do banco de dados
+      loadEmpresaLogo();
     }
   }, [navigate, user]);
+
+  // Função para carregar logo da empresa
+  const loadEmpresaLogo = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { default: apiService } = await import('../../services/apiService');
+      const empresaData = await apiService.getEmpresa(user.id);
+      
+      if (empresaData?.logo_url) {
+        // Se a logo_url começa com /api/uploads/, adicionar o domínio do servidor
+        const fullLogoUrl = empresaData.logo_url.startsWith('/api/uploads/') 
+          ? `http://localhost:5000${empresaData.logo_url}`
+          : empresaData.logo_url;
+        setLogoUrl(fullLogoUrl);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar logo da empresa:', error);
+    }
+  };
 
   // Rotação automática dos rankings a cada 4 segundos
   useEffect(() => {
@@ -124,17 +145,46 @@ const EmpresaDashboard = () => {
       // Garantir que o apiService tem o token atualizado
       apiService.setToken(token);
       
-      // Enviar para o backend via API
-      const response = await apiService.updateProfile({
-        logo_url: base64Image
+      // Criar FormData para enviar o arquivo
+      const formData = new FormData();
+      formData.append('logo', file);
+      
+      // Enviar para o backend via API de upload
+      const response = await fetch('http://localhost:5000/api/upload/logo', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
       });
       
-      console.log('📡 Resposta da API:', response);
+      if (!response.ok) {
+        throw new Error(`Erro no upload: ${response.statusText}`);
+      }
       
-      if (response) {
+      const uploadResult = await response.json();
+      console.log('📡 Resultado do upload:', uploadResult);
+      
+      if (uploadResult.success) {
+        // Atualizar a empresa com a nova URL da logo
+        const updateResponse = await apiService.request(`/empresas/${currentUser.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            logo_url: uploadResult.url
+          })
+        });
+        
         console.log('✅ Logo atualizada com sucesso!');
+        console.log('🔗 URL da logo:', uploadResult.url);
+        
+        // Atualizar a logo local com a URL completa
+        const fullLogoUrl = uploadResult.url.startsWith('/api/uploads/') 
+          ? `http://localhost:5000${uploadResult.url}`
+          : uploadResult.url;
+        setLogoUrl(fullLogoUrl);
+        
         // Atualizar o usuário no contexto
-        setCurrentUser(prev => ({ ...prev, logo_url: base64Image }));
+        setCurrentUser(prev => ({ ...prev, logo_url: uploadResult.url }));
       }
     } catch (error) {
       console.error('❌ Erro ao atualizar logo:', error);

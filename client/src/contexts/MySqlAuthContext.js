@@ -68,13 +68,13 @@ export const MySqlAuthProvider = ({ children }) => {
   };
 
   // Login via MySQL
-  const login = async (identifier, senha, tipo = null) => {
+  const login = async (identifier, senha, tipo = null, companyIdentifier = null) => {
     try {
       setLoading(true);
       setError(null); // Limpar erros anteriores
-      console.log('MySqlAuth - Login via MySQL:', identifier, tipo);
+      console.log('MySqlAuth - Login via MySQL:', identifier, tipo, companyIdentifier);
       
-      const result = await apiService.login(identifier, senha, tipo);
+      const result = await apiService.login(identifier, senha, tipo, companyIdentifier);
       
       if (result && result.user) {
         const userData = result.user;

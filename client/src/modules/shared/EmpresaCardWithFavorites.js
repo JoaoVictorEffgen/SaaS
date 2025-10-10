@@ -123,12 +123,12 @@ const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }
               />
             ) : (
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                {empresa.nome.charAt(0).toUpperCase()}
+                {(empresa.nome || empresa.razao_social || 'E').charAt(0).toUpperCase()}
               </div>
             )}
             <div>
-              <h3 className="font-bold text-gray-900 text-lg">{empresa.nome}</h3>
-              <p className="text-sm text-gray-600">{empresa.especializacao}</p>
+              <h3 className="font-bold text-gray-900 text-lg">{empresa.nome || empresa.razao_social || 'Empresa'}</h3>
+              <p className="text-sm text-gray-600">{empresa.especializacao || empresa.descricao || 'Serviços diversos'}</p>
             </div>
           </div>
           
@@ -151,10 +151,10 @@ const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }
             {renderStars(empresa.notaMedia)}
           </div>
           <span className="text-sm font-semibold text-gray-900">
-            {empresa.notaMedia}
+            {empresa.notaMedia || '5.0'}
           </span>
           <span className="text-sm text-gray-500">
-            ({empresa.totalAvaliacoes} avaliações)
+            ({empresa.totalAvaliacoes || 0} avaliações)
           </span>
         </div>
 
@@ -162,7 +162,7 @@ const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-1 text-gray-600">
             <MapPin className="w-4 h-4" />
-            <span className="text-sm">{empresa.endereco}</span>
+            <span className="text-sm">{empresa.endereco || 'Endereço não informado'}</span>
           </div>
           
           {showDistance && empresa.distancia && (
@@ -197,7 +197,7 @@ const EmpresaCardWithFavorites = ({ empresa, userLocation, showDistance = true }
 
         {/* Descrição do serviço */}
         <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-          {empresa.descricao_servico}
+          {empresa.descricao_servico || empresa.descricao || 'Descrição não disponível'}
         </p>
 
         {/* Informações adicionais */}

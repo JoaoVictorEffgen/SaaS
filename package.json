@@ -11,10 +11,21 @@
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
     "setup-db": "cd server && npm run setup-db"
   },
-  "keywords": ["saas", "agendamento", "online", "react", "nodejs", "express"],
+  "keywords": [
+    "saas",
+    "agendamento",
+    "online",
+    "react",
+    "nodejs",
+    "express"
+  ],
   "author": "Seu Nome",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "form-data": "^4.0.4",
+    "node-fetch": "^3.3.2"
   }
-} 
+}

@@ -18,6 +18,8 @@ const FuncionariosManagement = () => {
     telefone: '',
     cpf: '',
     cargo: '',
+    senha: '',
+    confirmarSenha: '',
     foto_url: null
   });
 
@@ -59,11 +61,8 @@ const FuncionariosManagement = () => {
     try {
       console.log('🔍 Carregando funcionários da empresa:', user.id);
       
-      // Buscar funcionários via API MySQL
-      const { default: apiService } = await import('../../services/apiService');
-      
-      // Buscar funcionários que pertencem a esta empresa
-      const funcionariosData = await apiService.request(`/users/funcionarios/${user.id}`);
+      // Por enquanto, usar localStorage até implementar a rota no backend
+      const funcionariosData = JSON.parse(localStorage.getItem(`funcionarios_${user.id}`) || '[]');
       
       console.log('📊 Funcionários encontrados:', funcionariosData);
       setFuncionarios(funcionariosData);
@@ -118,6 +117,24 @@ const FuncionariosManagement = () => {
       alert('CPF deve ter 11 dígitos.');
       return;
     }
+
+    // Validação de senha (apenas para novos funcionários)
+    if (!editingFuncionario) {
+      if (!formData.senha.trim()) {
+        alert('Senha é obrigatória para novos funcionários.');
+        return;
+      }
+
+      if (formData.senha.length < 6) {
+        alert('A senha deve ter pelo menos 6 caracteres.');
+        return;
+      }
+
+      if (formData.senha !== formData.confirmarSenha) {
+        alert('As senhas não coincidem.');
+        return;
+      }
+    }
     
     const funcionarioData = {
       id: editingFuncionario?.id || Date.now().toString(),
@@ -127,7 +144,8 @@ const FuncionariosManagement = () => {
       telefone: formData.telefone.trim(),
       cpf: cpfNumbers,
       cargo: formData.cargo.trim(),
-      foto: formData.foto,
+      senha: formData.senha.trim(), // Senha para login
+      foto: formData.foto_url,
       empresa_id: user.id,
       created_at: editingFuncionario?.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -151,7 +169,9 @@ const FuncionariosManagement = () => {
       telefone: '',
       cpf: '',
       cargo: '',
-      foto: null
+      senha: '',
+      confirmarSenha: '',
+      foto_url: null
     });
     setEditingFuncionario(null);
     setShowModal(false);
@@ -167,7 +187,9 @@ const FuncionariosManagement = () => {
       telefone: funcionario.telefone || '',
       cpf: funcionario.cpf || '',
       cargo: funcionario.cargo || '',
-      foto_url: funcionario.foto_url || null
+      senha: '', // Não mostrar senha na edição
+      confirmarSenha: '',
+      foto_url: funcionario.foto || funcionario.foto_url || null
     });
     setShowModal(true);
   };
@@ -288,9 +310,9 @@ const FuncionariosManagement = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
-                            {funcionario.foto_url ? (
+                            {funcionario.foto || funcionario.foto_url ? (
                               <img 
-                                src={funcionario.foto_url} 
+                                src={funcionario.foto || funcionario.foto_url} 
                                 alt={funcionario.nome_completo || funcionario.nome}
                                 className="h-10 w-10 rounded-full object-cover"
                               />
@@ -434,6 +456,40 @@ const FuncionariosManagement = () => {
                       placeholder="Ex: Recepcionista, Barbeiro, Manicure"
                     />
                   </div>
+
+                  {/* Campos de senha - apenas para novos funcionários */}
+                  {!editingFuncionario && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Senha *
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={formData.senha}
+                          onChange={(e) => setFormData({...formData, senha: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Mínimo 6 caracteres"
+                          minLength="6"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Confirmar Senha *
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={formData.confirmarSenha}
+                          onChange={(e) => setFormData({...formData, confirmarSenha: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Digite a senha novamente"
+                        />
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
