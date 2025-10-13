@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fundo gradiente azul -->
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563eb;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Fundo -->
+  <rect width="192" height="192" rx="38.400000000000006" fill="url(#grad)"/>
+  
+  <!-- Calendário -->
+  <rect x="38.400000000000006" y="48" width="115.19999999999999" height="96" 
+        rx="9.600000000000001" fill="white" opacity="0.95"/>
+  
+  <!-- Topo do calendário -->
+  <rect x="38.400000000000006" y="48" width="115.19999999999999" height="23.04" 
+        rx="9.600000000000001" fill="white" opacity="1"/>
+  
+  <!-- Argolas -->
+  <circle cx="67.19999999999999" cy="48" r="5.76" fill="#1e40af"/>
+  <circle cx="96" cy="48" r="5.76" fill="#1e40af"/>
+  <circle cx="124.80000000000001" cy="48" r="5.76" fill="#1e40af"/>
+  
+  <!-- Checkmark -->
+  <path d="M 67.19999999999999 99.84 L 82.56 115.19999999999999 L 124.80000000000001 82.56" 
+        stroke="#3b82f6" stroke-width="7.68" fill="none" 
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

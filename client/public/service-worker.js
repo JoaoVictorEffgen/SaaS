@@ -1,23 +1,29 @@
 /* eslint-disable no-restricted-globals */
 
-// Nome do cache
-const CACHE_NAME = 'agendapro-v1';
+// Nome do cache - VERSÃO ATUALIZADA PARA FORÇAR RECACHE
+const CACHE_NAME = 'agendapro-v2-mobile';
 
 // Arquivos para cachear
 const urlsToCache = [
   '/',
-  '/static/css/main.css',
-  '/static/js/main.js',
   '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/eslogan.png',
-  '/pensativo.png'
+  '/icon-72x72.svg',
+  '/icon-96x96.svg',
+  '/icon-128x128.svg',
+  '/icon-144x144.svg',
+  '/icon-152x152.svg',
+  '/icon-192x192.svg',
+  '/icon-384x384.svg',
+  '/icon-512x512.svg',
+  '/eslogan.png'
 ];
 
 // Instalação do Service Worker
 self.addEventListener('install', (event) => {
   console.log('🔧 Service Worker: Instalando...');
+  
+  // Força o novo SW a ativar imediatamente
+  self.skipWaiting();
   
   event.waitUntil(
     caches.open(CACHE_NAME)
