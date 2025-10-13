@@ -1,31 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="96" height="96" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
-  <!-- Fundo gradiente azul -->
   <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Gradiente de fundo -->
+    <linearGradient id="bg-96" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#2563eb;stop-opacity:1" />
     </linearGradient>
   </defs>
   
-  <!-- Fundo -->
-  <rect width="96" height="96" rx="19.200000000000003" fill="url(#grad)"/>
+  <!-- Fundo com gradiente -->
+  <rect width="96" height="96" rx="14.399999999999999" fill="url(#bg-96)"/>
   
-  <!-- Calendário -->
-  <rect x="19.200000000000003" y="24" width="57.599999999999994" height="48" 
-        rx="4.800000000000001" fill="white" opacity="0.95"/>
-  
-  <!-- Topo do calendário -->
-  <rect x="19.200000000000003" y="24" width="57.599999999999994" height="11.52" 
-        rx="4.800000000000001" fill="white" opacity="1"/>
-  
-  <!-- Argolas -->
-  <circle cx="33.599999999999994" cy="24" r="2.88" fill="#1e40af"/>
-  <circle cx="48" cy="24" r="2.88" fill="#1e40af"/>
-  <circle cx="62.400000000000006" cy="24" r="2.88" fill="#1e40af"/>
-  
-  <!-- Checkmark -->
-  <path d="M 33.599999999999994 49.92 L 41.28 57.599999999999994 L 62.400000000000006 41.28" 
-        stroke="#3b82f6" stroke-width="3.84" fill="none" 
-        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Logo centralizado com padding -->
+  <image 
+    href="logo-base.png" 
+    x="9.600000000000001" 
+    y="9.600000000000001" 
+    width="76.80000000000001" 
+    height="76.80000000000001"
+    preserveAspectRatio="xMidYMid meet"
+  />
 </svg>

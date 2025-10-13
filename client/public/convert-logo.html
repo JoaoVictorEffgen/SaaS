@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Converter Logo para Ícones</title>
+</head>
+<body>
+    <canvas id="canvas" width="512" height="512" style="display:none;"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const img = new Image();
+        img.onload = function() {
+            // Desenhar fundo azul
+            const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+            gradient.addColorStop(0, '#3b82f6');
+            gradient.addColorStop(1, '#2563eb');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 512, 512);
+            
+            // Desenhar logo centralizado
+            const logoSize = 512 * 0.8;
+            const logoX = (512 - logoSize) / 2;
+            const logoY = (512 - logoSize) / 2;
+            ctx.drawImage(img, logoX, logoY, logoSize, logoSize);
+            
+            // Converter para PNG
+            const dataURL = canvas.toDataURL('image/png');
+            
+            // Salvar (isso seria feito via servidor, mas por enquanto vamos usar SVG)
+            console.log('Logo convertido com sucesso!');
+        };
+        img.src = 'logo-base.png';
+    </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 
-// Nome do cache - VERSÃO ATUALIZADA PARA FORÇAR RECACHE
-const CACHE_NAME = 'agendapro-v2-mobile';
+// Nome do cache - VERSÃO COM ÍCONES PERSONALIZADOS
+const CACHE_NAME = 'agendapro-v8-custom-icons';
 
 // Arquivos para cachear
 const urlsToCache = [
@@ -15,6 +15,7 @@ const urlsToCache = [
   '/icon-192x192.svg',
   '/icon-384x384.svg',
   '/icon-512x512.svg',
+  '/logo-base.png',
   '/eslogan.png'
 ];
 
