@@ -18,6 +18,12 @@ const authRoutes = require('./routes/auth');
 const empresasRoutes = require('./routes/empresas');
 const usersRoutes = require('./routes/users');
 const agendamentosRoutes = require('./routes/agendamentos');
+const redesRoutes = require('./routes/redes');
+const pacotesRoutes = require('./routes/pacotes');
+const promocoesRoutes = require('./routes/promocoes');
+const uploadRoutes = require('./routes/upload');
+const funcionariosRoutes = require('./routes/funcionarios');
+const clientesRoutes = require('./routes/clientes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -58,6 +64,9 @@ app.get('/', (req, res) => {
       empresas: '/api/empresas',
       users: '/api/users',
       agendamentos: '/api/agendamentos',
+      redes: '/api/redes',
+      pacotes: '/api/pacotes',
+      promocoes: '/api/promocoes',
       health: '/api/health'
     }
   });
@@ -68,6 +77,13 @@ app.use('/api/auth', authRoutes);
 app.use('/api/empresas', empresasRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/agendamentos', agendamentosRoutes);
+app.use('/api/redes', redesRoutes);
+app.use('/api/pacotes', pacotesRoutes);
+app.use('/api/promocoes', promocoesRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/uploads', uploadRoutes);
+app.use('/api/funcionarios', funcionariosRoutes);
+app.use('/api/clientes', clientesRoutes);
 
 // Rota de health check
 app.get('/api/health', (req, res) => {

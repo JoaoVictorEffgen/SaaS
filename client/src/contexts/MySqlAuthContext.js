@@ -140,6 +140,41 @@ export const MySqlAuthProvider = ({ children }) => {
     }
   };
 
+  // Atualizar usuário
+  const updateUser = async (userData) => {
+    try {
+      console.log('MySqlAuth - Atualizando usuário:', userData);
+      
+      // Se for uma empresa, atualizar via endpoint de empresa
+      if (user && user.tipo === 'empresa') {
+        // Buscar empresa associada ao usuário
+        const empresas = await apiService.getEmpresas();
+        const empresa = empresas.find(e => e.user_id === user.id);
+        
+        if (empresa) {
+          const result = await apiService.updateEmpresa(empresa.id, userData);
+          if (result) {
+            // Atualizar estado local
+            setUser(prev => ({ ...prev, ...userData }));
+            return { success: true };
+          }
+        }
+      }
+      
+      // Para outros tipos de usuário ou se não encontrar empresa
+      const result = await apiService.updateProfile(userData);
+      if (result) {
+        setUser(prev => ({ ...prev, ...userData }));
+        return { success: true };
+      }
+      
+      return { success: false, error: 'Erro ao atualizar usuário' };
+    } catch (error) {
+      console.error('❌ Erro ao atualizar usuário:', error);
+      return { success: false, error: error.message || 'Erro ao atualizar usuário' };
+    }
+  };
+
   // Logout
   const logout = () => {
     console.log('MySqlAuth - Logout via MySQL');
@@ -163,6 +198,7 @@ export const MySqlAuthProvider = ({ children }) => {
     subscription,
     login,
     register,
+    updateUser,
     logout,
     clearError,
     apiService

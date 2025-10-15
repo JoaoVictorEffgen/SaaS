@@ -21,6 +21,12 @@ import {
   FuncionarioAgenda
 } from './modules';
 
+// Importações dos componentes de pacotes
+import DashboardPacotes from './components/pacotes/DashboardPacotes';
+
+// Componente de navegação para testes
+import TestNavigation from './components/TestNavigation';
+
 // Debug components removidos para limpeza
 
 function App() {
@@ -29,6 +35,7 @@ function App() {
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <RedirectHandler />
         <InstallPWA />
+        <TestNavigation />
       <Routes>
           {/* Página Principal */}
         <Route path="/" element={<AccessSelector />} />
@@ -46,6 +53,9 @@ function App() {
           {/* Rotas de Dashboard e Exportação - Apenas para usuários tipo 'empresa' */}
           <Route path="/kpis" element={<TypedProtectedRoute allowedTypes={['empresa']}><DashboardKPIs /></TypedProtectedRoute>} />
           <Route path="/exportar" element={<TypedProtectedRoute allowedTypes={['empresa']}><ExportData /></TypedProtectedRoute>} />
+          
+          {/* Rotas de Pacotes - Apenas para usuários tipo 'empresa' */}
+          <Route path="/pacotes" element={<TypedProtectedRoute allowedTypes={['empresa']}><DashboardPacotes /></TypedProtectedRoute>} />
           
           {/* Rotas B2C (Clientes) - Apenas para usuários tipo 'cliente' */}
           <Route path="/cliente" element={<TypedProtectedRoute allowedTypes={['cliente']}><SelecaoEmpresa /></TypedProtectedRoute>} />

@@ -7,6 +7,21 @@ const Empresa = sequelize.define('Empresa', {
     primaryKey: true,
     autoIncrement: true
   },
+  nome: {
+    type: DataTypes.STRING(255),
+    allowNull: false,
+    comment: 'Nome da empresa'
+  },
+  cnpj: {
+    type: DataTypes.STRING(18),
+    allowNull: true,
+    comment: 'CNPJ da empresa'
+  },
+  telefone: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: 'Telefone da empresa'
+  },
   user_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
@@ -14,6 +29,20 @@ const Empresa = sequelize.define('Empresa', {
       model: 'users',
       key: 'id'
     }
+  },
+  rede_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'redes_empresariais',
+      key: 'id'
+    },
+    comment: 'ID da rede empresarial (null para empresas independentes)'
+  },
+  nome_unidade: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Nome da unidade (ex: Unidade Centro, Filial Shopping)'
   },
   endereco: {
     type: DataTypes.TEXT,
@@ -42,6 +71,11 @@ const Empresa = sequelize.define('Empresa', {
   logo_url: {
     type: DataTypes.STRING(500),
     allowNull: true
+  },
+  imagem_fundo_url: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: 'URL da imagem de fundo para exibição na área do cliente'
   },
   website: {
     type: DataTypes.STRING(255),

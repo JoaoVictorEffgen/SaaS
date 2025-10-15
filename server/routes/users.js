@@ -10,7 +10,7 @@ const jwt = require('jsonwebtoken');
 router.post('/login', async (req, res) => {
   try {
     console.log('🔍 Tentativa de login:', req.body);
-    const { identifier, senha, tipo } = req.body;
+    const { identifier, senha, tipo, companyIdentifier } = req.body;
     
     // Buscar usuário por email, telefone, CNPJ ou CPF (para funcionários)
     console.log('🔍 Buscando usuário...');
@@ -30,6 +30,30 @@ router.post('/login', async (req, res) => {
       // Também buscar CPF com formatação (ex: 123.456.789-00)
       const cpfFormatado = identifier.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
       whereCondition[Op.or].push({ cpf: cpfFormatado });
+      
+      // FUNCIONÁRIO PRECISA ESTAR LIGADO À EMPRESA
+      if (companyIdentifier) {
+        console.log('🏢 Buscando empresa:', companyIdentifier);
+        const empresa = await Empresa.findOne({
+          where: {
+            [Op.or]: [
+              { email: companyIdentifier },
+              { telefone: companyIdentifier },
+              { cnpj: companyIdentifier },
+              { id: companyIdentifier }
+            ]
+          }
+        });
+        
+        if (!empresa) {
+          return res.status(401).json({ error: 'Empresa não encontrada' });
+        }
+        
+        console.log('✅ Empresa encontrada:', empresa.nome);
+        whereCondition.empresa_id = empresa.id;
+      } else {
+        return res.status(400).json({ error: 'Funcionário precisa informar a empresa' });
+      }
     }
     
     const user = await User.findOne({
@@ -38,26 +62,37 @@ router.post('/login', async (req, res) => {
     console.log('👤 Usuário encontrado:', user ? user.id : 'Nenhum');
     console.log('🔍 Senha recebida:', senha);
     console.log('🔍 Senha no banco:', user ? user.senha : 'N/A');
+    console.log('🔍 Where condition:', JSON.stringify(whereCondition, null, 2));
 
     if (!user) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
     
-    // Verificar senha (simplificado - em produção usar bcrypt)
-    if (user.senha !== senha) {
-      console.log('❌ Senha não confere:', { recebida: senha, banco: user.senha });
+    // Verificar senha com bcrypt
+    const senhaValida = await bcrypt.compare(senha, user.senha);
+    if (!senhaValida) {
+      console.log('❌ Senha não confere');
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
     
     console.log('✅ Senha confere!');
     
+    // Buscar dados da empresa se for funcionário
+    let empresaData = null;
+    if (user.tipo === 'funcionario' && user.empresa_id) {
+      const { Empresa } = require('../models');
+      empresaData = await Empresa.findByPk(user.empresa_id);
+    }
+
     // Gerar JWT token
     const jwtSecret = process.env.JWT_SECRET || 'seu_jwt_secret_muito_seguro_aqui_2024';
     const token = jwt.sign(
       { 
         userId: user.id,
         tipo: user.tipo,
-        email: user.email
+        email: user.email,
+        empresa_id: user.empresa_id,
+        empresa_nome: empresaData?.nome || null
       },
       jwtSecret,
       { expiresIn: '24h' }
@@ -76,6 +111,7 @@ router.post('/login', async (req, res) => {
         cpf: user.cpf,
         cnpj: user.cnpj,
         empresa_id: user.empresa_id,
+        empresa_nome: empresaData?.nome || null,
         cargo: user.cargo,
         foto_url: user.foto_url
       },
@@ -109,55 +145,6 @@ router.get('/funcionarios/:empresaId', auth, async (req, res) => {
   }
 });
 
-// PUT /api/users/profile - Atualizar perfil do usuário
-router.put('/profile', auth, async (req, res) => {
-  try {
-    const { logo_url, foto_url } = req.body;
-    const userId = req.user.id;
-    const userType = req.user.tipo;
-    
-    console.log('🔍 Atualizando perfil do usuário:', userId, { logo_url, foto_url, userType });
-    
-    // Atualizar foto_url na tabela users (para funcionários)
-    if (foto_url !== undefined) {
-      await User.update({ foto_url }, {
-        where: { id: userId }
-      });
-    }
-    
-    // Atualizar logo_url na tabela empresas (para empresas)
-    if (logo_url !== undefined && userType === 'empresa') {
-      const { Empresa } = require('../models');
-      await Empresa.update({ logo_url }, {
-        where: { user_id: userId }
-      });
-    }
-    
-    // Buscar usuário atualizado
-    const user = await User.findByPk(userId, {
-      attributes: ['id', 'nome', 'email', 'telefone', 'tipo', 'cpf', 'cnpj', 'empresa_id', 'cargo', 'foto_url', 'ativo']
-    });
-    
-    // Se for empresa, buscar dados da empresa também
-    if (userType === 'empresa') {
-      const { Empresa } = require('../models');
-      const empresa = await Empresa.findOne({
-        where: { user_id: userId },
-        attributes: ['logo_url']
-      });
-      
-      if (empresa) {
-        user.dataValues.logo_url = empresa.logo_url;
-      }
-    }
-    
-    console.log('✅ Perfil atualizado com sucesso:', user.id);
-    res.json(user);
-  } catch (error) {
-    console.error('❌ Erro ao atualizar perfil:', error);
-    res.status(500).json({ error: 'Erro interno do servidor', message: error.message });
-  }
-});
 
 // POST /api/users/register - Registrar novo usuário
 router.post('/register', async (req, res) => {

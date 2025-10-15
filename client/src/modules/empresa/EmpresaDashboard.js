@@ -5,10 +5,8 @@ import {
   UserPlus, 
   BarChart3, 
   Download, 
-  LogOut,
   Calendar,
   Users,
-  Users2,
   DollarSign,
   TrendingUp,
   Sun,
@@ -16,7 +14,6 @@ import {
   CheckCircle,
   ArrowRight,
   Sparkles,
-  Edit3,
   Home,
   Bell,
   Settings,
@@ -34,6 +31,7 @@ const EmpresaDashboard = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [currentRankingIndex, setCurrentRankingIndex] = useState(0);
   const [logoUrl, setLogoUrl] = useState(null);
+  const [empresaData, setEmpresaData] = useState(null);
   
   // Memoização dos dados para evitar recálculos desnecessários
   const { agendamentos, funcionarios } = useMemo(() => {
@@ -83,14 +81,20 @@ const EmpresaDashboard = () => {
     
     try {
       const { default: apiService } = await import('../../services/apiService');
-      const empresaData = await apiService.getEmpresa(user.id);
       
-      if (empresaData?.logo_url) {
-        // Se a logo_url começa com /api/uploads/, adicionar o domínio do servidor
-        const fullLogoUrl = empresaData.logo_url.startsWith('/api/uploads/') 
-          ? `http://localhost:5000${empresaData.logo_url}`
-          : empresaData.logo_url;
-        setLogoUrl(fullLogoUrl);
+      // Buscar todas as empresas e encontrar a associada ao usuário
+      const empresas = await apiService.getEmpresas();
+      const empresaDoUsuario = empresas.find(empresa => empresa.user_id === user.id);
+      
+      if (empresaDoUsuario) {
+        const empresaData = await apiService.getEmpresa(empresaDoUsuario.id);
+        
+        if (empresaData?.logo_url) {
+          setLogoUrl(empresaData.logo_url);
+        }
+        
+        // Salvar dados da empresa no estado
+        setEmpresaData(empresaData);
       }
     } catch (error) {
       console.error('Erro ao carregar logo da empresa:', error);
@@ -324,7 +328,7 @@ const EmpresaDashboard = () => {
               {/* Título */}
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
-                  {currentUser?.razaoSocial || 'Empresa'} #{currentUser?.id || '1'}
+                  {empresaData?.nome || currentUser?.razaoSocial || 'Empresa'}
                 </h1>
                 <p className="text-sm text-gray-500">
                   Dashboard Empresarial
@@ -550,6 +554,25 @@ const EmpresaDashboard = () => {
               <div className="text-left">
                 <h3 className="text-lg font-bold text-gray-900 mb-1">Exportar</h3>
                 <p className="text-sm text-gray-600">Exportar dados</p>
+              </div>
+            </button>
+          </div>
+
+          {/* Segunda linha - Pacotes */}
+          <div className="grid grid-cols-1 gap-6 mt-6">
+            <button
+              onClick={() => navigate('/pacotes')}
+              className="group relative bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-indigo-200/50"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg">
+                  <Briefcase className="h-6 w-6 text-white" />
+                </div>
+                <ArrowRight className="h-5 w-5 text-indigo-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all duration-300" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Meus Pacotes</h3>
+                <p className="text-sm text-gray-600">Criar e gerenciar pacotes personalizados</p>
               </div>
             </button>
           </div>

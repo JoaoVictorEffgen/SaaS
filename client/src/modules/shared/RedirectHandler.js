@@ -7,7 +7,17 @@ const RedirectHandler = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // 🧪 MODO TESTE: Desabilitar redirecionamentos automáticos
+  const TEST_MODE = true; // Altere para false em produção
+
   useEffect(() => {
+    // Se estiver em modo de teste, não fazer redirecionamentos automáticos
+    if (TEST_MODE) {
+      console.log('🧪 MODO TESTE: Redirecionamentos automáticos desabilitados');
+      console.log('🔍 Usuário atual:', user?.tipo, 'Rota atual:', location.pathname);
+      return;
+    }
+
     // Só redirecionar se não estiver carregando e houver usuário
     if (!loading && user) {
       const currentPath = location.pathname;

@@ -135,6 +135,49 @@ class ApiService {
     });
   }
 
+  async getPromocoesEmpresa(empresaId) {
+    return await this.request(`/empresas/${empresaId}/promocoes`);
+  }
+
+  // ===== ENDPOINTS ESPECÍFICOS POR TIPO DE USUÁRIO =====
+  
+  // Endpoints para empresas
+  async getEmpresaData() {
+    return await this.request('/empresas');
+  }
+
+  async updateEmpresaData(empresaData) {
+    return await this.request('/empresas', {
+      method: 'PUT',
+      body: JSON.stringify(empresaData)
+    });
+  }
+
+  // Endpoints para funcionários
+  async getFuncionarioEmpresa() {
+    return await this.request('/funcionarios/empresa');
+  }
+
+  async getFuncionarioAgendamentos() {
+    return await this.request('/funcionarios/agendamentos');
+  }
+
+  async updateAgendamentoStatus(agendamentoId, status) {
+    return await this.request(`/funcionarios/agendamento/${agendamentoId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status })
+    });
+  }
+
+  // Endpoints para clientes
+  async getClientesEmpresas() {
+    return await this.request('/clientes/empresas');
+  }
+
+  async getClienteEmpresa(empresaId) {
+    return await this.request(`/clientes/empresa/${empresaId}`);
+  }
+
   // ===== AGENDAMENTOS =====
   async getAgendamentos() {
     return await this.request('/agendamentos');

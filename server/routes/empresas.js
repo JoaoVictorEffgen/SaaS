@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Empresa, User } = require('../models');
 const { authenticateToken: auth } = require('../middleware/auth');
+const { checkEmpresaOwnership } = require('../middleware/userPermissions');
 
 // GET /api/empresas - Listar todas as empresas
 router.get('/', async (req, res) => {
@@ -13,20 +14,43 @@ router.get('/', async (req, res) => {
     
     console.log('📊 Empresas encontradas:', empresas.length);
     
-    // Transformar dados das empresas
-    const empresasFormatadas = empresas.map(empresa => ({
-      id: empresa.id,
-      user_id: empresa.user_id,
-      endereco: empresa.endereco,
-      cidade: empresa.cidade,
-      estado: empresa.estado,
-      cep: empresa.cep,
-      descricao: empresa.descricao,
-      horario_funcionamento: empresa.horario_funcionamento,
-      logo_url: empresa.logo_url,
-      created_at: empresa.created_at,
-      updated_at: empresa.updated_at
-    }));
+    // Transformar dados das empresas com URLs completas
+    const empresasFormatadas = empresas.map(empresa => {
+      // Construir URL completa para logo
+      let logoUrl = null;
+      if (empresa.logo_url) {
+        logoUrl = empresa.logo_url.startsWith('http') 
+          ? empresa.logo_url 
+          : `${req.protocol}://${req.get('host')}${empresa.logo_url}`;
+      }
+
+      // Construir URL completa para imagem de fundo
+      let imagemFundoUrl = null;
+      if (empresa.imagem_fundo_url) {
+        imagemFundoUrl = empresa.imagem_fundo_url.startsWith('http')
+          ? empresa.imagem_fundo_url
+          : `${req.protocol}://${req.get('host')}${empresa.imagem_fundo_url}`;
+      }
+
+      return {
+        id: empresa.id,
+        nome: empresa.nome,
+        user_id: empresa.user_id,
+        endereco: empresa.endereco,
+        cidade: empresa.cidade,
+        estado: empresa.estado,
+        cep: empresa.cep,
+        descricao: empresa.descricao,
+        horario_funcionamento: empresa.horario_funcionamento,
+        logo_url: logoUrl,
+        imagem_fundo_url: imagemFundoUrl,
+        website: empresa.website,
+        instagram: empresa.instagram,
+        whatsapp: empresa.whatsapp,
+        created_at: empresa.created_at,
+        updated_at: empresa.updated_at
+      };
+    });
     
     res.json(empresasFormatadas);
   } catch (error) {
@@ -43,10 +67,53 @@ router.get('/:id', async (req, res) => {
     if (!empresa) {
       return res.status(404).json({ error: 'Empresa não encontrada' });
     }
+
+    // Construir URLs completas
+    let logoUrl = null;
+    if (empresa.logo_url) {
+      logoUrl = empresa.logo_url.startsWith('http') 
+        ? empresa.logo_url 
+        : `${req.protocol}://${req.get('host')}${empresa.logo_url}`;
+    }
+
+    let imagemFundoUrl = null;
+    if (empresa.imagem_fundo_url) {
+      imagemFundoUrl = empresa.imagem_fundo_url.startsWith('http')
+        ? empresa.imagem_fundo_url
+        : `${req.protocol}://${req.get('host')}${empresa.imagem_fundo_url}`;
+    }
+
+    // Retornar empresa com URLs completas
+    const empresaCompleta = {
+      ...empresa.toJSON(),
+      logo_url: logoUrl,
+      imagem_fundo_url: imagemFundoUrl
+    };
     
-    res.json(empresa);
+    res.json(empresaCompleta);
   } catch (error) {
     console.error('Erro ao buscar empresa:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// GET /api/empresas/:id/promocoes - Buscar promoções de uma empresa
+router.get('/:id/promocoes', async (req, res) => {
+  try {
+    const { Promocao } = require('../models');
+    
+    const promocoes = await Promocao.findAll({
+      where: { 
+        empresa_id: req.params.id,
+        ativo: true,
+        destaque: true
+      },
+      order: [['created_at', 'DESC']]
+    });
+    
+    res.json(promocoes);
+  } catch (error) {
+    console.error('Erro ao buscar promoções:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
@@ -88,19 +155,28 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/empresas/:id - Atualizar empresa
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, checkEmpresaOwnership, async (req, res) => {
   try {
-    const empresa = await Empresa.findByPk(req.params.id);
+    console.log('🔍 Atualizando empresa:', req.params.id, req.body);
     
-    if (!empresa) {
-      return res.status(404).json({ error: 'Empresa não encontrada' });
+    const empresa = req.empresa; // Já validado pelo middleware
+    
+    // Se estão sendo enviadas configurações, salvar no campo horario_funcionamento
+    if (req.body.configuracoes) {
+      console.log('⚙️ Salvando configurações:', req.body.configuracoes);
+      await empresa.update({
+        horario_funcionamento: req.body.configuracoes
+      });
+    } else {
+      // Atualizar outros campos normalmente
+      await empresa.update(req.body);
     }
     
-    await empresa.update(req.body);
+    console.log('✅ Empresa atualizada com sucesso');
     res.json(empresa);
   } catch (error) {
-    console.error('Erro ao atualizar empresa:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    console.error('❌ Erro ao atualizar empresa:', error);
+    res.status(500).json({ error: 'Erro interno do servidor', message: error.message });
   }
 });
 

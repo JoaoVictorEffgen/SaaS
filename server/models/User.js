@@ -51,6 +51,15 @@ const User = sequelize.define('User', {
       key: 'id'
     }
   },
+  rede_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'redes_empresariais',
+      key: 'id'
+    },
+    comment: 'ID da rede empresarial (para usuários admin de rede)'
+  },
   cargo: {
     type: DataTypes.STRING(100),
     allowNull: true

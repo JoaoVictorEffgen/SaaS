@@ -6,9 +6,19 @@ const TypedProtectedRoute = ({ children, allowedTypes = [] }) => {
   const { user, loading } = useMySqlAuth();
   const navigate = useNavigate();
   
+  // 🧪 MODO TESTE: Desabilitar proteções de tipo de usuário
+  const TEST_MODE = true; // Altere para false em produção
+  
   console.log('TypedProtectedRoute - user:', user, 'loading:', loading, 'allowedTypes:', allowedTypes);
 
   useEffect(() => {
+    // Se estiver em modo de teste, não fazer verificações de tipo
+    if (TEST_MODE) {
+      console.log('🧪 MODO TESTE: Verificações de tipo de usuário desabilitadas');
+      console.log('🔍 Usuário atual:', user?.tipo, 'Tipos permitidos:', allowedTypes);
+      return;
+    }
+
     console.log('🔍 TypedProtectedRoute: Verificando acesso. Loading:', loading, 'User:', user?.tipo, 'Allowed:', allowedTypes);
     
     // Se não está carregando e não há usuário, redirecionar para tela inicial
@@ -62,8 +72,8 @@ const TypedProtectedRoute = ({ children, allowedTypes = [] }) => {
     );
   }
 
-  // Verificar se o tipo do usuário está permitido
-  if (allowedTypes.length > 0 && !allowedTypes.includes(user.tipo)) {
+  // Verificar se o tipo do usuário está permitido (apenas se não estiver em modo de teste)
+  if (!TEST_MODE && allowedTypes.length > 0 && !allowedTypes.includes(user.tipo)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

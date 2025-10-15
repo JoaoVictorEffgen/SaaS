@@ -4,10 +4,15 @@ const User = require('../models/User');
 // Middleware para verificar token JWT
 const authenticateToken = async (req, res, next) => {
   try {
+    console.log('🔍 [AUTH DEBUG] authenticateToken executado');
     const authHeader = req.headers['authorization'];
+    console.log('🔍 [AUTH DEBUG] authHeader:', authHeader);
+    
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    console.log('🔍 [AUTH DEBUG] token extraído:', token ? 'Sim' : 'Não');
 
     if (!token) {
+      console.log('❌ [AUTH DEBUG] Token não fornecido');
       return res.status(401).json({
         error: 'Token de acesso não fornecido',
         message: 'É necessário fazer login para acessar este recurso'
@@ -16,10 +21,15 @@ const authenticateToken = async (req, res, next) => {
 
     // Verificar token
     const jwtSecret = process.env.JWT_SECRET || 'seu_jwt_secret_muito_seguro_aqui_2024';
+    console.log('🔍 [AUTH DEBUG] Verificando token...');
+    
     const decoded = jwt.verify(token, jwtSecret);
+    console.log('🔍 [AUTH DEBUG] Token decodificado:', decoded);
     
     // Buscar usuário no banco
+    console.log('🔍 [AUTH DEBUG] Buscando usuário com ID:', decoded.userId);
     const user = await User.findByPk(decoded.userId);
+    console.log('🔍 [AUTH DEBUG] Usuário encontrado:', user ? { id: user.id, tipo: user.tipo, ativo: user.ativo } : 'Nenhum');
     
     if (!user) {
       return res.status(401).json({
