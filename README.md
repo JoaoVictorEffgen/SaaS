@@ -91,13 +91,21 @@ projeto-saas/
 │   │   └── 📁 contexts/      # Contextos React
 │   └── 📄 package.json
 ├── 📁 server/                 # Backend Node.js
+│   ├── 📁 packages/          # 🆕 Arquitetura de Pacotes
+│   │   ├── 🔒 security/      # Segurança e autenticação
+│   │   ├── 🌐 public/        # Rotas públicas
+│   │   ├── 🔒 private/       # Rotas protegidas
+│   │   ├── 🏗️ core/          # Funcionalidades centrais
+│   │   ├── 📦 shared/        # Código compartilhado
+│   │   └── 🔄 legacy/        # Compatibilidade
 │   ├── 📁 config/            # Configurações
 │   ├── 📁 middleware/        # Middlewares
 │   ├── 📁 models/            # Modelos do banco
-│   ├── 📁 routes/            # Rotas da API
+│   ├── 📁 routes/            # Rotas da API (legadas)
 │   └── 📄 package.json
 ├── 📁 imagens/               # Imagens do projeto
-└── 📄 README.md
+├── 📄 README.md
+└── 📄 ARQUITETURA_PACOTES.md # 🆕 Documentação da arquitetura
 ```
 
 ---
@@ -306,6 +314,35 @@ GET  /api/uploads/imagens/:filename # Servir arquivos estáticos
 - **Navegação:** Breadcrumbs e menu lateral
 - **Loading:** Estados de carregamento
 - **Notificações:** Feedback de ações
+
+---
+
+## 📦 Nova Arquitetura de Pacotes
+
+### 🏗️ **Estrutura Organizada**
+O sistema foi reorganizado em pacotes separados para melhor organização, segurança e manutenibilidade:
+
+- **🔒 Security**: Autenticação JWT, hash de senhas, middlewares de segurança
+- **🌐 Public**: Rotas públicas (health check, informações do sistema)
+- **🔒 Private**: Rotas protegidas por tipo de usuário
+- **🏗️ Core**: Gerenciamento de banco e serviços centrais
+- **📦 Shared**: Constantes e configurações compartilhadas
+- **🔄 Legacy**: Compatibilidade com rotas existentes
+
+### 🛡️ **Medidas de Segurança Implementadas**
+- ✅ **Autenticação JWT** com tokens seguros
+- ✅ **Hash de senhas** com bcrypt (12 rounds)
+- ✅ **Rate limiting** configurável
+- ✅ **Sanitização de dados** automática
+- ✅ **Validação de entrada** robusta
+- ✅ **Middleware de permissões** por tipo de usuário
+
+### 🌐 **Separação Pública vs Privada**
+- **Rotas Públicas** (`/api/public`): Sem autenticação necessária
+- **Rotas Privadas** (`/api`): Requer autenticação JWT
+- **Separação por tipo**: `/api/empresa/*`, `/api/funcionario/*`, `/api/cliente/*`
+
+📚 **Documentação completa**: Ver `ARQUITETURA_PACOTES.md`
 
 ---
 

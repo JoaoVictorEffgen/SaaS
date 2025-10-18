@@ -1,6 +1,7 @@
 // 🔄 Pacote Legacy - Compatibilidade com Rotas Existentes
 const express = require('express');
 const router = express.Router();
+const { authenticateToken } = require('../../middleware/auth');
 
 // Importar rotas existentes para compatibilidade
 const authRoutes = require('../../routes/auth');
@@ -20,34 +21,20 @@ class LegacyRoutes {
   }
 
   setupRoutes() {
-    // Rotas de autenticação (mantidas para compatibilidade)
+    // Rotas públicas (sem autenticação)
     router.use('/users', usersRoutes);
     router.use('/auth', authRoutes);
     
-    // Rotas de empresas (mantidas para compatibilidade)
-    router.use('/empresas', empresasRoutes);
-    
-    // Rotas de agendamentos (mantidas para compatibilidade)
-    router.use('/agendamentos', agendamentosRoutes);
-    
-    // Rotas de redes (mantidas para compatibilidade)
-    router.use('/redes', redesRoutes);
-    
-    // Rotas de pacotes (mantidas para compatibilidade)
-    router.use('/pacotes', pacotesRoutes);
-    
-    // Rotas de promoções (mantidas para compatibilidade)
-    router.use('/promocoes', promocoesRoutes);
-    
-    // Rotas de upload (mantidas para compatibilidade)
-    router.use('/upload', uploadRoutes);
-    router.use('/uploads', uploadRoutes);
-    
-    // Rotas de funcionários (mantidas para compatibilidade)
-    router.use('/funcionarios', funcionariosRoutes);
-    
-    // Rotas de clientes (mantidas para compatibilidade)
-    router.use('/clientes', clientesRoutes);
+    // Rotas protegidas (com autenticação)
+    router.use('/empresas', authenticateToken, empresasRoutes);
+    router.use('/agendamentos', authenticateToken, agendamentosRoutes);
+    router.use('/redes', authenticateToken, redesRoutes);
+    router.use('/pacotes', authenticateToken, pacotesRoutes);
+    router.use('/promocoes', authenticateToken, promocoesRoutes);
+    router.use('/upload', authenticateToken, uploadRoutes);
+    router.use('/uploads', authenticateToken, uploadRoutes);
+    router.use('/funcionarios', authenticateToken, funcionariosRoutes);
+    router.use('/clientes', authenticateToken, clientesRoutes);
   }
 
   getRoutes() {
