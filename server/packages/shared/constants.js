@@ -176,7 +176,7 @@ const SECURITY_CONFIG = {
   },
   RATE_LIMIT: {
     WINDOW_MS: 15 * 60 * 1000, // 15 minutos
-    MAX_REQUESTS: 100,
+    MAX_REQUESTS: 1000, // máximo 1000 requisições por janela (aumentado para desenvolvimento)
     SKIP_SUCCESSFUL_REQUESTS: true
   },
   CORS: {

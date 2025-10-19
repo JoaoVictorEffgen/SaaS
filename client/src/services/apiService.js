@@ -1,9 +1,9 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = '/api';
 
 class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
-    this.token = localStorage.getItem('authToken');
+    this.token = localStorage.getItem('token');
     console.log('🔧 ApiService inicializado com token:', this.token ? 'Presente' : 'Ausente');
   }
 
@@ -19,7 +19,7 @@ class ApiService {
     };
 
     // Adicionar token se disponível (verificar tanto na instância quanto no localStorage)
-    const token = this.token || localStorage.getItem('authToken');
+    const token = this.token || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
       console.log('🔑 Token sendo enviado:', token.substring(0, 20) + '...');
@@ -67,6 +67,26 @@ class ApiService {
     });
   }
 
+  // Método genérico GET
+  async get(endpoint) {
+    return await this.request(endpoint);
+  }
+
+  // Método genérico PUT
+  async put(endpoint, data) {
+    return await this.request(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  // Método genérico DELETE
+  async delete(endpoint) {
+    return await this.request(endpoint, {
+      method: 'DELETE'
+    });
+  }
+
   // ===== AUTENTICAÇÃO =====
   async login(identifier, senha, tipo = null, companyIdentifier = null) {
     const requestData = { identifier, senha, tipo };
@@ -80,7 +100,7 @@ class ApiService {
 
     if (data.token) {
       this.token = data.token;
-      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('token', data.token);
       localStorage.setItem('currentUser', JSON.stringify(data.user));
     }
 
@@ -210,7 +230,7 @@ class ApiService {
   // ===== UTILITÁRIOS =====
   logout() {
     this.token = null;
-    localStorage.removeItem('authToken');
+    localStorage.removeItem('token');
     localStorage.removeItem('currentUser');
   }
 
@@ -219,7 +239,7 @@ class ApiService {
     if (token) {
       localStorage.setItem('authToken', token);
     } else {
-      localStorage.removeItem('authToken');
+      localStorage.removeItem('token');
     }
     console.log('🔧 Token atualizado no ApiService:', token ? 'Presente' : 'Ausente');
   }

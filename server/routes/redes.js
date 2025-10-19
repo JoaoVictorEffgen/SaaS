@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
-const { RedeEmpresarial, User, Empresa } = require('../models');
+const { RedeEmpresarial, User, Empresa, Agendamento } = require('../models');
 const { checkTrialValid, checkCpfCnpjUsed, getTrialStatus, createTrial } = require('../middleware/trialMiddleware');
 
 // Middleware para verificar se usuário é admin de rede
@@ -10,6 +10,8 @@ const isRedeAdmin = async (req, res, next) => {
     const { redeId } = req.params;
     const userId = req.user.id;
     
+    console.log('🔍 isRedeAdmin - redeId:', redeId, 'userId:', userId);
+    
     const rede = await RedeEmpresarial.findOne({
       where: {
         id: redeId,
@@ -17,16 +19,20 @@ const isRedeAdmin = async (req, res, next) => {
       }
     });
     
+    console.log('🌐 isRedeAdmin - rede encontrada:', rede ? { id: rede.id, admin_id: rede.usuario_admin_id } : 'Não encontrada');
+    
     if (!rede) {
+      console.log('❌ isRedeAdmin - usuário não é admin da rede');
       return res.status(403).json({ 
         error: 'Acesso negado. Você não é administrador desta rede.' 
       });
     }
     
+    console.log('✅ isRedeAdmin - usuário é admin, continuando...');
     req.rede = rede;
     next();
   } catch (error) {
-    console.error('Erro ao verificar admin da rede:', error);
+    console.error('❌ Erro ao verificar admin da rede:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 };
@@ -36,26 +42,33 @@ const checkEnterprisePlan = async (req, res, next) => {
   try {
     const userId = req.user.id;
     
+    console.log('🔍 checkEnterprisePlan - userId:', userId);
+    
     const rede = await RedeEmpresarial.findOne({
       where: { usuario_admin_id: userId }
     });
     
+    console.log('🌐 checkEnterprisePlan - rede encontrada:', rede ? { id: rede.id, plano: rede.plano } : 'Não encontrada');
+    
     if (!rede) {
+      console.log('❌ checkEnterprisePlan - usuário não possui rede');
       return res.status(400).json({ 
         error: 'Usuário não possui uma rede empresarial.' 
       });
     }
     
-    if (rede.plano !== 'enterprise') {
+    if (rede.plano !== 'enterprise' && rede.plano !== 'trial') {
+      console.log('❌ checkEnterprisePlan - plano inválido:', rede.plano);
       return res.status(403).json({ 
-        error: 'Esta funcionalidade requer plano Enterprise.' 
+        error: 'Esta funcionalidade requer plano Enterprise ou Trial.' 
       });
     }
     
+    console.log('✅ checkEnterprisePlan - plano válido, continuando...');
     req.rede = rede;
     next();
   } catch (error) {
-    console.error('Erro ao verificar plano:', error);
+    console.error('❌ Erro ao verificar plano:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 };
@@ -163,10 +176,14 @@ router.post('/', authenticateToken, checkCpfCnpjUsed, async (req, res) => {
 // POST /api/redes/:redeId/empresas - Criar nova empresa na rede
 router.post('/:redeId/empresas', authenticateToken, checkTrialValid, isRedeAdmin, checkEnterprisePlan, async (req, res) => {
   try {
+    console.log('🏗️ Tentativa de criar nova empresa na rede');
     const { redeId } = req.params;
     const { nome_unidade, endereco, cidade, estado, cep, whatsapp } = req.body;
     
+    console.log('📋 Dados recebidos:', { redeId, nome_unidade, endereco, cidade, estado, cep, whatsapp });
+    
     const rede = req.rede;
+    console.log('🌐 Rede encontrada:', { id: rede.id, nome: rede.nome_rede, admin_id: rede.usuario_admin_id });
     
     // Verificar limite de empresas
     if (rede.empresas_ativas >= rede.limite_empresas) {
@@ -176,7 +193,19 @@ router.post('/:redeId/empresas', authenticateToken, checkTrialValid, isRedeAdmin
     }
     
     // Criar nova empresa vinculada à rede
+    console.log('🏢 Criando nova empresa:', {
+      user_id: rede.usuario_admin_id,
+      rede_id: redeId,
+      nome_unidade: nome_unidade || `${rede.nome_rede} - Unidade ${rede.empresas_ativas + 1}`,
+      endereco,
+      cidade,
+      estado,
+      cep,
+      whatsapp
+    });
+    
     const novaEmpresa = await Empresa.create({
+      nome: nome_unidade || `${rede.nome_rede} - Unidade ${rede.empresas_ativas + 1}`,
       user_id: rede.usuario_admin_id,
       rede_id: redeId,
       nome_unidade: nome_unidade || `${rede.nome_rede} - Unidade ${rede.empresas_ativas + 1}`,
@@ -188,14 +217,24 @@ router.post('/:redeId/empresas', authenticateToken, checkTrialValid, isRedeAdmin
       ativo: true
     });
     
+    console.log('✅ Empresa criada com sucesso:', novaEmpresa.id);
+    
     // Atualizar contador de empresas ativas
     await rede.update({ 
       empresas_ativas: rede.empresas_ativas + 1 
     });
+
+    console.log('📊 Contador de empresas atualizado:', rede.empresas_ativas + 1);
     
-    res.status(201).json(novaEmpresa);
+    res.status(201).json({ 
+      success: true,
+      message: 'Empresa adicionada à rede com sucesso!',
+      data: novaEmpresa
+    });
   } catch (error) {
-    console.error('Erro ao criar empresa na rede:', error);
+    console.error('❌ Erro ao criar empresa na rede:', error);
+    console.error('❌ Detalhes do erro:', error.message);
+    console.error('❌ Stack trace:', error.stack);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
@@ -337,6 +376,132 @@ router.get('/:redeId/relatorios', authenticateToken, isRedeAdmin, async (req, re
   } catch (error) {
     console.error('Erro ao gerar relatório da rede:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// GET /api/redes/funcionarios-disponiveis - Listar funcionários disponíveis para transferir
+router.get('/funcionarios-disponiveis', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Buscar a rede do usuário
+    const rede = await RedeEmpresarial.findOne({
+      where: { usuario_admin_id: userId }
+    });
+    
+    if (!rede) {
+      return res.status(404).json({ error: 'Usuário não possui uma rede empresarial.' });
+    }
+    
+    // Buscar funcionários disponíveis para transferir:
+    // 1. Funcionários não vinculados a nenhuma empresa (empresa_id: null)
+    // 2. Funcionários vinculados a outras empresas da mesma rede
+    const funcionariosDisponiveis = await User.findAll({
+      where: { 
+        tipo: 'funcionario',
+        ativo: true,
+        rede_id: rede.id // Funcionários da mesma rede
+      },
+      attributes: ['id', 'nome', 'email', 'telefone', 'cargo', 'empresa_id'],
+      include: [
+        {
+          model: Empresa,
+          as: 'empresa',
+          attributes: ['id', 'nome_unidade'],
+          required: false
+        }
+      ]
+    });
+    
+    res.json({ funcionarios: funcionariosDisponiveis });
+  } catch (error) {
+    console.error('Erro ao listar funcionários disponíveis:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// DELETE /api/redes/empresas/:empresaId - Excluir empresa/filial da rede
+router.delete('/empresas/:empresaId', authenticateToken, checkTrialValid, isRedeAdmin, checkEnterprisePlan, async (req, res) => {
+  try {
+    console.log('🗑️ Tentativa de exclusão de empresa:', req.params.empresaId);
+    console.log('👤 Usuário:', req.user);
+    console.log('🏢 Rede:', req.rede);
+    
+    const { empresaId } = req.params;
+    const rede = req.rede;
+
+    // Buscar a empresa
+    const empresa = await Empresa.findOne({
+      where: {
+        id: empresaId,
+        rede_id: rede.id
+      },
+      include: [
+        {
+          model: User,
+          as: 'funcionarios',
+          where: { tipo: 'funcionario' },
+          required: false,
+          attributes: ['id', 'nome', 'email']
+        }
+      ]
+    });
+
+    if (!empresa) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Empresa não encontrada nesta rede.' 
+      });
+    }
+
+    // Verificar se é a empresa principal (user_id = rede.usuario_admin_id)
+    if (empresa.user_id === rede.usuario_admin_id) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Não é possível excluir a empresa principal da rede.' 
+      });
+    }
+
+    // Remover funcionários da empresa (tornar disponíveis para outras empresas)
+    const funcionarios = await User.findAll({
+      where: {
+        empresa_id: empresaId,
+        tipo: 'funcionario'
+      }
+    });
+
+    for (const funcionario of funcionarios) {
+      await funcionario.update({
+        empresa_id: null,
+        rede_id: null
+      });
+    }
+
+    // Excluir agendamentos relacionados à empresa
+    await Agendamento.destroy({
+      where: { empresa_id: empresaId }
+    });
+
+    // Excluir a empresa
+    await empresa.destroy();
+
+    // Atualizar contador de empresas ativas na rede
+    await rede.update({
+      empresas_ativas: rede.empresas_ativas - 1
+    });
+
+    res.json({ 
+      success: true,
+      message: 'Filial excluída com sucesso!',
+      funcionariosRemovidos: funcionarios.length
+    });
+
+  } catch (error) {
+    console.error('Erro ao excluir empresa:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Erro interno do servidor.' 
+    });
   }
 });
 

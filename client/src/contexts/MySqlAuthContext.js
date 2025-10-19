@@ -30,7 +30,7 @@ export const MySqlAuthProvider = ({ children }) => {
     const loadUserFromToken = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem('token');
         
         if (token) {
           apiService.setToken(token);

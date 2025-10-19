@@ -24,8 +24,9 @@ import {
 // Importações dos componentes de pacotes
 import DashboardPacotes from './components/pacotes/DashboardPacotes';
 
-// Componente de navegação para testes
-import TestNavigation from './components/TestNavigation';
+// Importações dos componentes de rede
+import DashboardRede from './components/rede/DashboardRede';
+
 
 // Debug components removidos para limpeza
 
@@ -35,7 +36,6 @@ function App() {
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <RedirectHandler />
         <InstallPWA />
-        <TestNavigation />
       <Routes>
           {/* Página Principal */}
         <Route path="/" element={<AccessSelector />} />
@@ -56,6 +56,9 @@ function App() {
           
           {/* Rotas de Pacotes - Apenas para usuários tipo 'empresa' */}
           <Route path="/pacotes" element={<TypedProtectedRoute allowedTypes={['empresa']}><DashboardPacotes /></TypedProtectedRoute>} />
+          
+          {/* Rotas de Rede/Franquia - Apenas para usuários tipo 'empresa' */}
+          <Route path="/rede" element={<TypedProtectedRoute allowedTypes={['empresa']}><DashboardRede /></TypedProtectedRoute>} />
           
           {/* Rotas B2C (Clientes) - Apenas para usuários tipo 'cliente' */}
           <Route path="/cliente" element={<TypedProtectedRoute allowedTypes={['cliente']}><SelecaoEmpresa /></TypedProtectedRoute>} />

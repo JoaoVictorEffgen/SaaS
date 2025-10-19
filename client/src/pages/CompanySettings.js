@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useMySqlAuth } from '../contexts/MySqlAuthContext';
 import { Calendar, Clock, Save, Building, Upload, Image } from 'lucide-react';
 import apiService from '../services/apiService';
+import EmpresaLogoUpload from '../components/EmpresaLogoUpload';
 
 const CompanySettings = () => {
   const { user, updateUser } = useMySqlAuth();
@@ -89,9 +90,8 @@ const CompanySettings = () => {
       
       const formData = new FormData();
       formData.append('imagem', file);
-      formData.append('tipo', 'fundo');
 
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       if (!token) {
         window.alert('❌ Token de autenticação não encontrado. Faça login novamente.');
         return;
@@ -135,6 +135,7 @@ const CompanySettings = () => {
     }
   };
 
+
   const handleSave = async () => {
     try {
       setLoading(true);
@@ -160,7 +161,12 @@ const CompanySettings = () => {
       
       if (resultado.success) {
         setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
+        alert('Configurações salvas com sucesso!');
+        
+        // Redirecionar para o dashboard da empresa após 2 segundos
+        setTimeout(() => {
+          window.location.href = '/empresa/dashboard';
+        }, 2000);
       } else {
         alert('Erro ao salvar: ' + (resultado.error || 'Erro desconhecido'));
       }
@@ -345,6 +351,18 @@ const CompanySettings = () => {
             </button>
           </div>
         </div>
+
+        {/* Logo da Empresa */}
+        {empresaData && (
+          <EmpresaLogoUpload
+            empresaId={empresaData.id}
+            currentLogo={empresaData.logo_url}
+            onLogoUpload={(url) => {
+              setEmpresaData(prev => ({ ...prev, logo_url: url }));
+            }}
+            loading={loading}
+          />
+        )}
 
         {/* Imagem de Fundo */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">

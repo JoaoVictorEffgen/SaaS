@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { 
   Building2, Users, ArrowRight, Calendar, Clock, Zap, Star, Crown,
   Users2, X, ClipboardList, ChevronLeft, ChevronRight, Facebook, Instagram, Twitter, Linkedin, Plus,
-  Heart, Navigation
+  Navigation
 } from 'lucide-react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 
@@ -40,7 +40,7 @@ const AccessSelector = () => {
   const [codigosGerados, setCodigosGerados] = useState({ whatsapp: '', sms: '' });
   
   // Estados para novas funcionalidades
-  const [activeSection, setActiveSection] = useState('destaque'); // 'destaque', 'proximas', 'favoritas'
+  const [activeSection, setActiveSection] = useState('destaque'); // 'destaque', 'proximas'
   const [allEmpresas, setAllEmpresas] = useState([]);
   const [isClientLoggedIn, setIsClientLoggedIn] = useState(false);
   const [empresaForm, setEmpresaForm] = useState({ email: '', senha: '', nome: '', telefone: '', endereco: '', cnpj: '' });
@@ -174,12 +174,8 @@ const AccessSelector = () => {
     const clientLoggedIn = user && user.tipo === 'cliente';
     setIsClientLoggedIn(clientLoggedIn);
     
-    // Se cliente logado, mostrar favoritas por padrão
-    if (clientLoggedIn) {
-      setActiveSection('favoritas');
-    } else {
-      setActiveSection('destaque');
-    }
+    // Sempre mostrar destaque por padrão na tela inicial
+    setActiveSection('destaque');
   }, [loadEmpresasDestaque, user]);
 
   const openEmpresaModal = () => {
@@ -542,37 +538,79 @@ const AccessSelector = () => {
       </div>
 
       <div className="relative z-10">
-        {/* Modern Header with Gradient */}
-        <div className="bg-gradient-to-r from-blue-300 via-green-300 to-blue-400 text-gray-800 py-16 px-4 relative overflow-hidden">
-          {/* Background Image */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <img 
-              src="/eslogan.png" 
-              alt="TimeFlow Logo" 
-              className="w-full h-full object-cover opacity-20"
-            />
-          </div>
+        {/* Header com conteúdo TimeFlow - Com efeitos */}
+        <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col items-center justify-center py-20 px-4 relative overflow-hidden">
+          {/* Efeito de brilho de fundo */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 via-transparent to-purple-600/5"></div>
           
-          <div className="max-w-7xl mx-auto relative z-10">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-24 h-24 bg-white/30 backdrop-blur-sm rounded-3xl mb-8 shadow-2xl border border-white/40">
-                <img 
-                  src="/pensativo.png" 
-                  alt="Mascote Pensativo" 
-                  className="w-16 h-16 object-contain"
-                />
+          <div className="flex items-center mb-8 relative z-10">
+            {/* Ícone TimeFlow com efeitos - Relógio Animado */}
+            <div className="w-32 h-32 rounded-full bg-gradient-to-r from-teal-500 to-green-500 flex items-center justify-center mr-8 shadow-2xl hover:shadow-teal-500/50 transition-all duration-500 hover:scale-110 animate-pulse">
+              {/* Relógio animado com ponteiros */}
+              <div className="relative w-16 h-16">
+                {/* Círculo do relógio */}
+                <div className="absolute inset-0 rounded-full border-2 border-white/30"></div>
+                
+                {/* Ponteiro das horas */}
+                <div 
+                  className="absolute w-1 bg-white rounded-full origin-bottom"
+                  style={{
+                    height: '20px',
+                    left: '50%',
+                    top: '50%',
+                    transform: 'translateX(-50%) translateY(-100%) rotate(0deg)',
+                    animation: 'rotateHour 24s linear infinite'
+                  }}
+                ></div>
+                
+                {/* Ponteiro dos minutos */}
+                <div 
+                  className="absolute w-0.5 bg-white rounded-full origin-bottom"
+                  style={{
+                    height: '28px',
+                    left: '50%',
+                    top: '50%',
+                    transform: 'translateX(-50%) translateY(-100%) rotate(0deg)',
+                    animation: 'rotateMinute 20s linear infinite'
+                  }}
+                ></div>
+                
+                {/* Centro do relógio */}
+                <div className="absolute w-2 h-2 bg-white rounded-full top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+                
+                {/* Marcações das horas */}
+                <div className="absolute inset-0">
+                  {[12, 3, 6, 9].map((hour, index) => (
+                    <div
+                      key={hour}
+                      className="absolute w-0.5 h-1 bg-white/60 rounded-full"
+                      style={{
+                        left: '50%',
+                        top: '4px',
+                        transform: `translateX(-50%) rotate(${index * 90}deg)`,
+                        transformOrigin: '50% 28px'
+                      }}
+                    ></div>
+                  ))}
+                </div>
               </div>
-              <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                AgendaPro
-              </h1>
-              <p className="text-lg md:text-xl text-gray-700 mb-2 font-medium">Sistema de Agendamento Online</p>
-              <p className="text-base md:text-lg text-gray-600 max-w-3xl mx-auto px-4">
-                Revolucione sua agenda com tecnologia de ponta. 
-                <span className="font-semibold text-gray-800"> Rápido, seguro e intuitivo.</span>
-              </p>
-              
             </div>
+            {/* Texto TimeFlow com efeitos */}
+            <h1 className="text-8xl font-light bg-gradient-to-r from-teal-600 via-teal-500 to-green-600 bg-clip-text text-transparent drop-shadow-lg hover:scale-105 transition-transform duration-300 animate-pulse">
+              TimeFlow
+            </h1>
           </div>
+          {/* Slogan com efeitos */}
+          <p className="text-3xl text-gray-700 text-center max-w-3xl font-medium drop-shadow-sm hover:text-gray-900 transition-colors duration-300 animate-fade-in">
+            Organize seu tempo. 
+            <span className="font-bold bg-gradient-to-r from-teal-600 to-green-600 bg-clip-text text-transparent"> Potencialize seus resultados.</span>
+          </p>
+          
+          {/* Efeito de partículas flutuantes */}
+          <div className="absolute top-10 left-10 w-4 h-4 bg-teal-400 rounded-full opacity-60 animate-ping"></div>
+          <div className="absolute top-20 right-20 w-3 h-3 bg-green-400 rounded-full opacity-50 animate-pulse"></div>
+          <div className="absolute bottom-20 left-20 w-5 h-5 bg-teal-300 rounded-full opacity-40 animate-pulse"></div>
+          <div className="absolute bottom-10 right-10 w-2 h-2 bg-green-300 rounded-full opacity-70 animate-ping"></div>
         </div>
 
 
@@ -792,17 +830,6 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                     <span className="font-medium">Próximas</span>
                   </button>
                   
-                  <button
-                    onClick={() => setActiveSection('favoritas')}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
-                      activeSection === 'favoritas'
-                        ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Heart className="w-4 h-4" />
-                    <span className="font-medium">Favoritas</span>
-                  </button>
                 </div>
               </div>
             </div>
@@ -823,82 +850,79 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
               <p className="text-base md:text-lg text-gray-600">As melhores avaliadas pelos nossos clientes</p>
             </div>
             
-            <div className="relative max-w-5xl mx-auto">
-              <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-2xl border border-white/50 overflow-hidden">
-                <div className="flex items-center justify-center gap-4 md:gap-8">
-                  <button 
-                    onClick={prevEmpresa}
-                    className="p-2 md:p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-300 hover:scale-110"
-                    aria-label="Empresa anterior"
-                  >
-                    <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-600" />
-                  </button>
-                  
-                  <div className="flex-1 text-center">
-                    <div className="flex items-center justify-center gap-4 md:gap-6 mb-4 md:mb-6">
-                      <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl">
-                        <span className="text-white font-bold text-xl md:text-2xl">
-                          {empresasDestaque[currentEmpresa]?.razaoSocial ? empresasDestaque[currentEmpresa].razaoSocial.charAt(0) : 'E'}
-                        </span>
+            <div className="relative max-w-6xl mx-auto">
+              <div className="flex items-center justify-center gap-8">
+                <button 
+                  onClick={prevEmpresa}
+                  className="p-4 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-all duration-300 hover:scale-110 border border-gray-200"
+                  aria-label="Empresa anterior"
+                >
+                  <ChevronLeft className="w-7 h-7 text-gray-600" />
+                </button>
+                
+                <div className="flex-1 max-w-2xl">
+                    {/* Card com layout elegante e proporcional */}
+                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 aspect-[4/3]">
+                      {/* Seção superior com gradiente */}
+                      <div className="h-48 bg-gradient-to-r from-purple-600 via-purple-500 to-blue-500 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-black/10"></div>
+                        <div className="absolute bottom-4 left-4">
+                          <h3 className="text-white text-xl font-bold drop-shadow-lg">
+                            {empresasDestaque[currentEmpresa]?.especializacao || 'Corte de Cabelo'}
+                          </h3>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
-                          {empresasDestaque[currentEmpresa]?.razaoSocial || 'Empresa'}
-                        </h3>
-                        <p className="text-base md:text-lg text-gray-600">
-                          {empresasDestaque[currentEmpresa]?.especializacao || 'Serviços'}
-                        </p>
+                      
+                      {/* Seção inferior branca */}
+                      <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
+                        <div className="space-y-3">
+                          {/* Avaliação */}
+                          <div className="flex items-center gap-2">
+                            <div className="flex">
+                              {Array.from({ length: 5 }, (_, i) => (
+                                <Star 
+                                  key={i} 
+                                  className={`h-4 w-4 ${
+                                    i < Math.floor(empresasDestaque[currentEmpresa]?.avaliacao || 4.7) 
+                                      ? 'text-yellow-400 fill-current' 
+                                      : 'text-gray-300'
+                                  }`} 
+                                />
+                              ))}
+                            </div>
+                            <span className="text-sm text-gray-600 font-medium">
+                              {empresasDestaque[currentEmpresa]?.avaliacao.toFixed(1) || '4.7'} ({empresasDestaque[currentEmpresa]?.totalAvaliacoes || '25'} avaliações)
+                            </span>
+                          </div>
+                          
+                          {/* Horário */}
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">Aberto até as 19:00</span>
+                          </div>
+                        </div>
+                        
+                        {/* Botão */}
+                        <button
+                          onClick={() => handleAgendarEmpresa(empresasDestaque[currentEmpresa])}
+                          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                        >
+                          Ver Serviços
+                        </button>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-center gap-2 mb-4">
-                      <Star className="h-5 w-5 md:h-6 md:w-6 text-yellow-500 fill-current" />
-                      <span className="text-lg md:text-xl font-bold text-gray-900">
-                        {empresasDestaque[currentEmpresa]?.avaliacao.toFixed(1) || '4.8'}
-                      </span>
-                      <span className="text-sm md:text-base text-gray-600">
-                        ({empresasDestaque[currentEmpresa]?.totalAvaliacoes || '150'} avaliações)
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-center gap-2 mb-4">
-                      {Array.from({ length: 5 }, (_, i) => (
-                        <Star 
-                          key={i} 
-                          className={`h-4 w-4 md:h-5 md:w-5 ${
-                            i < Math.floor(empresasDestaque[currentEmpresa]?.avaliacao || 4.8) 
-                              ? 'text-yellow-500 fill-current' 
-                              : 'text-gray-300'
-                          }`} 
-                        />
-                      ))}
-                    </div>
-                    
-                    {/* Botão de Agendamento */}
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600 mb-3">
-                        Gostou desta empresa? Agende seu serviço agora!
-                      </p>
-                      <button
-                        onClick={() => handleAgendarEmpresa(empresasDestaque[currentEmpresa])}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:-translate-y-1"
-                      >
-                        <Plus className="w-5 h-5" />
-                        {isClientLoggedIn ? 'Agendar Agora' : 'Fazer Login e Agendar'}
-                      </button>
                     </div>
                   </div>
                   
                   <button 
                     onClick={nextEmpresa}
-                    className="p-2 md:p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-300 hover:scale-110"
+                    className="p-4 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-all duration-300 hover:scale-110 border border-gray-200"
                     aria-label="Próxima empresa"
                   >
-                    <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-gray-600" />
+                    <ChevronRight className="w-7 h-7 text-gray-600" />
                   </button>
                 </div>
                 
-                <div className="flex justify-center gap-2 mt-6 md:mt-8">
+                <div className="flex justify-center gap-2 mt-6 md:mt-8 p-6">
                   {Array.from({ length: Math.min(empresasDestaque.length, 6) }, (_, index) => (
                     <button
                       key={index}
@@ -912,7 +936,6 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                     />
                   ))}
                 </div>
-              </div>
             </div>
           </div>
         </div>
@@ -922,25 +945,106 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
       {activeSection === 'proximas' && (
         <div className="py-12 md:py-16 px-4">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center py-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Empresas Próximas</h2>
-              <p className="text-gray-600">Funcionalidade será implementada em breve</p>
+            <div className="text-center mb-8 md:mb-12">
+              <div className="flex items-center justify-center gap-2 md:gap-3 mb-3 md:mb-4">
+                <Navigation className="h-6 w-6 md:h-8 md:w-8 text-blue-500 animate-pulse" />
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Empresas Próximas</h2>
+                <Navigation className="h-6 w-6 md:h-8 md:w-8 text-blue-500 animate-pulse" />
+              </div>
+              <p className="text-base md:text-lg text-gray-600">Empresas próximas à sua localização</p>
+            </div>
+            
+            <div className="relative max-w-6xl mx-auto">
+              <div className="flex items-center justify-center gap-8">
+                <button 
+                  onClick={prevEmpresa}
+                  className="p-4 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-all duration-300 hover:scale-110 border border-gray-200"
+                  aria-label="Empresa anterior"
+                >
+                  <ChevronLeft className="w-7 h-7 text-gray-600" />
+                </button>
+                
+                <div className="flex-1 max-w-2xl">
+                    {/* Card com layout elegante e proporcional */}
+                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 aspect-[4/3]">
+                      {/* Seção superior com gradiente */}
+                      <div className="h-48 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-black/10"></div>
+                        <div className="absolute bottom-4 left-4">
+                          <h3 className="text-white text-xl font-bold drop-shadow-lg">
+                            {empresasDestaque[currentEmpresa]?.especializacao || 'Serviços Gerais'}
+                          </h3>
+                        </div>
+                      </div>
+                      
+                      {/* Seção inferior branca */}
+                      <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
+                        <div className="space-y-3">
+                          {/* Avaliação */}
+                          <div className="flex items-center gap-2">
+                            <div className="flex">
+                              {Array.from({ length: 5 }, (_, i) => (
+                                <Star 
+                                  key={i} 
+                                  className={`h-4 w-4 ${
+                                    i < Math.floor(empresasDestaque[currentEmpresa]?.avaliacao || 4.5) 
+                                      ? 'text-yellow-400 fill-current' 
+                                      : 'text-gray-300'
+                                  }`} 
+                                />
+                              ))}
+                            </div>
+                            <span className="text-sm text-gray-600 font-medium">
+                              {empresasDestaque[currentEmpresa]?.avaliacao.toFixed(1) || '4.5'} ({empresasDestaque[currentEmpresa]?.totalAvaliacoes || '18'} avaliações)
+                            </span>
+                          </div>
+                          
+                          {/* Horário */}
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">Aberto até as 18:00</span>
+                          </div>
+                        </div>
+                        
+                        {/* Botão */}
+                        <button
+                          onClick={() => handleAgendarEmpresa(empresasDestaque[currentEmpresa])}
+                          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                        >
+                          Ver Serviços
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    onClick={nextEmpresa}
+                    className="p-4 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-all duration-300 hover:scale-110 border border-gray-200"
+                    aria-label="Próxima empresa"
+                  >
+                    <ChevronRight className="w-7 h-7 text-gray-600" />
+                  </button>
+                </div>
+                
+                <div className="flex justify-center gap-2 mt-6 md:mt-8 p-6">
+                  {Array.from({ length: Math.min(empresasDestaque.length, 6) }, (_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentEmpresa(index)}
+                      className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                        index === currentEmpresa 
+                          ? 'bg-blue-500 scale-125' 
+                          : 'bg-gray-300 hover:bg-gray-400'
+                      }`}
+                      aria-label={`Ir para empresa ${index + 1}`}
+                    />
+                  ))}
+                </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Seção de Empresas Favoritas */}
-      {activeSection === 'favoritas' && (
-        <div className="py-12 md:py-16 px-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center py-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Empresas Favoritas</h2>
-              <p className="text-gray-600">Funcionalidade será implementada em breve</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal da Empresa */}
       {showEmpresaModal && (

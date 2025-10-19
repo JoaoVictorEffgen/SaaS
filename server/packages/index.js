@@ -78,9 +78,23 @@ class Application {
   setupBasicMiddlewares() {
     console.log('🔧 [APP] Configurando middlewares básicos...');
 
+    // Rota de health check (pública) - DEVE VIR ANTES de qualquer middleware
+    this.app.get('/api/health', (req, res) => {
+      res.json({
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: ENV_CONFIG.NODE_ENV,
+        version: '1.0.0'
+      });
+    });
+
     // Body parsing
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+    // Servir arquivos estáticos (uploads)
+    this.app.use('/api/uploads', express.static('uploads'));
 
     // Logging de requisições
     this.app.use((req, res, next) => {
@@ -97,27 +111,18 @@ class Application {
   setupRoutes() {
     console.log('🛣️ [APP] Configurando rotas...');
 
-    // Rotas públicas
+    // IMPORTANTE: Ordem das rotas é CRÍTICA!
+    
+    // 1. Rotas públicas PRIMEIRO (sem autenticação)
     this.app.use('/api/public', this.publicRoutes.getRoutes());
-
-    // Rotas privadas
-    this.app.use('/api', this.privateRoutes.getRoutes());
-
-    // Rotas legadas (compatibilidade)
+    
+    // 2. Rotas legadas (compatibilidade) - INCLUINDO LOGIN PÚBLICO
     this.app.use('/api', this.legacyRoutes.getRoutes());
 
-    // Rota de health check
-    this.app.get('/api/health', (req, res) => {
-      res.json({
-        status: 'OK',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        environment: ENV_CONFIG.NODE_ENV,
-        version: '1.0.0'
-      });
-    });
+    // 4. Rotas privadas POR ÚLTIMO (com autenticação)
+    this.app.use('/api', this.privateRoutes.getRoutes());
 
-    // Rota de fallback
+    // 5. Rota de fallback
     this.app.use('*', (req, res) => {
       res.status(404).json({
         success: false,

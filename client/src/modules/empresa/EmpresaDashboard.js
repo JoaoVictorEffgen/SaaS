@@ -558,8 +558,8 @@ const EmpresaDashboard = () => {
             </button>
           </div>
 
-          {/* Segunda linha - Pacotes */}
-          <div className="grid grid-cols-1 gap-6 mt-6">
+          {/* Segunda linha - Pacotes e Rede lado a lado */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <button
               onClick={() => navigate('/pacotes')}
               className="group relative bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-indigo-200/50"
@@ -573,6 +573,22 @@ const EmpresaDashboard = () => {
               <div className="text-left">
                 <h3 className="text-lg font-bold text-gray-900 mb-1">Meus Pacotes</h3>
                 <p className="text-sm text-gray-600">Criar e gerenciar pacotes personalizados</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => navigate('/rede')}
+              className="group relative bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-purple-200/50"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
+                <ArrowRight className="h-5 w-5 text-purple-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all duration-300" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Rede Empresarial</h3>
+                <p className="text-sm text-gray-600">Gerenciar franquias e unidades da rede</p>
               </div>
             </button>
           </div>

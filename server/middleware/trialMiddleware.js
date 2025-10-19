@@ -6,10 +6,13 @@ const { RedeEmpresarial } = require('../models');
 const checkTrialValid = async (req, res, next) => {
   try {
     const userId = req.user.id;
+    console.log('🔍 checkTrialValid - userId:', userId);
     
     const rede = await RedeEmpresarial.findOne({
       where: { usuario_admin_id: userId }
     });
+    
+    console.log('🌐 checkTrialValid - rede encontrada:', rede ? rede.id : 'Não encontrada');
     
     if (!rede) {
       return res.status(400).json({ 
@@ -39,6 +42,7 @@ const checkTrialValid = async (req, res, next) => {
     }
     
     // Trial ainda válido
+    console.log('✅ checkTrialValid - trial válido, continuando...');
     req.rede = rede;
     next();
     

@@ -46,9 +46,13 @@ const upload = multer({
 // POST /api/upload/imagem-fundo - Upload de imagem de fundo da empresa
 router.post('/imagem-fundo', authenticateToken, checkEmpresaOwnership, upload.single('imagem'), async (req, res) => {
   try {
-    console.log('🔍 Upload de imagem de fundo:', req.file);
+    console.log('🔍 Upload de imagem de fundo iniciado');
+    console.log('🔍 Arquivo recebido:', req.file);
+    console.log('🔍 Usuário:', req.user?.id, req.user?.tipo);
+    console.log('🔍 Empresa:', req.empresa?.id);
     
     if (!req.file) {
+      console.log('❌ Nenhuma imagem foi enviada');
       return res.status(400).json({ 
         success: false, 
         message: 'Nenhuma imagem foi enviada' 
@@ -57,13 +61,16 @@ router.post('/imagem-fundo', authenticateToken, checkEmpresaOwnership, upload.si
 
     const empresa = req.empresa; // Já validado pelo middleware
 
-    // URL da imagem
-    const imageUrl = `/api/uploads/imagens-fundo/${req.file.filename}`;
+    // URL da imagem com protocolo completo
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const imageUrl = `${baseUrl}/api/uploads/imagens-fundo/${req.file.filename}`;
+    
+    console.log('🔍 URL da imagem:', imageUrl);
     
     // Atualizar empresa com a URL da imagem de fundo
     await empresa.update({ imagem_fundo_url: imageUrl });
     
-    console.log('✅ Imagem de fundo salva:', imageUrl);
+    console.log('✅ Imagem de fundo salva com sucesso:', imageUrl);
     
     res.json({
       success: true,
@@ -82,7 +89,55 @@ router.post('/imagem-fundo', authenticateToken, checkEmpresaOwnership, upload.si
   }
 });
 
+// POST /api/upload/logo - Upload de logo da empresa
+router.post('/logo', authenticateToken, checkEmpresaOwnership, upload.single('logo'), async (req, res) => {
+  try {
+    console.log('🔍 Upload de logo iniciado');
+    console.log('🔍 Arquivo recebido:', req.file);
+    console.log('🔍 Usuário:', req.user?.id, req.user?.tipo);
+    console.log('🔍 Empresa:', req.empresa?.id);
+    
+    if (!req.file) {
+      console.log('❌ Nenhuma imagem foi enviada');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Nenhuma imagem foi enviada' 
+      });
+    }
+
+    const empresa = req.empresa; // Já validado pelo middleware
+
+    // URL da imagem com protocolo completo
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const imageUrl = `${baseUrl}/api/uploads/imagens-fundo/${req.file.filename}`;
+    
+    console.log('🔍 URL do logo:', imageUrl);
+    
+    // Atualizar empresa com a URL do logo
+    await empresa.update({ logo_url: imageUrl });
+    
+    console.log('✅ Logo salvo com sucesso:', imageUrl);
+    
+    res.json({
+      success: true,
+      message: 'Logo enviado com sucesso!',
+      url: imageUrl,
+      filename: req.file.filename
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro no upload do logo:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Erro interno do servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 // GET /api/uploads/imagens-fundo/:filename - Servir imagens de fundo
+router.use('/imagens-fundo', express.static(path.join(__dirname, '../uploads/imagens-fundo')));
+
 router.get('/imagens-fundo/:filename', (req, res) => {
   try {
     const filename = req.params.filename;

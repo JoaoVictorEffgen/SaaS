@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/MySqlAuthContext';
+import { useNavigate } from 'react-router-dom';
+import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
+import apiService from '../../services/apiService';
+import AdicionarEmpresaModal from './AdicionarEmpresaModal';
+import GerenciarFuncionariosModal from './GerenciarFuncionariosModal';
 
 const DashboardRede = () => {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user } = useMySqlAuth();
   const [rede, setRede] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAdicionarEmpresa, setShowAdicionarEmpresa] = useState(false);
+  const [showGerenciarFuncionarios, setShowGerenciarFuncionarios] = useState(false);
+  const [empresaSelecionada, setEmpresaSelecionada] = useState(null);
 
   useEffect(() => {
     fetchRede();
@@ -63,6 +71,66 @@ const DashboardRede = () => {
     }
   };
 
+  const adicionarEmpresa = (novaEmpresa) => {
+    setRede(prev => ({
+      ...prev,
+      empresas: [...(prev.empresas || []), novaEmpresa],
+      empresas_ativas: prev.empresas_ativas + 1
+    }));
+  };
+
+  const abrirGerenciarFuncionarios = (empresa) => {
+    setEmpresaSelecionada(empresa);
+    setShowGerenciarFuncionarios(true);
+  };
+
+  const confirmarExclusaoEmpresa = (empresa) => {
+    // Verificar se é a empresa principal (comparar com admin da rede)
+    if (empresa.user_id === rede?.usuario_admin_id) {
+      alert('❌ Não é possível excluir a empresa principal da rede.\n\nApenas filiais podem ser excluídas.');
+      return;
+    }
+    
+    const confirmacao = window.confirm(
+      `Tem certeza que deseja excluir a filial "${empresa.nome_unidade || `Empresa ${empresa.id}`}"?\n\n` +
+      `Esta ação irá:\n` +
+      `• Remover todos os funcionários desta filial\n` +
+      `• Excluir todos os agendamentos relacionados\n` +
+      `• Esta ação NÃO pode ser desfeita\n\n` +
+      `Digite "EXCLUIR" para confirmar:`
+    );
+    
+    if (confirmacao) {
+      const confirmacaoFinal = window.prompt(
+        `Para confirmar a exclusão, digite exatamente: EXCLUIR`
+      );
+      
+      if (confirmacaoFinal === 'EXCLUIR') {
+        excluirEmpresa(empresa.id);
+      } else {
+        alert('Exclusão cancelada. Texto de confirmação incorreto.');
+      }
+    }
+  };
+
+  const excluirEmpresa = async (empresaId) => {
+    try {
+      console.log('🗑️ Tentando excluir empresa ID:', empresaId);
+      const response = await apiService.delete(`/redes/empresas/${empresaId}`);
+      console.log('✅ Resposta da API:', response);
+      
+      if (response.success) {
+        alert('Filial excluída com sucesso!');
+        fetchRede(); // Recarregar dados da rede
+      } else {
+        alert(`Erro ao excluir filial: ${response.message || 'Erro desconhecido'}`);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao excluir empresa:', error);
+      alert(`Erro de conexão: ${error.message}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -113,7 +181,18 @@ const DashboardRede = () => {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{rede.nome_rede}</h1>
+            <div className="flex items-center mb-2">
+              <button
+                onClick={() => navigate('/empresa/dashboard')}
+                className="mr-4 text-gray-600 hover:text-gray-900 transition-colors"
+                title="Voltar ao Dashboard"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <h1 className="text-2xl font-bold text-gray-900">{rede.nome_rede}</h1>
+            </div>
             <p className="text-gray-600">{rede.descricao}</p>
             <div className="flex items-center mt-2">
               <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
@@ -154,8 +233,10 @@ const DashboardRede = () => {
               </svg>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Empresas</p>
-              <p className="text-2xl font-semibold text-gray-900">{rede.empresas_ativas}</p>
+              <p className="text-sm font-medium text-gray-600">Filiais</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {rede.empresas?.filter(empresa => empresa.user_id !== rede.usuario_admin_id).length || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -195,17 +276,20 @@ const DashboardRede = () => {
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Empresas da Rede</h2>
-            {rede.plano === 'enterprise' && (
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                Adicionar Empresa
+            <h2 className="text-lg font-semibold text-gray-900">Filiais da Rede</h2>
+            {(rede.plano === 'enterprise' || rede.plano === 'trial') && (
+              <button 
+                onClick={() => setShowAdicionarEmpresa(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Adicionar Filial
               </button>
             )}
           </div>
         </div>
         
         <div className="divide-y divide-gray-200">
-          {rede.empresas?.map((empresa) => (
+          {rede.empresas?.filter(empresa => empresa.user_id !== rede.usuario_admin_id).map((empresa) => (
             <div key={empresa.id} className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -223,10 +307,25 @@ const DashboardRede = () => {
                   }`}>
                     {empresa.ativo ? 'Ativa' : 'Inativa'}
                   </span>
+                  <button 
+                    onClick={() => abrirGerenciarFuncionarios(empresa)}
+                    className="bg-purple-600 text-white px-3 py-1 rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                  >
+                    Gerenciar Funcionários
+                  </button>
                   <button className="text-blue-600 hover:text-blue-800">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </button>
+                  <button 
+                    onClick={() => confirmarExclusaoEmpresa(empresa)}
+                    className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50"
+                    title="Excluir Filial"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
                 </div>
@@ -234,7 +333,7 @@ const DashboardRede = () => {
             </div>
           )) || (
             <div className="p-6 text-center text-gray-500">
-              Nenhuma empresa cadastrada na rede
+              Nenhuma filial cadastrada na rede
             </div>
           )}
         </div>
@@ -269,11 +368,28 @@ const DashboardRede = () => {
           </button>
         </div>
       </div>
+
+      {/* Modal para adicionar empresa */}
+      <AdicionarEmpresaModal
+        isOpen={showAdicionarEmpresa}
+        onClose={() => setShowAdicionarEmpresa(false)}
+        onAdicionarEmpresa={adicionarEmpresa}
+        redeId={rede?.id}
+      />
+
+      {/* Modal para gerenciar funcionários */}
+      <GerenciarFuncionariosModal
+        isOpen={showGerenciarFuncionarios}
+        onClose={() => setShowGerenciarFuncionarios(false)}
+        empresaId={empresaSelecionada?.id}
+        empresaNome={empresaSelecionada?.nome_unidade || `Empresa ${empresaSelecionada?.id}`}
+      />
     </div>
   );
 };
 
 const CriarRedeForm = ({ onCriarRede }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     nome_rede: '',
     descricao: '',
@@ -298,7 +414,18 @@ const CriarRedeForm = ({ onCriarRede }) => {
   return (
     <div className="max-w-md mx-auto bg-white rounded-lg shadow p-6">
       <div className="text-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Criar Rede Empresarial</h2>
+        <div className="flex items-center justify-center mb-4">
+          <button
+            onClick={() => navigate('/empresa/dashboard')}
+            className="mr-4 text-gray-600 hover:text-gray-900 transition-colors"
+            title="Voltar ao Dashboard"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h2 className="text-xl font-semibold text-gray-900">Criar Rede Empresarial</h2>
+        </div>
         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
           <div className="flex items-center justify-center">
             <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -339,7 +466,7 @@ const CriarRedeForm = ({ onCriarRede }) => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            CPF ou CNPJ
+            CPF ou CNPJ (apenas para rede principal)
           </label>
           <input
             type="text"
@@ -350,7 +477,7 @@ const CriarRedeForm = ({ onCriarRede }) => {
             required
           />
           <p className="text-xs text-gray-500 mt-1">
-            Necessário para validação e evitar abuso do trial gratuito
+            Necessário apenas para a rede principal. Filiais usarão o mesmo documento.
           </p>
         </div>
 

@@ -68,6 +68,12 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(500),
     allowNull: true
   },
+  url_foto_perfil: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    defaultValue: null,
+    comment: 'URL da foto de perfil do usuário'
+  },
   ativo: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
