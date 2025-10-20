@@ -1,0 +1,21 @@
+[Unit]
+Description=SaaS AgendaPro Server
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/caminho/para/seu/projeto/servidor
+ExecStart=/usr/bin/node app.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+Environment=PORT=5000
+Environment=DB_NAME=SaaS_Novo
+Environment=DB_USER=root
+Environment=DB_PASSWORD=Cecilia@2020
+Environment=DB_HOST=127.0.0.1
+Environment=DB_PORT=3306
+
+[Install]
+WantedBy=multi-user.target
