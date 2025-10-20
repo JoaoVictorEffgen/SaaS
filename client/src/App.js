@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { MySqlAuthProvider } from './contexts/MySqlAuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import InstallPWA from './components/InstallPWA';
 
 // Importações dos módulos organizados
@@ -32,10 +33,11 @@ import DashboardRede from './components/rede/DashboardRede';
 
 function App() {
   return (
-    <MySqlAuthProvider>
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <RedirectHandler />
-        <InstallPWA />
+    <ThemeProvider>
+      <MySqlAuthProvider>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <RedirectHandler />
+          <InstallPWA />
       <Routes>
           {/* Página Principal */}
         <Route path="/" element={<AccessSelector />} />
@@ -72,6 +74,7 @@ function App() {
       </Routes>
     </Router>
     </MySqlAuthProvider>
+    </ThemeProvider>
   );
 }
 

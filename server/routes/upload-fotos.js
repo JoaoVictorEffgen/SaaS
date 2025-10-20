@@ -284,6 +284,62 @@ router.get('/foto-perfil/:userId', async (req, res) => {
   }
 });
 
+// POST /api/upload-fotos/logo-sistema/:empresaId - Upload de logo do sistema (White Label)
+router.post('/logo-sistema/:empresaId', authenticateToken, checkEmpresaOwnership, uploadLogosEmpresa.single('logo_sistema'), async (req, res) => {
+  try {
+    console.log('🎨 Upload de logo do sistema (White Label) iniciado');
+    console.log('🔍 Arquivo recebido:', req.file);
+    console.log('🔍 Usuário:', req.user?.id, req.user?.tipo);
+    console.log('🔍 Empresa:', req.empresa?.id);
+    
+    if (!req.file) {
+      console.log('❌ Nenhuma imagem foi enviada');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Nenhuma imagem foi enviada' 
+      });
+    }
+
+    const empresa = req.empresa; // Já validado pelo middleware
+
+    // URL da imagem com protocolo completo
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const imageUrl = `${baseUrl}/api/uploads/logos-empresa/${req.file.filename}`;
+    
+    console.log('🎨 URL do logo do sistema:', imageUrl);
+    
+    // Atualizar empresa com a URL do logo do sistema
+    await empresa.update({ logo_sistema: imageUrl });
+    
+    console.log('✅ Logo do sistema salvo com sucesso:', imageUrl);
+    
+    res.json({
+      success: true,
+      message: 'Logo do sistema enviado com sucesso!',
+      url: imageUrl,
+      filename: req.file.filename
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro no upload do logo do sistema:', error);
+    
+    // Deletar arquivo se houver erro
+    if (req.file) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (deleteError) {
+        console.error('❌ Erro ao deletar arquivo:', deleteError);
+      }
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      message: 'Erro interno do servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 // Middleware para servir arquivos estáticos
 router.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

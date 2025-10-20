@@ -3,7 +3,7 @@ const path = require('path');
 require('dotenv').config();
 
 console.log('🔍 Configuração MySQL:', {
-  DB_NAME: process.env.DB_NAME || 'SaaS',
+  DB_NAME: process.env.DB_NAME || 'SaaS_Novo',
   DB_USER: process.env.DB_USER || 'root',
   DB_HOST: process.env.DB_HOST || '127.0.0.1',
   DB_PORT: process.env.DB_PORT || 3306
@@ -11,7 +11,7 @@ console.log('🔍 Configuração MySQL:', {
 
 // Configuração MySQL simplificada
 const sequelize = new Sequelize({
-  database: process.env.DB_NAME || 'SaaS',
+  database: process.env.DB_NAME || 'SaaS_Novo',
   username: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || 'Cecilia@2020',
   host: process.env.DB_HOST || '127.0.0.1',

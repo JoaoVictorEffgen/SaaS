@@ -22,6 +22,7 @@ import {
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import apiService from '../../services/apiService';
 import ImageUpload from '../../components/shared/ImageUpload';
+import EmpresaLogoHeader from '../../components/EmpresaLogoHeader';
 
 const EmpresaDashboard = () => {
   const navigate = useNavigate();
@@ -314,24 +315,16 @@ const EmpresaDashboard = () => {
           <div className="flex justify-between items-center">
             {/* Lado Esquerdo - Logo e Título */}
             <div className="flex items-center space-x-4">
-              {/* Logo com upload */}
-              <div className="flex flex-col items-center">
-                <ImageUpload
-                  currentImage={logoUrl}
-                  onImageChange={handleLogoUpload}
-                  type="logo"
-                  size="medium"
-                  className="mb-1"
-                />
-              </div>
+              {/* Logo da Empresa (White Label) */}
+              <EmpresaLogoHeader showText={true} />
               
               {/* Título */}
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
-                  {empresaData?.nome || currentUser?.razaoSocial || 'Empresa'}
+                  Dashboard Empresarial
                 </h1>
                 <p className="text-sm text-gray-500">
-                  Dashboard Empresarial
+                  {empresaData?.nome || currentUser?.razaoSocial || 'Empresa'}
                 </p>
               </div>
             </div>

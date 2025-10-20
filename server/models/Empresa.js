@@ -72,6 +72,11 @@ const Empresa = sequelize.define('Empresa', {
     type: DataTypes.STRING(500),
     allowNull: true
   },
+  logo_sistema: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: 'URL do logo da empresa para White Label (aparece em todo o sistema)'
+  },
   imagem_fundo_url: {
     type: DataTypes.STRING(500),
     allowNull: true,

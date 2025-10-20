@@ -3,6 +3,8 @@ import { useMySqlAuth } from '../contexts/MySqlAuthContext';
 import { Calendar, Clock, Save, Building, Upload, Image } from 'lucide-react';
 import apiService from '../services/apiService';
 import EmpresaLogoUpload from '../components/EmpresaLogoUpload';
+import EmpresaLogoSistemaUpload from '../components/EmpresaLogoSistemaUpload';
+import EmpresaLogoHeader from '../components/EmpresaLogoHeader';
 
 const CompanySettings = () => {
   const { user, updateUser } = useMySqlAuth();
@@ -185,12 +187,15 @@ const CompanySettings = () => {
       <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-          <div className="flex items-center mb-6">
-            <Building className="h-8 w-8 text-blue-600 mr-3" />
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Configurações da Empresa</h1>
-              <p className="text-gray-600">Configure seus horários de funcionamento</p>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center">
+              <Building className="h-8 w-8 text-blue-600 mr-3" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Configurações da Empresa</h1>
+                <p className="text-gray-600">Configure seus horários de funcionamento</p>
+              </div>
             </div>
+            <EmpresaLogoHeader showText={false} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -359,6 +364,18 @@ const CompanySettings = () => {
             currentLogo={empresaData.logo_url}
             onLogoUpload={(url) => {
               setEmpresaData(prev => ({ ...prev, logo_url: url }));
+            }}
+            loading={loading}
+          />
+        )}
+
+        {/* Logo do Sistema (White Label) */}
+        {empresaData && (
+          <EmpresaLogoSistemaUpload
+            empresaId={empresaData.id}
+            currentLogoSistema={empresaData.logo_sistema}
+            onLogoSistemaUpload={(url) => {
+              setEmpresaData(prev => ({ ...prev, logo_sistema: url }));
             }}
             loading={loading}
           />

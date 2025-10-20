@@ -98,7 +98,7 @@ const PhotoUpload = ({
     <div className="bg-white rounded-2xl shadow-xl p-8">
       <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
         <Upload className="h-6 w-6 mr-3 text-blue-600" />
-        {title}
+        {fieldName === 'logo_sistema' ? 'Logo do Sistema (White Label)' : title}
       </h2>
       
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -108,11 +108,12 @@ const PhotoUpload = ({
           </div>
           <div className="ml-3">
             <h3 className="text-sm font-medium text-blue-800">
-              {description}
+              {fieldName === 'logo_sistema' ? 'White Label - Seu logo em todo o sistema' : description}
             </h3>
             <p className="mt-1 text-sm text-blue-700">
-              A imagem será salva no servidor e apenas a URL será armazenada no banco de dados.
-              Tamanho máximo: {maxSizeMB}MB.
+              {fieldName === 'logo_sistema' 
+                ? 'Este logo aparecerá no cabeçalho de todas as páginas do sistema, criando uma experiência White Label completa para seus clientes. Tamanho máximo: 30MB.'
+                : `A imagem será salva no servidor e apenas a URL será armazenada no banco de dados. Tamanho máximo: ${maxSizeMB}MB.`}
             </p>
           </div>
         </div>

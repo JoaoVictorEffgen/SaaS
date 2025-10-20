@@ -59,12 +59,28 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
   
-  body {
+  /* Tema Light (padrão) */
+  body.light {
     @apply bg-gray-50 text-gray-900;
   }
   
-  * {
+  /* Tema Dark */
+  body.dark {
+    @apply bg-gray-900 text-gray-100;
+  }
+  
+  /* Aplicar tema padrão se nenhum tema estiver definido */
+  body:not(.light):not(.dark) {
+    @apply bg-gray-50 text-gray-900;
+  }
+  
+  /* Bordas adaptáveis ao tema */
+  body.light * {
     @apply border-gray-200;
+  }
+  
+  body.dark * {
+    @apply border-gray-700;
   }
 }
 
@@ -117,8 +133,16 @@
     @apply bg-white rounded-lg shadow-soft border border-gray-200;
   }
   
+  body.dark .card {
+    @apply bg-gray-800 border-gray-700;
+  }
+  
   .card-header {
     @apply px-6 py-4 border-b border-gray-200;
+  }
+  
+  body.dark .card-header {
+    @apply border-gray-700;
   }
   
   .card-body {
@@ -127,6 +151,10 @@
   
   .card-footer {
     @apply px-6 py-4 border-t border-gray-200 bg-gray-50;
+  }
+  
+  body.dark .card-footer {
+    @apply border-gray-700 bg-gray-900;
   }
   
   .form-group {

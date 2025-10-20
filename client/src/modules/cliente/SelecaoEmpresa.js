@@ -83,39 +83,39 @@ const SelecaoEmpresa = () => {
       <div className="bg-blue-50 border-b border-blue-100">
         <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
-            <div>
+                <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 Olá, {user?.nome || 'Cliente'}!
-              </h1>
+                  </h1>
               <p className="text-gray-600 mt-1">
-                Escolha uma empresa para agendar seus serviços
-              </p>
-            </div>
-            
+                    Escolha uma empresa para agendar seus serviços
+                  </p>
+              </div>
+              
             <div className="flex items-center space-x-4">
-              <button 
-                onClick={() => setShowNotifications(!showNotifications)}
+                  <button
+                    onClick={() => setShowNotifications(!showNotifications)}
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-full transition-colors"
               >
                 <Bell className="h-6 w-6" />
-              </button>
-              
+                  </button>
+                  
               <Link
                 to="/"
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-full transition-colors"
               >
                 <Home className="h-6 w-6" />
               </Link>
-              
-              <button
-                onClick={handleLogout}
+                
+                <button
+                  onClick={handleLogout}
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-full transition-colors"
-              >
+                >
                 <User className="h-6 w-6" />
-              </button>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -130,9 +130,9 @@ const SelecaoEmpresa = () => {
               </div>
               <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
                 Amanhã
-              </div>
             </div>
-            
+          </div>
+
             <div className="flex-1">
               <h3 className="text-xl font-semibold text-gray-900">Studio Le Toujours</h3>
               <p className="text-gray-600">Amanhã, 10 de Junho às 14:00</p>
@@ -142,13 +142,13 @@ const SelecaoEmpresa = () => {
             <div className="flex space-x-3">
               <button className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors">
                 Ver Detalhes
-              </button>
+                </button>
               <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                 Cancelar / Reagendar
-              </button>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
         {/* Seção Agende Novamente */}
         <div className="mb-8">
@@ -161,9 +161,9 @@ const SelecaoEmpresa = () => {
                 <div className="absolute inset-0 bg-black bg-opacity-20"></div>
                 <div className="absolute bottom-4 left-4 text-white">
                   <h3 className="text-lg font-semibold">Corte de Cabelo</h3>
-                </div>
-              </div>
-              
+            </div>
+          </div>
+
               <div className="p-6">
                 <div className="flex items-center mb-2">
                   {[...Array(5)].map((_, i) => (
@@ -189,8 +189,8 @@ const SelecaoEmpresa = () => {
                 <div className="absolute inset-0 bg-black bg-opacity-30"></div>
                 <div className="absolute bottom-4 left-4 text-white">
                   <h3 className="text-lg font-semibold">Barbearia Clássica</h3>
-                </div>
-              </div>
+                    </div>
+                  </div>
               
               <div className="p-6">
                 <div className="flex items-center mb-2">
@@ -198,7 +198,7 @@ const SelecaoEmpresa = () => {
                     <Star key={i} className="h-4 w-4 text-yellow-400 fill-current" />
                   ))}
                   <span className="ml-2 text-sm text-gray-600">4.7 (25 avaliações)</span>
-                </div>
+                    </div>
                 
                 <div className="flex items-center text-gray-600 mb-4">
                   <Clock className="h-4 w-4 mr-2" />
@@ -208,8 +208,8 @@ const SelecaoEmpresa = () => {
                 <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
                   Ver Serviços
                 </button>
-              </div>
-            </div>
+                          </div>
+                        </div>
 
             {/* Card 3 - Massagens */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
@@ -217,8 +217,8 @@ const SelecaoEmpresa = () => {
                 <div className="absolute inset-0 bg-black bg-opacity-20"></div>
                 <div className="absolute bottom-4 left-4 text-white">
                   <h3 className="text-lg font-semibold">Barbearia Clássica</h3>
-                </div>
-              </div>
+                                </div>
+                              </div>
               
               <div className="p-6">
                 <div className="flex items-center mb-2">
@@ -236,13 +236,13 @@ const SelecaoEmpresa = () => {
                 <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
                   Massagens
                 </button>
-              </div>
-            </div>
-          </div>
-        </div>
+                            </div>
+                        </div>
+                      </div>
+                    </div>
 
         {/* Seção Explore Novas Opções */}
-        <div>
+                    <div>
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Explore Novas Opções</h2>
           
           {/* Filtros */}
@@ -259,8 +259,8 @@ const SelecaoEmpresa = () => {
               >
                 {filter.charAt(0).toUpperCase() + filter.slice(1)}
               </button>
-            ))}
-          </div>
+                        ))}
+                      </div>
 
           {/* Barra de Pesquisa */}
           <div className="relative mb-8">
@@ -272,10 +272,10 @@ const SelecaoEmpresa = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-          </div>
-
+                  </div>
+                  
           {/* Grid de Empresas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {empresasFiltradas.map((empresa, index) => (
               <div key={empresa.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
                 <div 
@@ -294,19 +294,19 @@ const SelecaoEmpresa = () => {
                       <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
                         PROMOÇÃO
                       </span>
-                    </div>
-                  )}
-                  
+                </div>
+              )}
+
                   <div className="absolute top-4 right-4">
                     <button className="p-2 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors">
                       <Heart className="h-5 w-5 text-white" />
                     </button>
-                  </div>
+                    </div>
                   <div className="absolute bottom-4 left-4 text-white">
                     <h3 className="text-lg font-semibold">{empresa.nome}</h3>
-                  </div>
-                </div>
-                
+                              </div>
+                            </div>
+                            
                 <div className="p-6">
                   <div className="flex items-center mb-2">
                     {[...Array(5)].map((_, i) => (
@@ -314,9 +314,9 @@ const SelecaoEmpresa = () => {
                     ))}
                     <span className="ml-2 text-sm text-gray-600">
                       {empresa.rating?.toFixed(1)} ({empresa.totalAvaliacoes} avaliações)
-                    </span>
-                  </div>
-                  
+                              </span>
+                            </div>
+
                   <p className="text-gray-600 text-sm mb-4">{empresa.descricao}</p>
                   
                   {/* Promoções */}
@@ -333,15 +333,15 @@ const SelecaoEmpresa = () => {
                               ? `${promocao.meses_gratis} meses grátis`
                               : 'Promoção'
                             }
-                          </div>
+                                  </div>
                         ))}
                         {empresa.promocoes.length > 2 && (
                           <div className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">
                             +{empresa.promocoes.length - 2} mais
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </div>
                   )}
                   
                   <div className="space-y-2 mb-4">
@@ -375,13 +375,13 @@ const SelecaoEmpresa = () => {
                 </div>
               </div>
             ))}
-          </div>
+                    </div>
 
           {empresasFiltradas.length === 0 && (
-            <div className="text-center py-12">
+                    <div className="text-center py-12">
               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Search className="h-12 w-12 text-gray-400" />
-              </div>
+                    </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Nenhuma empresa encontrada</h3>
               <p className="text-gray-600">Tente ajustar os filtros ou termo de pesquisa.</p>
             </div>

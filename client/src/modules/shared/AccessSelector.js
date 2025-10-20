@@ -6,6 +6,8 @@ import {
   Navigation
 } from 'lucide-react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import ThemeIconToggle from '../../components/ThemeIconToggle';
 
 const AccessSelector = () => {
   const [empresasDestaque, setEmpresasDestaque] = useState([]);
@@ -60,6 +62,7 @@ const AccessSelector = () => {
   
   const navigate = useNavigate();
   const { login, register, user } = useMySqlAuth();
+  const { isDark } = useTheme();
 
   const beneficios = [
     {
@@ -166,7 +169,7 @@ const AccessSelector = () => {
 
   useEffect(() => {
     loadEmpresasDestaque();
-    
+
     // Limpar qualquer currentUser existente primeiro
     localStorage.removeItem('currentUser');
     
@@ -175,7 +178,7 @@ const AccessSelector = () => {
     setIsClientLoggedIn(clientLoggedIn);
     
     // Sempre mostrar destaque por padrão na tela inicial
-    setActiveSection('destaque');
+      setActiveSection('destaque');
   }, [loadEmpresasDestaque, user]);
 
   const openEmpresaModal = () => {
@@ -317,10 +320,10 @@ const AccessSelector = () => {
       
       // Simular envio dos códigos
       if (clienteForm.metodoVerificacao === 'whatsapp') {
-        console.log(`📱 Código WhatsApp enviado para ${clienteForm.whatsapp}: ${codigoWhatsApp}`);
+      console.log(`📱 Código WhatsApp enviado para ${clienteForm.whatsapp}: ${codigoWhatsApp}`);
         console.log(`🔑 Use o código WhatsApp acima para confirmar a conta`);
       } else {
-        console.log(`💬 Código SMS enviado para ${clienteForm.whatsapp}: ${codigoSMS}`);
+      console.log(`💬 Código SMS enviado para ${clienteForm.whatsapp}: ${codigoSMS}`);
         console.log(`🔑 Use o código SMS acima para confirmar a conta`);
       }
       console.log(`⚠️ MODO TESTE: Códigos não são enviados realmente`);
@@ -507,8 +510,8 @@ const AccessSelector = () => {
 
       if (result.success) {
         console.log('✅ Login do funcionário bem-sucedido:', result.user);
-        
-        setShowFuncionarioModal(false);
+
+      setShowFuncionarioModal(false);
         navigate('/funcionario/agenda');
       } else {
         setFuncionarioError(result.error || 'ID da empresa, CPF ou senha incorretos.');
@@ -528,20 +531,49 @@ const AccessSelector = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+    <div className={`min-h-screen relative overflow-hidden transition-colors duration-300 ${
+      isDark 
+        ? 'bg-gray-900' 
+        : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'
+    }`}>
       {/* Modern Background Pattern */}
       <div className="absolute inset-0 overflow-hidden">
+        {!isDark && (
+          <>
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/5 via-transparent to-purple-600/5"></div>
         <div className="absolute top-20 right-10 w-72 h-72 bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-green-400/10 to-blue-400/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/5 to-pink-400/5 rounded-full blur-3xl"></div>
+          </>
+        )}
+        {isDark && (
+          <>
+            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-gray-800/20 via-transparent to-gray-700/20"></div>
+            <div className="absolute top-20 right-10 w-72 h-72 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-green-500/10 to-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-500/5 to-pink-500/5 rounded-full blur-3xl"></div>
+          </>
+        )}
       </div>
+
+      {/* Theme Toggle */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeIconToggle />
+              </div>
 
       <div className="relative z-10">
         {/* Header com conteúdo TimeFlow - Com efeitos */}
-        <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex flex-col items-center justify-center py-20 px-4 relative overflow-hidden">
+        <div className={`flex flex-col items-center justify-center py-20 px-4 relative overflow-hidden transition-colors duration-300 ${
+          isDark 
+            ? 'bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800' 
+            : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'
+        }`}>
           {/* Efeito de brilho de fundo */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 via-transparent to-purple-600/5"></div>
+          <div className={`absolute inset-0 transition-colors duration-300 ${
+            isDark 
+              ? 'bg-gradient-to-br from-blue-600/10 via-transparent to-purple-600/10' 
+              : 'bg-gradient-to-br from-blue-600/5 via-transparent to-purple-600/5'
+          }`}></div>
           
           <div className="flex items-center mb-8 relative z-10">
             {/* Ícone TimeFlow com efeitos - Relógio Animado */}
@@ -592,16 +624,22 @@ const AccessSelector = () => {
                       }}
                     ></div>
                   ))}
-                </div>
+              </div>
               </div>
             </div>
             {/* Texto TimeFlow com efeitos */}
-            <h1 className="text-8xl font-light bg-gradient-to-r from-teal-600 via-teal-500 to-green-600 bg-clip-text text-transparent drop-shadow-lg hover:scale-105 transition-transform duration-300 animate-pulse">
+            <h1 className={`text-8xl font-light bg-gradient-to-r from-teal-600 via-teal-500 to-green-600 bg-clip-text text-transparent drop-shadow-lg hover:scale-105 transition-all duration-300 animate-pulse ${
+              isDark ? 'drop-shadow-2xl' : 'drop-shadow-lg'
+            }`}>
               TimeFlow
             </h1>
-          </div>
+              </div>
           {/* Slogan com efeitos */}
-          <p className="text-3xl text-gray-700 text-center max-w-3xl font-medium drop-shadow-sm hover:text-gray-900 transition-colors duration-300 animate-fade-in">
+          <p className={`text-3xl text-center max-w-3xl font-medium drop-shadow-sm transition-all duration-300 animate-fade-in ${
+            isDark 
+              ? 'text-gray-300 hover:text-gray-100' 
+              : 'text-gray-700 hover:text-gray-900'
+          }`}>
             Organize seu tempo. 
             <span className="font-bold bg-gradient-to-r from-teal-600 to-green-600 bg-clip-text text-transparent"> Potencialize seus resultados.</span>
           </p>
@@ -611,7 +649,7 @@ const AccessSelector = () => {
           <div className="absolute top-20 right-20 w-3 h-3 bg-green-400 rounded-full opacity-50 animate-pulse"></div>
           <div className="absolute bottom-20 left-20 w-5 h-5 bg-teal-300 rounded-full opacity-40 animate-pulse"></div>
           <div className="absolute bottom-10 right-10 w-2 h-2 bg-green-300 rounded-full opacity-70 animate-ping"></div>
-        </div>
+      </div>
 
 
 
@@ -620,8 +658,12 @@ const AccessSelector = () => {
       <div className="py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Como você quer usar o AgendaPro?</h2>
-            <p className="text-gray-600">Escolha sua experiência personalizada</p>
+            <h2 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${
+              isDark ? 'text-gray-100' : 'text-gray-900'
+            }`}>Como você quer usar o AgendaPro?</h2>
+            <p className={`transition-colors duration-300 ${
+              isDark ? 'text-gray-300' : 'text-gray-600'
+            }`}>Escolha sua experiência personalizada</p>
           </div>
           
           <div className="grid lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
@@ -743,12 +785,16 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
       <div className="py-12 md:py-16 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-8 md:mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Por que usar o AgendaPro?</h2>
-            <p className="text-base md:text-lg text-gray-600">Recursos que fazem a diferença no seu dia a dia</p>
+            <h2 className={`text-2xl md:text-3xl font-bold mb-4 transition-colors duration-300 ${
+              isDark ? 'text-gray-100' : 'text-gray-900'
+            }`}>Por que usar o AgendaPro?</h2>
+            <p className={`text-base md:text-lg transition-colors duration-300 ${
+              isDark ? 'text-gray-300' : 'text-gray-600'
+            }`}>Recursos que fazem a diferença no seu dia a dia</p>
           </div>
           
           <div className="relative max-w-4xl mx-auto">
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-2xl border border-white/50">
+            <div className="bg-white backdrop-blur-sm rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-2xl border border-white/50 transition-all duration-300">
               <div className="flex items-center justify-center gap-4 md:gap-8">
                 <button 
                   onClick={prevBenefit}
@@ -762,10 +808,10 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                   <div className={`inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br ${beneficios[currentBenefit].color} rounded-xl md:rounded-2xl mb-4 md:mb-6 shadow-xl mx-auto`}>
                     {React.createElement(beneficios[currentBenefit].icon, { className: "w-8 h-8 md:w-10 md:h-10 text-white" })}
                   </div>
-                  <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 md:mb-3">
+                  <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 md:mb-3 transition-colors duration-300">
                     {beneficios[currentBenefit].title}
                   </h3>
-                  <p className="text-base md:text-lg text-gray-600 max-w-md mx-auto">
+                  <p className="text-base md:text-lg max-w-md mx-auto text-gray-600">
                     {beneficios[currentBenefit].description}
                   </p>
                 </div>
@@ -787,6 +833,8 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                     className={`w-3 h-3 rounded-full transition-all duration-300 ${
                       index === currentBenefit 
                         ? 'bg-blue-600 scale-125' 
+                        : isDark 
+                          ? 'bg-gray-600 hover:bg-gray-500' 
                         : 'bg-gray-300 hover:bg-gray-400'
                     }`}
                     aria-label={`Ir para benefício ${index + 1}`}
@@ -844,22 +892,26 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
             <div className="text-center mb-8 md:mb-12">
               <div className="flex items-center justify-center gap-2 md:gap-3 mb-3 md:mb-4">
                 <Crown className="h-6 w-6 md:h-8 md:w-8 text-yellow-500 animate-pulse" />
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Empresas em Destaque</h2>
+                <h2 className={`text-2xl md:text-3xl font-bold transition-colors duration-300 ${
+                  isDark ? 'text-gray-100' : 'text-gray-900'
+                }`}>Empresas em Destaque</h2>
                 <Crown className="h-6 w-6 md:h-8 md:w-8 text-yellow-500 animate-pulse" />
               </div>
-              <p className="text-base md:text-lg text-gray-600">As melhores avaliadas pelos nossos clientes</p>
+              <p className={`text-base md:text-lg transition-colors duration-300 ${
+                isDark ? 'text-gray-300' : 'text-gray-600'
+              }`}>As melhores avaliadas pelos nossos clientes</p>
             </div>
             
             <div className="relative max-w-6xl mx-auto">
               <div className="flex items-center justify-center gap-8">
-                <button 
-                  onClick={prevEmpresa}
+                  <button 
+                    onClick={prevEmpresa}
                   className="p-4 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-all duration-300 hover:scale-110 border border-gray-200"
-                  aria-label="Empresa anterior"
-                >
+                    aria-label="Empresa anterior"
+                  >
                   <ChevronLeft className="w-7 h-7 text-gray-600" />
-                </button>
-                
+                  </button>
+                  
                 <div className="flex-1 max-w-2xl">
                     {/* Card com layout elegante e proporcional */}
                     <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 aspect-[4/3]">
@@ -869,32 +921,32 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                         <div className="absolute bottom-4 left-4">
                           <h3 className="text-white text-xl font-bold drop-shadow-lg">
                             {empresasDestaque[currentEmpresa]?.especializacao || 'Corte de Cabelo'}
-                          </h3>
-                        </div>
+                        </h3>
                       </div>
-                      
+                    </div>
+                    
                       {/* Seção inferior branca */}
                       <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
                         <div className="space-y-3">
                           {/* Avaliação */}
                           <div className="flex items-center gap-2">
                             <div className="flex">
-                              {Array.from({ length: 5 }, (_, i) => (
-                                <Star 
-                                  key={i} 
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <Star 
+                          key={i} 
                                   className={`h-4 w-4 ${
                                     i < Math.floor(empresasDestaque[currentEmpresa]?.avaliacao || 4.7) 
                                       ? 'text-yellow-400 fill-current' 
-                                      : 'text-gray-300'
-                                  }`} 
-                                />
-                              ))}
+                              : 'text-gray-300'
+                          }`} 
+                        />
+                      ))}
                             </div>
                             <span className="text-sm text-gray-600 font-medium">
                               {empresasDestaque[currentEmpresa]?.avaliacao.toFixed(1) || '4.7'} ({empresasDestaque[currentEmpresa]?.totalAvaliacoes || '25'} avaliações)
                             </span>
-                          </div>
-                          
+                    </div>
+                    
                           {/* Horário */}
                           <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4 text-gray-500" />
@@ -903,12 +955,12 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                         </div>
                         
                         {/* Botão */}
-                        <button
-                          onClick={() => handleAgendarEmpresa(empresasDestaque[currentEmpresa])}
+                      <button
+                        onClick={() => handleAgendarEmpresa(empresasDestaque[currentEmpresa])}
                           className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                        >
+                      >
                           Ver Serviços
-                        </button>
+                      </button>
                       </div>
                     </div>
                   </div>
@@ -935,7 +987,7 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                       aria-label={`Ir para empresa ${index + 1}`}
                     />
                   ))}
-                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -948,11 +1000,15 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
             <div className="text-center mb-8 md:mb-12">
               <div className="flex items-center justify-center gap-2 md:gap-3 mb-3 md:mb-4">
                 <Navigation className="h-6 w-6 md:h-8 md:w-8 text-blue-500 animate-pulse" />
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Empresas Próximas</h2>
+                <h2 className={`text-2xl md:text-3xl font-bold transition-colors duration-300 ${
+                  isDark ? 'text-gray-100' : 'text-gray-900'
+                }`}>Empresas Próximas</h2>
                 <Navigation className="h-6 w-6 md:h-8 md:w-8 text-blue-500 animate-pulse" />
-              </div>
-              <p className="text-base md:text-lg text-gray-600">Empresas próximas à sua localização</p>
-            </div>
+          </div>
+              <p className={`text-base md:text-lg transition-colors duration-300 ${
+                isDark ? 'text-gray-300' : 'text-gray-600'
+              }`}>Empresas próximas à sua localização</p>
+        </div>
             
             <div className="relative max-w-6xl mx-auto">
               <div className="flex items-center justify-center gap-8">
@@ -1193,9 +1249,9 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   required
                 />
-           <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
              Digite o ID da empresa ou o email do dono
-           </p>
+                </p>
               </div>
 
               <div>
