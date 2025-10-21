@@ -1,5 +1,5 @@
 // =============================================
-// SERVIDOR PRINCIPAL - SaaS AgendaPro
+// SERVIDOR PRINCIPAL - TimeFlow
 // =============================================
 
 const express = require('express');
@@ -8,10 +8,9 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
-require('dotenv').config();
 
 // Importar configurações
-const { ENV_CONFIG } = require('./packages/shared/constants');
+const config = require('./config/environment');
 
 const app = express();
 
@@ -27,7 +26,7 @@ app.use(helmet({
 
 // CORS configurado
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000', 'http://localhost:5001'],
+  origin: config.security.corsOrigin.split(','),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -35,8 +34,8 @@ app.use(cors({
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutos
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // limite de requisições
+  windowMs: config.rateLimit.windowMs,
+  max: config.rateLimit.maxRequests,
   message: {
     error: 'Muitas requisições deste IP, tente novamente mais tarde.',
     retryAfter: '15 minutos'
@@ -60,15 +59,21 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // =============================================
 
 // Criar diretório de uploads se não existir
-const uploadDir = process.env.UPLOAD_DIR || 'uploads';
+const uploadDir = config.upload.dir;
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
   fs.mkdirSync(path.join(uploadDir, 'fotos-perfil'), { recursive: true });
   fs.mkdirSync(path.join(uploadDir, 'logos-empresa'), { recursive: true });
+  fs.mkdirSync(path.join(uploadDir, 'documentos'), { recursive: true });
+  fs.mkdirSync(path.join(uploadDir, 'temp'), { recursive: true });
 }
 
 // Servir arquivos estáticos
 app.use('/api/uploads', express.static(uploadDir));
+app.use('/api/public/uploads', express.static(uploadDir));
+
+// Servir arquivos estáticos do frontend (favicon, manifest, etc.)
+app.use(express.static(path.join(__dirname, '../client/public')));
 
 // =============================================
 // ROTAS DA API
@@ -77,7 +82,7 @@ app.use('/api/uploads', express.static(uploadDir));
 // Rota de teste
 app.get('/api/test', (req, res) => {
   res.json({
-    message: '🚀 Servidor SaaS AgendaPro funcionando perfeitamente!',
+    message: '🚀 Servidor TimeFlow funcionando perfeitamente!',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     version: '1.0.0',
@@ -103,9 +108,17 @@ try {
   const authRoutes = require('./routes/auth');
   app.use('/api/auth', authRoutes);
 
-  // Rotas de upload de fotos
+  // Rotas de recuperação de senha
+  const recuperarSenhaRoutes = require('./routes/recuperar-senha');
+  app.use('/api/auth', recuperarSenhaRoutes);
+
+  // Rotas de upload de fotos (autenticadas)
   const uploadFotosRoutes = require('./routes/upload-fotos');
   app.use('/api/upload-fotos', uploadFotosRoutes);
+
+  // Rotas de upload público (não autenticadas)
+  const publicUploadsRoutes = require('./routes/public-uploads');
+  app.use('/api/public/uploads', publicUploadsRoutes);
 
   // Rotas de redes empresariais
   const redesRoutes = require('./routes/redes');
@@ -127,7 +140,7 @@ try {
 app.get('*', (req, res) => {
   res.status(404).json({
     error: 'Rota não encontrada',
-    message: 'Esta rota não existe no servidor SaaS AgendaPro',
+    message: 'Esta rota não existe no servidor TimeFlow',
     availableRoutes: [
       'GET /api/test - Teste do servidor',
       'GET /api/health - Status de saúde',
@@ -156,19 +169,20 @@ app.use((error, req, res, next) => {
 // INICIALIZAÇÃO DO SERVIDOR
 // =============================================
 
-const PORT = process.env.PORT || 5000;
-const HOST = process.env.HOST || 'localhost';
+const PORT = config.PORT;
+const HOST = config.HOST;
 
 const server = app.listen(PORT, HOST, () => {
   console.log('🚀 =============================================');
   console.log('🚀 SERVIDOR SAAS AGENDAPRO INICIADO');
   console.log('🚀 =============================================');
-  console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌍 Ambiente: ${config.NODE_ENV}`);
   console.log(`🔗 URL: http://${HOST}:${PORT}`);
   console.log(`📊 Health Check: http://${HOST}:${PORT}/api/health`);
   console.log(`🧪 Teste: http://${HOST}:${PORT}/api/test`);
   console.log(`📁 Uploads: http://${HOST}:${PORT}/api/uploads`);
-  console.log(`🗄️  Database: ${process.env.DB_NAME || 'SaaS_Novo'}`);
+  console.log(`📁 Uploads Públicos: http://${HOST}:${PORT}/api/public/uploads`);
+  console.log(`🗄️  Database: ${config.database.name}`);
   console.log(`📱 Mobile Access: http://192.168.0.7:${PORT}/api/test`);
   console.log('🚀 =============================================');
 });

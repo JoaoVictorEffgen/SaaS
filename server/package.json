@@ -1,7 +1,7 @@
 {
-  "name": "saas-agendamento-server",
+  "name": "timeflow-server",
   "version": "1.0.0",
-  "description": "Backend do SaaS de Agendamento Online",
+  "description": "Backend do TimeFlow - Sistema de Agendamento Online",
   "main": "index.js",
   "scripts": {
     "start": "node app.js",

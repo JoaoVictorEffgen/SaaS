@@ -28,9 +28,6 @@ import DashboardPacotes from './components/pacotes/DashboardPacotes';
 // Importações dos componentes de rede
 import DashboardRede from './components/rede/DashboardRede';
 
-
-// Debug components removidos para limpeza
-
 function App() {
   return (
     <ThemeProvider>

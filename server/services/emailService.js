@@ -3,10 +3,12 @@ require('dotenv').config();
 
 // Configuração do transporter (SendGrid)
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // ou 'sendgrid' se tiver conta
+  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+  port: process.env.EMAIL_PORT || 587,
+  secure: process.env.EMAIL_SECURE === 'true',
   auth: {
-    user: process.env.SENDGRID_FROM_EMAIL || 'seu-email@gmail.com',
-    pass: process.env.SENDGRID_API_KEY || 'sua-senha-app'
+    user: process.env.EMAIL_USER || 'seu-email@gmail.com',
+    pass: process.env.EMAIL_PASS || 'sua-senha-app'
   }
 });
 
@@ -185,7 +187,7 @@ const sendEmail = async (to, template, data = {}) => {
     const emailContent = emailTemplates[template](data);
     
     const mailOptions = {
-      from: process.env.SENDGRID_FROM_EMAIL || 'noreply@seudominio.com',
+      from: process.env.EMAIL_FROM || 'noreply@timeflow.com',
       to: to,
       subject: emailContent.subject,
       html: emailContent.html
@@ -222,7 +224,7 @@ const sendAppointmentCancellation = async (email, dados) => {
 const sendCustomEmail = async (to, subject, htmlContent) => {
   try {
     const mailOptions = {
-      from: process.env.SENDGRID_FROM_EMAIL || 'noreply@seudominio.com',
+      from: process.env.EMAIL_FROM || 'noreply@timeflow.com',
       to: to,
       subject: subject,
       html: htmlContent

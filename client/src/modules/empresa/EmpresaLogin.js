@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
+import RecuperarSenha from '../../components/RecuperarSenha';
 
 const EmpresaLogin = () => {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ const EmpresaLogin = () => {
     senha: ''
   });
   const [loading, setLoading] = useState(false);
+  const [showRecuperarSenha, setShowRecuperarSenha] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -77,6 +79,16 @@ const EmpresaLogin = () => {
           </button>
         </form>
 
+        {/* Link para recuperar senha */}
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => setShowRecuperarSenha(true)}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          >
+            Esqueceu a senha?
+          </button>
+        </div>
+
         <div className="mt-6 text-center">
           <p className="text-gray-600">
             Não tem uma conta?{' '}
@@ -92,6 +104,14 @@ const EmpresaLogin = () => {
           </Link>
         </div>
       </div>
+
+      {/* Modal de recuperação de senha */}
+      {showRecuperarSenha && (
+        <RecuperarSenha
+          tipoUsuario="empresa"
+          onBack={() => setShowRecuperarSenha(false)}
+        />
+      )}
     </div>
   );
 };

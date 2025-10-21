@@ -1,7 +1,7 @@
 {
-  "name": "saas-agendamento-online",
+  "name": "timeflow-sistema",
   "version": "1.0.0",
-  "description": "SaaS de Agendamento Online - Sistema completo de agendamentos",
+  "description": "TimeFlow - Sistema completo de agendamentos online",
   "main": "server/index.js",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",

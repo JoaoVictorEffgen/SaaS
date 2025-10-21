@@ -2,20 +2,22 @@ const { Sequelize } = require('sequelize');
 const path = require('path');
 require('dotenv').config();
 
+const config = require('./environment');
+
 console.log('🔍 Configuração MySQL:', {
-  DB_NAME: process.env.DB_NAME || 'SaaS_Novo',
-  DB_USER: process.env.DB_USER || 'root',
-  DB_HOST: process.env.DB_HOST || '127.0.0.1',
-  DB_PORT: process.env.DB_PORT || 3306
+  DB_NAME: config.database.name,
+  DB_USER: config.database.user,
+  DB_HOST: config.database.host,
+  DB_PORT: config.database.port
 });
 
 // Configuração MySQL simplificada
 const sequelize = new Sequelize({
-  database: process.env.DB_NAME || 'SaaS_Novo',
-  username: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'Cecilia@2020',
-  host: process.env.DB_HOST || '127.0.0.1',
-  port: process.env.DB_PORT || 3306,
+  database: config.database.name,
+  username: config.database.user,
+  password: config.database.password,
+  host: config.database.host,
+  port: config.database.port,
   dialect: 'mysql',
   logging: console.log,
   define: {

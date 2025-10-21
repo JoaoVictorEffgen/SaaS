@@ -1,8 +1,14 @@
 {
-  "short_name": "AgendaPro",
-  "name": "AgendaPro - Sistema de Agendamento",
+  "short_name": "TimeFlow",
+  "name": "TimeFlow - Sistema de Agendamento",
   "description": "Sistema de agendamento online",
   "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "icon-72x72.png",
       "sizes": "72x72",

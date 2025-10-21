@@ -8,6 +8,7 @@ import {
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemeIconToggle from '../../components/ThemeIconToggle';
+import RecuperarSenha from '../../components/RecuperarSenha';
 
 const AccessSelector = () => {
   const [empresasDestaque, setEmpresasDestaque] = useState([]);
@@ -17,11 +18,10 @@ const AccessSelector = () => {
   const [showFuncionarioModal, setShowFuncionarioModal] = useState(false);
   const [showClienteModal, setShowClienteModal] = useState(false);
   
-  // Debug: verificar estado do modal
-  useEffect(() => {
-    console.log('🔍 Estado do modal cliente:', showClienteModal);
-  }, [showClienteModal]);
-
+  // Estados para recuperação de senha
+  const [showRecuperarSenhaEmpresa, setShowRecuperarSenhaEmpresa] = useState(false);
+  const [showRecuperarSenhaCliente, setShowRecuperarSenhaCliente] = useState(false);
+  const [showRecuperarSenhaFuncionario, setShowRecuperarSenhaFuncionario] = useState(false);
   
   // Estados do formulário de cliente
   const [clienteForm, setClienteForm] = useState({ 
@@ -105,11 +105,7 @@ const AccessSelector = () => {
     // Salvar empresa selecionada
     localStorage.setItem('empresaSelecionada', JSON.stringify(empresa));
     
-    // Debug: verificar se modal está sendo chamado
-    console.log('🔍 handleAgendarEmpresa chamado, mostrando modal de cliente');
-    console.log('🔍 Estado atual do modal:', showClienteModal);
-    
-      // Forçar modal a aparecer
+    // Forçar modal a aparecer
       setShowClienteModal(true);
       setClienteError('');
       setClienteForm({ nome: '', sobrenome: '', email: '', senha: '', confirmarSenha: '', whatsapp: '' });
@@ -118,12 +114,6 @@ const AccessSelector = () => {
       setCodigoConfirmacao('');
       setCodigosGerados({ whatsapp: '', sms: '' });
     
-    // Verificar se o estado mudou
-    setTimeout(() => {
-      console.log('🔍 Estado do modal após setState:', showClienteModal);
-    }, 100);
-    
-    console.log('✅ Modal de cliente deve estar visível agora');
   };
 
   // Auto-rotate carousel
@@ -234,11 +224,8 @@ const AccessSelector = () => {
       const result = await login(identifier, clienteForm.senha, 'cliente');
       
       if (result.success) {
-        console.log('✅ Login bem-sucedido:', result.user);
-        
         // Fechar modal e navegar para lista de empresas
         setShowClienteModal(false);
-        console.log('🚀 Navegando para /cliente');
         navigate('/cliente');
       } else {
         setClienteError(result.error || 'Email/WhatsApp ou senha incorretos.');
@@ -319,14 +306,6 @@ const AccessSelector = () => {
       setCodigosGerados({ whatsapp: codigoWhatsApp, sms: codigoSMS });
       
       // Simular envio dos códigos
-      if (clienteForm.metodoVerificacao === 'whatsapp') {
-      console.log(`📱 Código WhatsApp enviado para ${clienteForm.whatsapp}: ${codigoWhatsApp}`);
-        console.log(`🔑 Use o código WhatsApp acima para confirmar a conta`);
-      } else {
-      console.log(`💬 Código SMS enviado para ${clienteForm.whatsapp}: ${codigoSMS}`);
-        console.log(`🔑 Use o código SMS acima para confirmar a conta`);
-      }
-      console.log(`⚠️ MODO TESTE: Códigos não são enviados realmente`);
       
       // Salvar dados temporariamente
       localStorage.setItem('clienteTemp', JSON.stringify(clienteForm));
@@ -412,9 +391,6 @@ const AccessSelector = () => {
     
     setCodigosGerados({ whatsapp: codigoWhatsApp, sms: codigoSMS });
     
-    // Simular reenvio
-    console.log(`📱 Novo código WhatsApp: ${codigoWhatsApp}`);
-    console.log(`💬 Novo código SMS: ${codigoSMS}`);
     
     // Salvar novos códigos
     localStorage.setItem('codigoWhatsApp', codigoWhatsApp);
@@ -452,9 +428,7 @@ const AccessSelector = () => {
     try {
       // Para login, usar email ou CNPJ
       const loginIdentifier = empresaForm.email || empresaForm.cnpj;
-      console.log('🔐 Tentando login da empresa:', { loginIdentifier, senha: '***', tipo: 'empresa' });
       const result = await login(loginIdentifier, empresaForm.senha, 'empresa');
-      console.log('🔐 Resultado do login da empresa:', result);
 
       if (result.success) {
         setShowEmpresaModal(false);
@@ -509,9 +483,7 @@ const AccessSelector = () => {
       );
 
       if (result.success) {
-        console.log('✅ Login do funcionário bem-sucedido:', result.user);
-
-      setShowFuncionarioModal(false);
+        setShowFuncionarioModal(false);
         navigate('/funcionario/agenda');
       } else {
         setFuncionarioError(result.error || 'ID da empresa, CPF ou senha incorretos.');
@@ -1184,6 +1156,18 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                 </p>
               </div>
 
+              {/* Link para recuperar senha */}
+              <div className="text-center mb-4">
+                <button
+                  onClick={() => {
+                    setShowRecuperarSenhaEmpresa(true);
+                  }}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  Esqueceu a senha?
+                </button>
+              </div>
+
               <div className="flex items-center justify-between pt-4">
                 <Link
                   to="/empresa/cadastro"
@@ -1288,6 +1272,16 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                 <p className="text-xs text-gray-500 mt-1">
                   Digite a senha do funcionário
                 </p>
+              </div>
+
+              {/* Link para recuperar senha */}
+              <div className="text-center mb-4">
+                <button
+                  onClick={() => setShowRecuperarSenhaFuncionario(true)}
+                  className="text-cyan-600 hover:text-cyan-800 text-sm font-medium"
+                >
+                  Esqueceu a senha?
+                </button>
               </div>
 
               <div className="pt-4">
@@ -1448,6 +1442,16 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                        placeholder="••••••••"
                        required
                      />
+                   </div>
+
+                   {/* Link para recuperar senha */}
+                   <div className="text-center mb-4">
+                     <button
+                       onClick={() => setShowRecuperarSenhaCliente(true)}
+                       className="text-green-600 hover:text-green-800 text-sm font-medium"
+                     >
+                       Esqueceu a senha?
+                     </button>
                    </div>
 
                    <div className="flex items-center justify-between pt-4">
@@ -1727,6 +1731,32 @@ Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md
                )}
           </div>
         </div>
+      )}
+
+      {/* Modais de Recuperação de Senha */}
+      {showRecuperarSenhaEmpresa && (
+        <>
+          <RecuperarSenha
+            tipoUsuario="empresa"
+            onBack={() => {
+              setShowRecuperarSenhaEmpresa(false);
+            }}
+          />
+        </>
+      )}
+
+      {showRecuperarSenhaCliente && (
+        <RecuperarSenha
+          tipoUsuario="cliente"
+          onBack={() => setShowRecuperarSenhaCliente(false)}
+        />
+      )}
+
+      {showRecuperarSenhaFuncionario && (
+        <RecuperarSenha
+          tipoUsuario="funcionario"
+          onBack={() => setShowRecuperarSenhaFuncionario(false)}
+        />
       )}
       
       </div>
