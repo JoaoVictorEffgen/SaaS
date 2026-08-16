@@ -57,31 +57,107 @@
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    background-color: #f9fafb;
   }
   
   /* Tema Light (padrão) */
   body.light {
-    @apply bg-gray-50 text-gray-900;
+    background-color: #f9fafb;
+    color: #111827;
   }
   
   /* Tema Dark */
   body.dark {
-    @apply bg-gray-900 text-gray-100;
+    background-color: #111827;
+    color: #f3f4f6;
   }
   
   /* Aplicar tema padrão se nenhum tema estiver definido */
   body:not(.light):not(.dark) {
-    @apply bg-gray-50 text-gray-900;
+    background-color: #f9fafb;
+    color: #111827;
   }
   
   /* Bordas adaptáveis ao tema */
   body.light * {
-    @apply border-gray-200;
+    border-color: #e5e7eb;
   }
   
   body.dark * {
-    @apply border-gray-700;
+    border-color: #374151;
   }
+}
+
+/* Tema global: mantém o mesmo contraste em todas as rotas, inclusive páginas
+   que ainda usam classes Tailwind claras diretamente. */
+html.dark,
+html.dark body,
+html.dark #root {
+  background-color: #020617;
+  color: #f1f5f9;
+}
+
+html.dark [class~='bg-white'],
+html.dark [class~='bg-gray-50'],
+html.dark [class~='bg-gray-100'],
+html.dark [class~='bg-slate-50'] {
+  background-color: #0f172a;
+}
+
+html.dark [class~='bg-gray-200'],
+html.dark [class~='bg-gray-300'],
+html.dark [class~='bg-gray-400'],
+html.dark [class~='bg-slate-100'],
+html.dark [class~='bg-slate-200'] {
+  background-color: #1e293b;
+}
+
+html.dark [class~='text-gray-900'],
+html.dark [class~='text-gray-800'],
+html.dark [class~='text-slate-900'],
+html.dark [class~='text-slate-800'] {
+  color: #f1f5f9;
+}
+
+html.dark [class~='text-gray-700'],
+html.dark [class~='text-gray-600'],
+html.dark [class~='text-gray-500'],
+html.dark [class~='text-gray-400'],
+html.dark [class~='text-slate-700'],
+html.dark [class~='text-slate-600'],
+html.dark [class~='text-slate-500'] {
+  color: #cbd5e1;
+}
+
+html.dark [class~='border-gray-100'],
+html.dark [class~='border-gray-200'],
+html.dark [class~='border-gray-300'],
+html.dark [class~='border-gray-400'],
+html.dark [class~='border-slate-100'],
+html.dark [class~='border-slate-200'],
+html.dark [class~='border-slate-300'] {
+  border-color: #334155;
+}
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #1e293b;
+  color: #f1f5f9;
+  border-color: #475569;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #94a3b8;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background-color: #0f172a;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background-color: #475569;
 }
 
 @layer components {
@@ -273,4 +349,4 @@
     transform: scale(1);
     opacity: 1;
   }
-} 
+}

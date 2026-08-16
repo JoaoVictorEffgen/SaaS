@@ -203,35 +203,6 @@ const FuncionariosManagement = () => {
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validar tipo de arquivo
-      if (!file.type.startsWith('image/')) {
-        alert('Por favor, selecione apenas arquivos de imagem.');
-        return;
-      }
-
-      // Validar tamanho (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Arquivo muito grande. Máximo 5MB.');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setFormData(prev => ({
-          ...prev,
-          foto: e.target.result
-        }));
-      };
-      reader.onerror = () => {
-        alert('Erro ao ler o arquivo. Tente novamente.');
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   console.log('FuncionariosManagement - Renderizando componente principal');
   
   return (
@@ -533,4 +504,3 @@ const FuncionariosManagement = () => {
 };
 
 export default FuncionariosManagement;
-

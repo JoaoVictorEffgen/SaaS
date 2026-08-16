@@ -1,11 +1,15 @@
 const API_BASE_URL = '/api';
+const TOKEN_KEY = 'token';
+const USER_KEY = 'currentUser';
+
+const getStoredToken = () =>
+  sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
 
 class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
-    this.token = localStorage.getItem('token');
+    this.token = getStoredToken();
     this.devUserType = localStorage.getItem('localDevUserType') || 'empresa';
-    console.log('🔧 ApiService inicializado com token:', this.token ? 'Presente' : 'Ausente');
   }
 
   // Método genérico para fazer requisições
@@ -23,18 +27,11 @@ class ApiService {
       config.headers['X-Dev-User-Type'] = this.devUserType;
     }
 
-    // Adicionar token se disponível (verificar tanto na instância quanto no localStorage)
-    const token = this.token || localStorage.getItem('token');
+    // Adicionar o token da sessão atual, persistente ou temporária.
+    const token = this.token || getStoredToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('🔑 Token sendo enviado:', token.substring(0, 20) + '...');
-    } else {
-      console.log('⚠️ Nenhum token encontrado para a requisição');
     }
-
-    console.log('🌐 Fazendo requisição para:', url);
-    console.log('🔑 Headers:', config.headers);
-    console.log('📦 Body:', options.body);
 
     try {
       const response = await fetch(url, config);
@@ -93,7 +90,7 @@ class ApiService {
   }
 
   // ===== AUTENTICAÇÃO =====
-  async login(identifier, senha, tipo = null, companyIdentifier = null) {
+  async login(identifier, senha, tipo = null, companyIdentifier = null, rememberSession = true) {
     const requestData = { identifier, senha, tipo };
     
     // Adicionar companyIdentifier apenas se fornecido (para funcionários)
@@ -105,8 +102,13 @@ class ApiService {
 
     if (data.token) {
       this.token = data.token;
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('currentUser', JSON.stringify(data.user));
+      const targetStorage = rememberSession ? localStorage : sessionStorage;
+      const otherStorage = rememberSession ? sessionStorage : localStorage;
+
+      otherStorage.removeItem(TOKEN_KEY);
+      otherStorage.removeItem(USER_KEY);
+      targetStorage.setItem(TOKEN_KEY, data.token);
+      targetStorage.setItem(USER_KEY, JSON.stringify(data.user));
     }
 
     return data;
@@ -165,19 +167,6 @@ class ApiService {
   }
 
   // ===== ENDPOINTS ESPECÍFICOS POR TIPO DE USUÁRIO =====
-  
-  // Endpoints para empresas
-  async getEmpresaData() {
-    return await this.request('/empresas');
-  }
-
-  async updateEmpresaData(empresaData) {
-    return await this.request('/empresas', {
-      method: 'PUT',
-      body: JSON.stringify(empresaData)
-    });
-  }
-
   // Endpoints para funcionários
   async getFuncionarioEmpresa() {
     return await this.request('/funcionarios/empresa');
@@ -235,8 +224,12 @@ class ApiService {
   // ===== UTILITÁRIOS =====
   logout() {
     this.token = null;
-    localStorage.removeItem('token');
-    localStorage.removeItem('currentUser');
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem('authToken');
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem('authToken');
   }
 
   setDevUserType(tipo) {
@@ -244,18 +237,24 @@ class ApiService {
     localStorage.setItem('localDevUserType', tipo);
   }
 
-  setToken(token) {
+  setToken(token, rememberSession = localStorage.getItem(TOKEN_KEY) !== null) {
     this.token = token;
+    localStorage.removeItem('authToken');
+    sessionStorage.removeItem('authToken');
+
     if (token) {
-      localStorage.setItem('authToken', token);
+      const targetStorage = rememberSession ? localStorage : sessionStorage;
+      const otherStorage = rememberSession ? sessionStorage : localStorage;
+      otherStorage.removeItem(TOKEN_KEY);
+      targetStorage.setItem(TOKEN_KEY, token);
     } else {
-      localStorage.removeItem('token');
+      localStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
     }
-    console.log('🔧 Token atualizado no ApiService:', token ? 'Presente' : 'Ausente');
   }
 
   getToken() {
-    return this.token || localStorage.getItem('authToken');
+    return this.token || getStoredToken();
   }
 }
 

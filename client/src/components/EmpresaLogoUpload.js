@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Upload, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import apiService from '../services/apiService';
 
 const EmpresaLogoUpload = ({ 
   empresaId,
@@ -52,7 +53,7 @@ const EmpresaLogoUpload = ({
       const formData = new FormData();
       formData.append('logo', file);
 
-      const token = localStorage.getItem('token');
+      const token = apiService.getToken();
       
       const response = await fetch(`http://localhost:5000/api/upload-fotos/logo-empresa/${empresaId}`, {
         method: 'POST',

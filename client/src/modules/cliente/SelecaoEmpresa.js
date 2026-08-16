@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  LogOut, Star, Crown, Award, Search, Clock, 
-  CheckCircle, XCircle, Calendar, User, Home, Bell,
-  MapPin, Phone, Globe, Instagram, Heart, Filter
+import {
+  Star, Search, Clock, Calendar, User, Home, Bell, MapPin, Heart
 } from 'lucide-react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
+import { listarEmpresasCliente } from '../../services/clienteEmpresaService';
 
 const SelecaoEmpresa = () => {
   const { user, logout } = useMySqlAuth();
@@ -15,18 +14,17 @@ const SelecaoEmpresa = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('todas');
   const [showNotifications, setShowNotifications] = useState(false);
-  const [promocoes, setPromocoes] = useState({});
 
   // Carregar empresas da API
   useEffect(() => {
+    let isMounted = true;
+
     const loadEmpresas = async () => {
       try {
         setLoading(true);
-        const { default: apiService } = await import('../../services/apiService');
-        const response = await apiService.getClientesEmpresas();
-        const empresasData = response.data || response;
+        const empresasData = await listarEmpresasCliente();
         
-        if (empresasData && Array.isArray(empresasData)) {
+        if (isMounted) {
           // As promoções já vêm incluídas no endpoint de clientes
           const empresasFormatadas = empresasData.map((empresa, index) => ({
             ...empresa,
@@ -43,11 +41,17 @@ const SelecaoEmpresa = () => {
       } catch (error) {
         console.error('Erro ao carregar empresas:', error);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     
     loadEmpresas();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Filtrar empresas
@@ -278,13 +282,19 @@ const SelecaoEmpresa = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {empresasFiltradas.map((empresa, index) => (
               <div key={empresa.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-                <div 
-                  className="h-48 relative bg-cover bg-center"
-                  style={{
-                    backgroundImage: empresa.imagem_fundo_url 
-                      ? `url(${empresa.imagem_fundo_url})`
-                      : `linear-gradient(135deg, ${index % 3 === 0 ? 'from-purple-400 to-pink-500' : index % 3 === 1 ? 'from-blue-400 to-purple-500' : 'from-green-400 to-blue-500'})`
-                  }}
+                <div
+                  className={`h-48 relative bg-cover bg-center ${
+                    empresa.imagem_fundo_url
+                      ? ''
+                      : index % 3 === 0
+                        ? 'bg-gradient-to-br from-purple-400 to-pink-500'
+                        : index % 3 === 1
+                          ? 'bg-gradient-to-br from-blue-400 to-purple-500'
+                          : 'bg-gradient-to-br from-green-400 to-blue-500'
+                  }`}
+                  style={empresa.imagem_fundo_url
+                    ? { backgroundImage: `url(${empresa.imagem_fundo_url})` }
+                    : undefined}
                 >
                   <div className="absolute inset-0 bg-black bg-opacity-30"></div>
                   

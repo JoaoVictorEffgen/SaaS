@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Upload, Building2, User, Mail, Phone, MapPin, Globe, Instagram } from 'lucide-react';
+import { ArrowLeft, Save, Upload, Building2 } from 'lucide-react';
 import ImageUpload from '../../components/shared/ImageUpload';
 import apiService from '../../services/apiService';
 
@@ -9,7 +9,7 @@ const ConfiguracoesEmpresa = () => {
   const { user, loading } = useMySqlAuth();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
-  const [empresaData, setEmpresaData] = useState(null);
+  const [, setEmpresaData] = useState(null);
   const [loadingData, setLoadingData] = useState(true);
 
   // Estados do formulário
@@ -34,6 +34,8 @@ const ConfiguracoesEmpresa = () => {
     } else if (!loading) {
       navigate('/');
     }
+    // O carregamento é disparado somente quando a identidade ou o estado de autenticação muda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, loading, navigate]);
 
   const loadEmpresaData = async () => {

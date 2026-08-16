@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { checkIsCliente } = require('../middleware/userPermissions');
-const { Empresa, Promocao } = require('../models');
+const { Empresa, Promocao, Servico, User } = require('../models');
 
 // GET /api/clientes/empresas - Buscar empresas disponíveis para clientes
 router.get('/empresas', authenticateToken, checkIsCliente, async (req, res) => {
@@ -122,22 +122,42 @@ router.get('/empresa/:id', authenticateToken, checkIsCliente, async (req, res) =
         : `${req.protocol}://${req.get('host')}${empresa.imagem_fundo_url}`;
     }
 
-    // Buscar promoções ativas
-    const promocoes = await Promocao.findAll({
-      where: { 
-        empresa_id: empresa.id,
-        ativo: true
-      },
-      attributes: ['id', 'nome', 'descricao', 'tipo_desconto', 'valor_desconto', 'meses_gratis', 'destaque'],
-      order: [['destaque', 'DESC'], ['created_at', 'DESC']]
-    });
+    const [promocoes, servicos, funcionarios] = await Promise.all([
+      Promocao.findAll({
+        where: {
+          empresa_id: empresa.id,
+          ativo: true
+        },
+        attributes: ['id', 'nome', 'descricao', 'tipo_desconto', 'valor_desconto', 'meses_gratis', 'destaque'],
+        order: [['destaque', 'DESC'], ['created_at', 'DESC']]
+      }),
+      Servico.findAll({
+        where: {
+          empresa_id: empresa.id,
+          ativo: true
+        },
+        attributes: ['id', 'nome', 'descricao', 'duracao_minutos', 'preco', 'categoria'],
+        order: [['nome', 'ASC']]
+      }),
+      User.findAll({
+        where: {
+          empresa_id: empresa.id,
+          tipo: 'funcionario',
+          ativo: true
+        },
+        attributes: ['id', 'nome', 'cargo', 'foto_url', 'url_foto_perfil'],
+        order: [['nome', 'ASC']]
+      })
+    ]);
 
     // Retornar empresa com URLs completas e promoções
     const empresaCompleta = {
       ...empresa.toJSON(),
       logo_url: logoUrl,
       imagem_fundo_url: imagemFundoUrl,
-      promocoes: promocoes
+      promocoes,
+      servicos,
+      funcionarios
     };
 
     res.json({

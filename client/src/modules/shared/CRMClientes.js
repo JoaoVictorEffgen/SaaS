@@ -7,23 +7,17 @@ import {
   DollarSign,
   Phone,
   Mail,
-  MapPin,
-  Clock,
   TrendingUp,
-  Heart,
   Award,
   Crown,
-  Filter,
   Search,
-  Plus,
-  Edit,
   Eye
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
 const CRMClientes = ({ userId, userPlan }) => {
   const [clientes, setClientes] = useState([]);
-  const [agendamentos, setAgendamentos] = useState([]);
+  const [, setAgendamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState('all'); // all, vip, regular, novo
@@ -37,6 +31,8 @@ const CRMClientes = ({ userId, userPlan }) => {
     if (userId && hasCRMAccess) {
       loadData();
     }
+    // Recarregar somente quando o usuário ou o acesso ao recurso mudar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, hasCRMAccess]);
 
   const loadData = async () => {

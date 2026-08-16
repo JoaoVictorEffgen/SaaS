@@ -75,8 +75,6 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     console.log('🔍 [DEBUG] Iniciando criação de pacote...');
-    console.log('🔍 [DEBUG] Headers:', req.headers);
-    console.log('🔍 [DEBUG] Body recebido:', JSON.stringify(req.body, null, 2));
     
     const user = req.user;
     console.log('🔍 [DEBUG] Usuário autenticado:', { id: user.id, tipo: user.tipo, nome: user.nome });
@@ -161,7 +159,6 @@ router.post('/', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [DEBUG] Erro ao criar pacote:', error);
-    console.error('❌ [DEBUG] Stack trace:', error.stack);
     res.status(500).json({ 
       success: false, 
       message: 'Erro interno do servidor',

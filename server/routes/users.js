@@ -31,7 +31,6 @@ router.post('/login', async (req, res) => {
       
       // FUNCIONÁRIO PRECISA ESTAR LIGADO À EMPRESA
       if (companyIdentifier) {
-        console.log('🏢 Buscando empresa:', companyIdentifier);
         const empresa = await Empresa.findOne({
           where: {
             [Op.or]: [
@@ -47,7 +46,6 @@ router.post('/login', async (req, res) => {
           return res.status(401).json({ error: 'Empresa não encontrada' });
         }
         
-        console.log('✅ Empresa encontrada:', empresa.nome);
         whereCondition.empresa_id = empresa.id;
       } else {
         return res.status(400).json({ error: 'Funcionário precisa informar a empresa' });
@@ -65,7 +63,6 @@ router.post('/login', async (req, res) => {
     // Verificar senha com bcrypt
     const senhaValida = await bcrypt.compare(senha, user.senha);
     if (!senhaValida) {
-      console.log('❌ Senha não confere');
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
     
@@ -91,8 +88,6 @@ router.post('/login', async (req, res) => {
       jwtSecret,
       { expiresIn: '24h' }
     );
-    
-    console.log('🎫 Token JWT gerado:', token.substring(0, 20) + '...');
     
     // Retornar dados do usuário
     res.json({

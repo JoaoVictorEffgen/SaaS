@@ -15,7 +15,7 @@ const urlsToCache = [
   '/icon-192x192.svg',
   '/icon-384x384.svg',
   '/icon-512x512.svg',
-  '/logo-base.png',
+  '/logo.png',
   '/eslogan.png'
 ];
 
@@ -160,4 +160,3 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 console.log('✅ Service Worker carregado com sucesso!');
-

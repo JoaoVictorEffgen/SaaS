@@ -4,13 +4,9 @@ import {
   Calendar, 
   User, 
   Briefcase, 
-  X, 
-  ChevronDown,
-  Clock,
-  CheckCircle,
-  AlertCircle
+  X,
+  ChevronDown
 } from 'lucide-react';
-import localStorageService from '../../services/localStorageService';
 
 const AdvancedFilters = ({ onFiltersChange, userId }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,20 +26,10 @@ const AdvancedFilters = ({ onFiltersChange, userId }) => {
 
   useEffect(() => {
     if (userId) {
-      loadFuncionarios();
-      loadServicos();
+      setFuncionarios(JSON.parse(localStorage.getItem(`funcionarios_${userId}`) || '[]'));
+      setServicos(JSON.parse(localStorage.getItem(`servicos_${userId}`) || '[]'));
     }
   }, [userId]);
-
-  const loadFuncionarios = () => {
-    const funcionariosData = JSON.parse(localStorage.getItem(`funcionarios_${userId}`) || '[]');
-    setFuncionarios(funcionariosData);
-  };
-
-  const loadServicos = () => {
-    const servicosData = JSON.parse(localStorage.getItem(`servicos_${userId}`) || '[]');
-    setServicos(servicosData);
-  };
 
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value };
@@ -70,19 +56,6 @@ const AdvancedFilters = ({ onFiltersChange, userId }) => {
     return Object.values(filters).filter(value => 
       value !== '' && value !== '30d'
     ).length;
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'confirmado':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'pendente':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'cancelado':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
-    }
   };
 
   return (

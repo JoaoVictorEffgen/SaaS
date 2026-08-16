@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -22,10 +22,8 @@ import {
   PieChart as PieChartIcon,
   Calendar,
   Users,
-  DollarSign,
-  Clock
+  DollarSign
 } from 'lucide-react';
-import localStorageService from '../../services/localStorageService';
 import { formatCurrency } from '../../utils/formatters';
 
 const VisualReports = ({ filters, userId, userPlan }) => {
@@ -47,6 +45,8 @@ const VisualReports = ({ filters, userId, userPlan }) => {
     if (userId && hasVisualReportsAccess) {
       loadChartData();
     }
+    // Os dados são recalculados quando o usuário, os filtros ou o plano mudam.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, filters, hasVisualReportsAccess]);
 
   const loadChartData = async () => {

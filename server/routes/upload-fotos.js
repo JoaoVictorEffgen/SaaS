@@ -138,7 +138,6 @@ const checkEmpresaOwnership = async (req, res, next) => {
 router.post('/foto-perfil', authenticateToken, uploadFotosPerfil.single('foto'), async (req, res) => {
   try {
     console.log('🔍 Upload de foto de perfil iniciado');
-    console.log('🔍 Arquivo recebido:', req.file);
     console.log('🔍 Usuário:', req.user?.id, req.user?.tipo);
     
     if (!req.file) {
@@ -196,7 +195,6 @@ router.post('/foto-perfil', authenticateToken, uploadFotosPerfil.single('foto'),
 router.post('/logo-empresa/:empresaId', authenticateToken, checkEmpresaOwnership, uploadLogosEmpresa.single('logo'), async (req, res) => {
   try {
     console.log('🔍 Upload de logo da empresa iniciado');
-    console.log('🔍 Arquivo recebido:', req.file);
     console.log('🔍 Usuário:', req.user?.id, req.user?.tipo);
     console.log('🔍 Empresa:', req.empresa?.id);
     
@@ -286,7 +284,6 @@ router.get('/foto-perfil/:userId', async (req, res) => {
 router.post('/logo-sistema/:empresaId', authenticateToken, checkEmpresaOwnership, uploadLogosEmpresa.single('logo_sistema'), async (req, res) => {
   try {
     console.log('🎨 Upload de logo do sistema (White Label) iniciado');
-    console.log('🔍 Arquivo recebido:', req.file);
     console.log('🔍 Usuário:', req.user?.id, req.user?.tipo);
     console.log('🔍 Empresa:', req.empresa?.id);
     

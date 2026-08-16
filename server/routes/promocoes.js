@@ -6,7 +6,6 @@ const { authenticateToken } = require('../middleware/auth');
 // Middleware para verificar se é empresa
 const checkIsEmpresa = (req, res, next) => {
   console.log('🔍 [MIDDLEWARE DEBUG] checkIsEmpresa executado');
-  console.log('🔍 [MIDDLEWARE DEBUG] req.user:', req.user);
   
   if (!req.user) {
     console.log('❌ [MIDDLEWARE DEBUG] req.user não definido');
@@ -59,8 +58,6 @@ router.get('/', authenticateToken, checkIsEmpresa, async (req, res) => {
 router.post('/', authenticateToken, checkIsEmpresa, async (req, res) => {
   try {
     console.log('🔍 [DEBUG] Iniciando criação de promoção...');
-    console.log('🔍 [DEBUG] Headers:', req.headers);
-    console.log('🔍 [DEBUG] Body recebido:', JSON.stringify(req.body, null, 2));
 
     const user = req.user;
     console.log('🔍 [DEBUG] Usuário autenticado:', { id: user.id, tipo: user.tipo, nome: user.nome });
@@ -216,7 +213,6 @@ router.post('/', authenticateToken, checkIsEmpresa, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [DEBUG] Erro ao criar promoção:', error);
-    console.error('❌ [DEBUG] Stack trace:', error.stack);
     res.status(500).json({ 
       success: false,
       message: 'Erro interno do servidor',

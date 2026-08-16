@@ -20,8 +20,6 @@ import {
   Star
 } from 'lucide-react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
-import apiService from '../../services/apiService';
-import ImageUpload from '../../components/shared/ImageUpload';
 import EmpresaLogoHeader from '../../components/EmpresaLogoHeader';
 import { LOCAL_DEV } from '../../config/appConfig';
 
@@ -32,7 +30,7 @@ const EmpresaDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [currentRankingIndex, setCurrentRankingIndex] = useState(0);
-  const [logoUrl, setLogoUrl] = useState(null);
+  const [, setLogoUrl] = useState(null);
   const [empresaData, setEmpresaData] = useState(null);
   
   // Memoização dos dados para evitar recálculos desnecessários
@@ -77,6 +75,8 @@ const EmpresaDashboard = () => {
       setCurrentUser(user);
       loadEmpresaLogo();
     }
+    // A função usa o usuário atual e não precisa reiniciar o efeito por identidade de função.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate, user]);
 
   // Função para carregar logo da empresa
@@ -124,80 +124,6 @@ const EmpresaDashboard = () => {
     }
   };
 
-  // Função para lidar com upload da logo
-  const handleLogoUpload = async (base64Image, file) => {
-    try {
-      console.log('📷 Upload de logo iniciado...');
-      console.log('👤 Usuário atual:', currentUser);
-      
-      // Verificar se há token no localStorage
-      const token = localStorage.getItem('authToken');
-      console.log('🔑 Token no localStorage:', token ? 'Presente' : 'Ausente');
-      
-      if (!token) {
-        throw new Error('Token de autenticação não encontrado. Faça login novamente.');
-      }
-      
-      // Atualizar logo localmente imediatamente
-      setLogoUrl(base64Image);
-      
-      // Garantir que o apiService tem o token atualizado
-      apiService.setToken(token);
-      
-      // Criar FormData para enviar o arquivo
-      const formData = new FormData();
-      formData.append('logo', file);
-      
-      // Enviar para o backend via API de upload
-      const response = await fetch('http://localhost:5000/api/upload/logo', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Erro no upload: ${response.statusText}`);
-      }
-      
-      const uploadResult = await response.json();
-      console.log('📡 Resultado do upload:', uploadResult);
-      
-      if (uploadResult.success) {
-        // Atualizar a empresa com a nova URL da logo
-        const updateResponse = await apiService.request(`/empresas/${currentUser.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            logo_url: uploadResult.url
-          })
-        });
-        
-        console.log('✅ Logo atualizada com sucesso!');
-        console.log('🔗 URL da logo:', uploadResult.url);
-        
-        // Atualizar a logo local com a URL completa
-        const fullLogoUrl = uploadResult.url.startsWith('/api/uploads/') 
-          ? `http://localhost:5000${uploadResult.url}`
-          : uploadResult.url;
-        setLogoUrl(fullLogoUrl);
-        
-        // Atualizar o usuário no contexto
-        setCurrentUser(prev => ({ ...prev, logo_url: uploadResult.url }));
-      }
-    } catch (error) {
-      console.error('❌ Erro ao atualizar logo:', error);
-      console.error('❌ Detalhes do erro:', {
-        message: error.message,
-        status: error.status,
-        response: error.response
-      });
-      alert(`Erro ao atualizar logo: ${error.message}`);
-      // Reverter mudança local em caso de erro
-      setLogoUrl(currentUser?.logo_url || null);
-    }
-  };
-
   // Carregar notificações da empresa
   const loadNotifications = () => {
     if (!currentUser?.id) return;
@@ -223,6 +149,8 @@ const EmpresaDashboard = () => {
   // Carregar notificações quando o componente monta
   useEffect(() => {
     loadNotifications();
+    // Recarregar apenas quando a empresa autenticada mudar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
   // Fechar dropdown quando clicar fora

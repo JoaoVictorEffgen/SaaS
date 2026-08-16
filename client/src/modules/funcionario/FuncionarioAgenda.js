@@ -6,10 +6,7 @@ import {
   User, 
   Home, 
   Bell, 
-  CheckSquare, 
   Coffee, 
-  Star, 
-  Edit, 
   Save, 
   X,
   BarChart3,
@@ -18,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import localStorageService from '../../services/localStorageService';
+import FuncionarioProfileTab from '../../components/funcionario/FuncionarioProfileTab';
+import FuncionarioStatsTab from '../../components/funcionario/FuncionarioStatsTab';
 
 const FuncionarioAgenda = () => {
   const navigate = useNavigate();
@@ -48,36 +47,22 @@ const FuncionarioAgenda = () => {
   const [agendamentosHoje, setAgendamentosHoje] = useState([]);
 
   useEffect(() => {
-    console.log('🔄 FuncionarioAgenda - useEffect triggered');
-    console.log('Auth loading:', authLoading);
-    console.log('Current user:', currentUser);
-
     // Aguardar o contexto de autenticação carregar
     if (authLoading) {
-      console.log('⏳ Aguardando contexto de autenticação...');
       return;
     }
 
     const loadData = async () => {
       try {
-        console.log('🔍 Verificando usuário atual:', currentUser);
-        
         if (!currentUser) {
-          console.log('❌ FuncionarioAgenda - Nenhum usuário logado, redirecionando...');
-          console.log('🔍 currentUser:', currentUser);
           navigate('/');
           return;
         }
 
         if (currentUser.tipo !== 'funcionario') {
-          console.log('❌ FuncionarioAgenda - Usuário não é funcionário, redirecionando...');
-          console.log('🔍 Tipo do usuário:', currentUser.tipo);
-          console.log('🔍 Usuário completo:', currentUser);
           navigate('/');
           return;
         }
-
-        console.log('✅ Usuário funcionário válido, carregando dados...');
 
         await Promise.all([
           loadAgendamentos(),
@@ -91,7 +76,6 @@ const FuncionarioAgenda = () => {
         loadFuncionarioNotifications();
 
         setLoading(false);
-        console.log('✅ Dados carregados com sucesso');
       } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
         setLoading(false);
@@ -99,6 +83,8 @@ const FuncionarioAgenda = () => {
     };
 
     loadData();
+    // As rotinas abaixo leem o usuário atual; a carga deve reagir à autenticação, não à identidade das funções.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, authLoading, navigate]);
 
   // Escutar mudanças no localStorage para atualizações em tempo real
@@ -107,7 +93,6 @@ const FuncionarioAgenda = () => {
 
     const handleStorageChange = (e) => {
       if (e.key === `notifications_funcionario_${currentUser.id}`) {
-        console.log('🔔 Nova notificação detectada, atualizando...');
         loadFuncionarioNotifications();
       }
     };
@@ -117,7 +102,6 @@ const FuncionarioAgenda = () => {
 
     // Escutar eventos customizados (para mudanças na mesma aba)
     const handleCustomEvent = () => {
-      console.log('🔔 Evento customizado de notificação detectado');
       // Só carregar novas notificações, não recarregar todas
       loadFuncionarioNotifications();
     };
@@ -130,6 +114,8 @@ const FuncionarioAgenda = () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('notificationUpdate', handleCustomEvent);
     };
+    // Os listeners só precisam ser recriados quando o funcionário mudar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
   // Timer para verificar automaticamente agendamentos que devem ser marcados como realizados
@@ -137,7 +123,6 @@ const FuncionarioAgenda = () => {
     if (!currentUser?.id) return;
 
     const checkAutoRealizados = () => {
-      console.log('⏰ Verificando agendamentos para auto-marcação como realizados...');
       loadAgendamentos();
     };
 
@@ -148,20 +133,17 @@ const FuncionarioAgenda = () => {
     const interval = setInterval(checkAutoRealizados, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
+    // O temporizador só precisa ser recriado quando o funcionário mudar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
   const loadAgendamentos = async () => {
     try {
-      console.log('🔍 Carregando agendamentos para funcionário:', currentUser.id);
-      
       const agendamentosData = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-      console.log('📋 Todos os agendamentos:', agendamentosData);
       
       const funcionarioAgendamentos = agendamentosData.filter(
         agendamento => agendamento.funcionario_id === currentUser.id
       );
-      
-      console.log('👤 Agendamentos do funcionário:', funcionarioAgendamentos);
       
       // Verificar e marcar automaticamente agendamentos que já passaram como realizados
       const agora = new Date();
@@ -174,13 +156,6 @@ const FuncionarioAgenda = () => {
           
           // Se já passou da data/hora (com margem de 30 minutos para evitar problemas de timezone)
           if (dataAgendamento.getTime() < (agora.getTime() - (30 * 60 * 1000))) {
-            console.log('⏰ Auto-marcando como realizado:', {
-              id: agendamento.id,
-              data: agendamento.data,
-              hora: agendamento.hora,
-              status: agendamento.status
-            });
-            
             agendamentosAtualizados = true;
             return {
               ...agendamento,
@@ -212,8 +187,6 @@ const FuncionarioAgenda = () => {
           });
           localStorage.setItem(`agendamentos_${empresaId}`, JSON.stringify(agendamentosEmpresaAtualizados));
         });
-        
-        console.log('✅ Agendamentos auto-marcados como realizados salvos no localStorage');
         
         // Notificar o funcionário sobre os agendamentos auto-marcados
         const autoRealizados = agendamentosComAutoRealizado.filter(a => a.status === 'realizado' && a.dataRealizacao);
@@ -248,9 +221,6 @@ const FuncionarioAgenda = () => {
         // Status que precisam de resposta (prioridade alta)
         const precisaResposta = (status) => ['em_aprovacao', 'pendente'].includes(status);
         
-        // Status que não precisam de resposta (prioridade baixa)
-        const naoPrecisaResposta = (status) => ['cancelado', 'agendado', 'confirmado', 'realizado'].includes(status);
-        
         const aPrecisaResposta = precisaResposta(a.status);
         const bPrecisaResposta = precisaResposta(b.status);
         
@@ -266,13 +236,9 @@ const FuncionarioAgenda = () => {
         const dataA = new Date(`${a.data}T${a.horario}`);
         const dataB = new Date(`${b.data}T${b.horario}`);
         
-        const resultado = dataA - dataB;
-        console.log(`📅 Ordenação por data: ${resultado > 0 ? 'b vem primeiro' : resultado < 0 ? 'a vem primeiro' : 'iguais'}`);
-        
-        return resultado; // Ordem crescente (mais antigo primeiro)
+        return dataA - dataB; // Ordem crescente (mais antigo primeiro)
       });
-      
-      console.log('✅ Agendamentos mapeados e ordenados:', agendamentosOrdenados);
+
       setAgendamentos(agendamentosOrdenados);
 
       // Filtrar agendamentos de hoje
@@ -367,8 +333,6 @@ const FuncionarioAgenda = () => {
               // Atualizar também no currentUser
               const updatedUser = { ...currentUser, foto: fotoUrl };
               localStorage.setItem('funcionarioSession', JSON.stringify(updatedUser));
-              
-              console.log('✅ Foto do funcionário atualizada com sucesso');
             }
           } catch (error) {
             console.error('Erro ao salvar foto:', error);
@@ -441,8 +405,6 @@ const FuncionarioAgenda = () => {
 
   const updateAgendamentoStatus = async (agendamentoId, novoStatus) => {
     try {
-      console.log('🔄 Atualizando status do agendamento:', { agendamentoId, novoStatus });
-      
       if (novoStatus === 'agendado') {
         // Usar o localStorageService para confirmar
         localStorageService.confirmarAgendamento(agendamentoId);
@@ -540,7 +502,6 @@ const FuncionarioAgenda = () => {
   };
 
   const removeNotification = (id) => {
-    console.log('🗑️ Removendo notificação:', id);
     setNotifications(prev => prev.map(n => 
       n.id === id ? { ...n, removidaPeloUsuario: true } : n
     ).filter(n => n.id !== id));
@@ -549,7 +510,6 @@ const FuncionarioAgenda = () => {
   // Confirmar agendamento diretamente da notificação
   const confirmarAgendamentoNotificacao = (agendamentoId) => {
     try {
-      console.log('✅ Confirmando agendamento:', agendamentoId);
       localStorageService.confirmarAgendamento(agendamentoId);
       
       // Remover notificação pendente
@@ -567,7 +527,6 @@ const FuncionarioAgenda = () => {
   // Cancelar agendamento diretamente da notificação
   const cancelarAgendamentoNotificacao = (agendamentoId) => {
     try {
-      console.log('❌ Cancelando agendamento:', agendamentoId);
       const resultado = localStorageService.cancelarAgendamento(agendamentoId);
       
       if (resultado.sucesso) {
@@ -601,11 +560,6 @@ const FuncionarioAgenda = () => {
     }
 
     try {
-      console.log('❌ Cancelando agendamento com justificativa:', {
-        agendamentoId: cancelAgendamentoId,
-        justificativa: cancelJustificativa
-      });
-
       const resultado = localStorageService.cancelarAgendamentoComJustificativa(cancelAgendamentoId, cancelJustificativa);
       
       if (resultado.sucesso) {
@@ -631,16 +585,12 @@ const FuncionarioAgenda = () => {
   // Carregar notificações específicas do funcionário
   const loadFuncionarioNotifications = () => {
     if (!currentUser?.id) {
-      console.log('❌ loadFuncionarioNotifications: currentUser.id não encontrado');
       return;
     }
     
     try {
-      console.log('🔍 Carregando notificações para funcionário:', currentUser.id);
-      
       // Buscar notificações específicas do funcionário
       const funcionarioNotifications = JSON.parse(localStorage.getItem(`notifications_funcionario_${currentUser.id}`) || '[]');
-      console.log('📋 Notificações encontradas:', funcionarioNotifications);
       
       // Converter para o formato esperado
       const notificacoesFormatadas = funcionarioNotifications.map(notif => ({
@@ -662,8 +612,6 @@ const FuncionarioAgenda = () => {
         // Flag para controlar se já foi removida pelo usuário
         removidaPeloUsuario: false
       }));
-      
-      console.log('✅ Notificações formatadas:', notificacoesFormatadas);
       
       // Só adicionar notificações que não foram removidas pelo usuário
       setNotifications(prev => {
@@ -878,10 +826,7 @@ const FuncionarioAgenda = () => {
               </button>
               
               <button
-                onClick={() => {
-                  console.log('🔄 Atualizando notificações manualmente...');
-                  loadFuncionarioNotifications();
-                }}
+                onClick={loadFuncionarioNotifications}
                 className="p-2 text-gray-700 hover:text-gray-900 transition-colors"
                 title="Atualizar Notificações"
               >
@@ -1267,203 +1212,18 @@ const FuncionarioAgenda = () => {
           </div>
         )}
 
-        {/* Aba Perfil */}
         {activeTab === 'perfil' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                <User className="h-5 w-5 mr-2 text-purple-600" />
-                Meu Perfil
-              </h2>
-              {!isEditingProfile ? (
-                <button
-                  onClick={() => setIsEditingProfile(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  <Edit className="h-4 w-4" />
-                  <span>Editar Contato</span>
-                </button>
-              ) : (
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setIsEditingProfile(false)}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={saveProfileData}
-                    className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    <Save className="h-4 w-4" />
-                    <span>Salvar</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Campos preenchidos automaticamente pela empresa */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome Completo
-                </label>
-                <input
-                  type="text"
-                  value={profileData.nome || ''}
-                  disabled={true}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Definido pela empresa
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  CPF
-                </label>
-                <input
-                  type="text"
-                  value={profileData.cpf || ''}
-                  disabled={true}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Definido pela empresa
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cargo
-                </label>
-                <input
-                  type="text"
-                  value={profileData.cargo || ''}
-                  disabled={true}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Definido pela empresa
-                </p>
-              </div>
-
-              {/* Campos editáveis pelo funcionário */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Telefone *
-                </label>
-                <input
-                  type="text"
-                  value={profileData.telefone || ''}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é número
-                    setProfileData(prev => ({ ...prev, telefone: value }));
-                  }}
-                  disabled={!isEditingProfile}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100"
-                  maxLength={11}
-                  placeholder="11999999999"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Você pode alterar seu telefone
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  value={profileData.email || ''}
-                  onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-                  disabled={!isEditingProfile}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100"
-                  placeholder="seu@email.com"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Você pode alterar seu email
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <h3 className="text-sm font-medium text-blue-900 mb-2">Informações Importantes</h3>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Nome, CPF e cargo são definidos pela empresa</li>
-                <li>• Você pode alterar apenas telefone e email</li>
-                <li>• Seus horários de trabalho são gerenciados pela empresa</li>
-                <li>• Mantenha seus dados de contato sempre atualizados</li>
-              </ul>
-            </div>
-          </div>
+          <FuncionarioProfileTab
+            isEditing={isEditingProfile}
+            onEditingChange={setIsEditingProfile}
+            profileData={profileData}
+            onProfileDataChange={setProfileData}
+            onSave={saveProfileData}
+          />
         )}
 
-        {/* Aba Estatísticas */}
         {activeTab === 'estatisticas' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-              <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
-              Minhas Estatísticas
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-green-100">Agendamentos Realizados</p>
-                    <p className="text-3xl font-bold">
-                      {agendamentos.filter(a => a.status === 'realizado').length}
-                    </p>
-                  </div>
-                  <CheckSquare className="h-8 w-8 text-green-200" />
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-blue-100">Taxa de Comparecimento</p>
-                    <p className="text-3xl font-bold">
-                      {agendamentos.length > 0 
-                        ? Math.round((agendamentos.filter(a => a.status === 'realizado').length / agendamentos.length) * 100)
-                        : 0}%
-                    </p>
-                  </div>
-                  <Star className="h-8 w-8 text-blue-200" />
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-6 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-purple-100">Total de Clientes</p>
-                    <p className="text-3xl font-bold">
-                      {new Set(agendamentos.map(a => a.clienteId)).size}
-                    </p>
-                  </div>
-                  <User className="h-8 w-8 text-purple-200" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Avaliações dos Clientes</h3>
-              <p className="text-gray-600">
-                As avaliações dos clientes são gerenciadas pela empresa e ficam disponíveis 
-                no sistema de gestão. Você pode solicitar feedback direto aos clientes 
-                após a realização dos serviços.
-              </p>
-              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800">
-                  💡 <strong>Dica:</strong> Sempre pergunte aos clientes como foi o atendimento 
-                  e se ficaram satisfeitos com o serviço prestado.
-                </p>
-              </div>
-            </div>
-          </div>
+          <FuncionarioStatsTab agendamentos={agendamentos} />
         )}
 
         {/* Aba Horários */}

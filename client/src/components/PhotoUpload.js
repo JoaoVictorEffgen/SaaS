@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Upload, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import apiService from '../services/apiService';
 
 const PhotoUpload = ({ 
   currentImage, 
@@ -7,6 +8,7 @@ const PhotoUpload = ({
   loading = false, 
   maxSizeMB = 30,
   accept = "image/*",
+  fieldName = "foto",
   uploadEndpoint,
   title = "Upload de Foto",
   description = "Faça upload de uma imagem"
@@ -54,9 +56,9 @@ const PhotoUpload = ({
       setUploadMessage('');
       
       const formData = new FormData();
-      formData.append('foto', file);
+      formData.append(fieldName, file);
 
-      const token = localStorage.getItem('token');
+      const token = apiService.getToken();
       
       const response = await fetch(uploadEndpoint, {
         method: 'POST',
@@ -206,7 +208,7 @@ const PhotoUpload = ({
                 <p className="text-sm mt-1 text-gray-400">Faça upload de uma imagem para visualizar aqui</p>
               </div>
             )}
-          Diego</div>
+          </div>
           <div className="mt-3 text-sm text-gray-600">
             <p>✅ Esta imagem será exibida no perfil</p>
             <p>✅ Será acessível via URL pública</p>

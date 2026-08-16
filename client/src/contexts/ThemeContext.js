@@ -22,21 +22,17 @@ export const ThemeProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    // Salvar preferência no localStorage
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    
-    // Aplicar classe ao body
-    if (isDark) {
-      document.body.classList.add('dark');
-      document.body.classList.remove('light');
-    } else {
-      document.body.classList.add('light');
-      document.body.classList.remove('dark');
-    }
+    const theme = isDark ? 'dark' : 'light';
+    localStorage.setItem('theme', theme);
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.classList.toggle('light', !isDark);
+    document.documentElement.style.colorScheme = theme;
+    document.body.classList.toggle('dark', isDark);
+    document.body.classList.toggle('light', !isDark);
   }, [isDark]);
 
   const toggleTheme = () => {
-    setIsDark(!isDark);
+    setIsDark((currentTheme) => !currentTheme);
   };
 
   const setTheme = (theme) => {

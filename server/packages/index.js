@@ -9,18 +9,39 @@ const databaseManager = require('./core/database');
 const coreServices = require('./core/services');
 const SecurityMiddleware = require('./security/middleware');
 const PublicRoutes = require('./public/routes');
-const PrivateRoutes = require('./private/routes');
 const LegacyRoutes = require('./legacy/routes');
 const { SECURITY_CONFIG, ENV_CONFIG } = require('./shared/constants');
 
 class Application {
   constructor() {
     this.app = express();
+    this.setupProxyTrust();
     this.securityMiddleware = new SecurityMiddleware();
     this.publicRoutes = new PublicRoutes();
-    this.privateRoutes = new PrivateRoutes();
     this.legacyRoutes = new LegacyRoutes();
     this.initialized = false;
+  }
+
+  /**
+   * Mantém req.ip confiável para o rate limit sem aceitar X-Forwarded-For
+   * arbitrário. Em produção, a quantidade de proxies deve ser explícita.
+   */
+  setupProxyTrust() {
+    const configuredHops = process.env.TRUST_PROXY_HOPS;
+
+    if (configuredHops !== undefined) {
+      const proxyHops = Number(configuredHops);
+      if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 10) {
+        throw new Error('TRUST_PROXY_HOPS deve ser um inteiro entre 0 e 10');
+      }
+
+      this.app.set('trust proxy', proxyHops);
+      return;
+    }
+
+    if (ENV_CONFIG.NODE_ENV === 'development') {
+      this.app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
+    }
   }
 
   /**
@@ -119,10 +140,7 @@ class Application {
     // 2. Rotas legadas (compatibilidade) - INCLUINDO LOGIN PÚBLICO
     this.app.use('/api', this.legacyRoutes.getRoutes());
 
-    // 4. Rotas privadas POR ÚLTIMO (com autenticação)
-    this.app.use('/api', this.privateRoutes.getRoutes());
-
-    // 5. Rota de fallback
+    // 3. Rota de fallback
     this.app.use('*', (req, res) => {
       res.status(404).json({
         success: false,

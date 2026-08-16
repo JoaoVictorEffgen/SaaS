@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, MapPin, Phone, Building } from 'lucide-react';
+import { X, Building } from 'lucide-react';
+import apiService from '../../services/apiService';
 
 const AdicionarEmpresaModal = ({ isOpen, onClose, onAdicionarEmpresa, redeId }) => {
   const [formData, setFormData] = useState({
@@ -25,7 +26,7 @@ const AdicionarEmpresaModal = ({ isOpen, onClose, onAdicionarEmpresa, redeId }) 
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = apiService.getToken();
       const response = await fetch(`http://localhost:5000/api/redes/${redeId}/empresas`, {
         method: 'POST',
         headers: {

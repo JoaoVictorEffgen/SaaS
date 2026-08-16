@@ -11,29 +11,15 @@ import {
   Package,
   ArrowLeft
 } from 'lucide-react';
-// exportService será criado se necessário
-import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
-
 const ExportData = () => {
-  const { user } = useMySqlAuth();
   const navigate = useNavigate();
   const [periodo, setPeriodo] = useState('30d');
   const [loading, setLoading] = useState(false);
-  const [empresa, setEmpresa] = useState(null);
-
-  React.useEffect(() => {
-    if (user) {
-      setEmpresa(user);
-    }
-  }, [user]);
 
   const handleExport = async (type, format = 'csv') => {
     setLoading(true);
     
     try {
-      const empresaNome = empresa?.razaoSocial?.replace(/\s+/g, '-') || 'empresa';
-      const timestamp = new Date().toISOString().split('T')[0];
-      
       switch (type) {
         case 'agendamentos':
         case 'kpis':

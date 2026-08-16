@@ -12,6 +12,8 @@ const AvaliacoesList = ({
 
   useEffect(() => {
     loadAvaliacoes();
+    // A listagem deve ser recarregada apenas quando o alvo da avaliação mudar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo, empresaId, funcionarioId]);
 
   const loadAvaliacoes = () => {

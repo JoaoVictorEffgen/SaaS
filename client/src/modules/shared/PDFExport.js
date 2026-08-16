@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { 
   FileText, 
   Download, 
-  Calendar, 
   Users, 
   DollarSign,
   BarChart3,
   Clock,
   CheckCircle,
-  AlertCircle,
   TrendingUp
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';

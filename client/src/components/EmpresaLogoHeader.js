@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMySqlAuth } from '../contexts/MySqlAuthContext';
 import apiService from '../services/apiService';
+import { LOCAL_DEV } from '../config/appConfig';
 
 const EmpresaLogoHeader = ({ className = "", showText = true }) => {
   const { user } = useMySqlAuth();
@@ -10,6 +11,12 @@ const EmpresaLogoHeader = ({ className = "", showText = true }) => {
   useEffect(() => {
     const carregarEmpresa = async () => {
       if (!user || user.tipo !== 'empresa') {
+        setLoading(false);
+        return;
+      }
+
+      if (LOCAL_DEV) {
+        setEmpresaData(user);
         setLoading(false);
         return;
       }

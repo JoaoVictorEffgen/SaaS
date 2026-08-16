@@ -300,10 +300,11 @@ class LocalStorageService {
       
       let id;
       let existe;
+      const idsExistentes = new Set(empresas.map(empresa => empresa.id));
       do {
         const numeroAleatorio = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
         id = `${nomeLimpo}_${numeroAleatorio}`;
-        existe = empresas.some(emp => emp.id === id);
+        existe = idsExistentes.has(id);
       } while (existe);
       
       return id;
@@ -387,7 +388,7 @@ class LocalStorageService {
   // Confirmar agendamento
   confirmarAgendamento(agendamentoId) {
     const agendamentos = this.getAgendamentos();
-    const index = agendamentos.findIndex(a => a.id == agendamentoId);
+    const index = agendamentos.findIndex(a => String(a.id) === String(agendamentoId));
     if (index !== -1) {
       agendamentos[index].status = 'agendado'; // Mudança: 'confirmado' → 'agendado'
       agendamentos[index].dataConfirmacao = new Date().toISOString();
@@ -396,7 +397,7 @@ class LocalStorageService {
       // Atualizar também na chave específica da empresa
       if (agendamentos[index].empresa_id) {
         const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${agendamentos[index].empresa_id}`) || '[]');
-        const indexEmpresa = agendamentosEmpresa.findIndex(a => a.id == agendamentoId);
+        const indexEmpresa = agendamentosEmpresa.findIndex(a => String(a.id) === String(agendamentoId));
         if (indexEmpresa !== -1) {
           agendamentosEmpresa[indexEmpresa] = agendamentos[index];
           localStorage.setItem(`agendamentos_${agendamentos[index].empresa_id}`, JSON.stringify(agendamentosEmpresa));
@@ -463,7 +464,7 @@ class LocalStorageService {
   // Cancelar agendamento específico
   cancelarAgendamento(agendamentoId, motivo = 'Cancelado pelo cliente') {
     const agendamentos = this.getAgendamentos();
-    const index = agendamentos.findIndex(a => a.id == agendamentoId);
+    const index = agendamentos.findIndex(a => String(a.id) === String(agendamentoId));
     
     if (index !== -1) {
       const agendamento = agendamentos[index];
@@ -483,7 +484,7 @@ class LocalStorageService {
       // Atualizar também na chave específica da empresa
       if (agendamentos[index].empresa_id) {
         const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${agendamentos[index].empresa_id}`) || '[]');
-        const indexEmpresa = agendamentosEmpresa.findIndex(a => a.id == agendamentoId);
+        const indexEmpresa = agendamentosEmpresa.findIndex(a => String(a.id) === String(agendamentoId));
         if (indexEmpresa !== -1) {
           agendamentosEmpresa[indexEmpresa] = agendamentos[index];
           localStorage.setItem(`agendamentos_${agendamentos[index].empresa_id}`, JSON.stringify(agendamentosEmpresa));
@@ -546,130 +547,6 @@ class LocalStorageService {
     const filtered = agendamentos.filter(agendamento => agendamento.id !== id);
     localStorage.setItem('agendamentos', JSON.stringify(filtered));
     return true;
-  }
-
-  // Autenticação
-  login(identifier, senha, tipo = null) {
-    console.log('🔐 localStorageService.login chamado com:', { identifier, senha: '***', tipo });
-    
-    if (tipo === 'cliente') {
-      // Buscar clientes
-      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
-      const cliente = clientes.find(c => 
-        (c.email === identifier || c.whatsapp === identifier) && 
-        c.senha === senha
-      );
-      
-      if (cliente) {
-        const userData = {
-          id: cliente.id,
-          nome: cliente.nome,
-          email: cliente.email,
-          whatsapp: cliente.whatsapp,
-          tipo: 'cliente',
-          plano: 'free'
-        };
-        
-        const token = this.generateToken(cliente.id);
-        // Salvar o objeto cliente completo, não apenas userData
-        localStorage.setItem('currentUser', JSON.stringify(cliente));
-        localStorage.setItem('authToken', token);
-        return { user: cliente, token };
-      }
-    } else {
-      // Buscar por email ou CNPJ (empresas)
-      const users = this.getUsers();
-      console.log('🔍 localStorageService: Usuários encontrados:', users.length);
-      console.log('🔍 localStorageService: Buscando por:', identifier);
-      
-      const user = users.find(u => u.email === identifier || u.cnpj === identifier);
-      console.log('🔍 localStorageService: Usuário encontrado:', user ? 'Sim' : 'Não');
-      
-      if (user) {
-        console.log('🔍 localStorageService: Verificando senha...');
-        if (user.senha === senha) {
-          console.log('✅ localStorageService: Senha correta!');
-          const token = this.generateToken(user.id);
-          localStorage.setItem('currentUser', JSON.stringify(user));
-          localStorage.setItem('authToken', token);
-          return { user, token };
-        } else {
-          console.log('❌ localStorageService: Senha incorreta');
-        }
-      }
-    }
-    
-    return null;
-  }
-
-  logout(tipoUsuario = null) {
-    try {
-      console.log('🧹 Iniciando logout - limpando dados...');
-      
-      if (tipoUsuario) {
-        // Logout específico - não limpar outras sessões
-        console.log(`🧹 Logout específico para: ${tipoUsuario}`);
-        localStorage.removeItem(`${tipoUsuario}Session`);
-      } else {
-        // Logout completo - limpar todas as sessões
-        console.log('🧹 Logout completo - limpando todas as sessões');
-        
-        // Limpar todos os dados de autenticação
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('clienteLogado');
-        localStorage.removeItem('empresaLogada');
-        localStorage.removeItem('funcionarioLogado');
-        localStorage.removeItem('empresaFuncionario');
-        
-        // Limpar todas as sessões
-        localStorage.removeItem('empresaSession');
-        localStorage.removeItem('funcionarioSession');
-        localStorage.removeItem('clienteSession');
-      }
-      
-      // Limpar dados de sessão e cache
-      localStorage.removeItem('userSession');
-      localStorage.removeItem('userPreferences');
-      localStorage.removeItem('lastLogin');
-      localStorage.removeItem('sessionTimeout');
-      
-      // Limpar dados específicos de componentes que podem estar em cache
-      localStorage.removeItem('empresaSelecionada');
-      localStorage.removeItem('agendamentoTemp');
-      localStorage.removeItem('formularioTemp');
-      
-      // Limpar sessionStorage também
-      sessionStorage.clear();
-      
-      console.log('✅ Logout concluído - todos os dados limpos');
-      
-      // Disparar evento para notificar outros componentes
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new Event('logout'));
-      
-      // NÃO fazer reload automático - deixar para os componentes controlarem a navegação
-      
-    } catch (error) {
-      console.error('❌ Erro durante logout:', error);
-      // Mesmo com erro, tentar limpar o essencial
-      localStorage.clear();
-      sessionStorage.clear();
-    }
-  }
-
-  getCurrentUser() {
-    const currentUser = localStorage.getItem('currentUser');
-    return currentUser ? JSON.parse(currentUser) : null;
-  }
-
-  isAuthenticated() {
-    return !!localStorage.getItem('authToken');
-  }
-
-  // Token simples (em produção seria JWT)
-  generateToken(userId) {
-    return `token_${userId}_${Date.now()}`;
   }
 
   // Enviar notificação para o funcionário
@@ -769,7 +646,6 @@ class LocalStorageService {
     try {
       console.log('⏰ Agendando notificação para cliente 1h antes:', agendamento);
       
-      const clienteEmail = agendamento.cliente_email || agendamento.clienteEmail;
       const dataAgendamento = new Date(`${agendamento.data}T${agendamento.hora}`);
       const umaHoraAntes = new Date(dataAgendamento.getTime() - (60 * 60 * 1000)); // 1h antes
       const agora = new Date();
@@ -947,4 +823,4 @@ class LocalStorageService {
 }
 
 const localStorageService = new LocalStorageService();
-export default localStorageService; 
+export default localStorageService;

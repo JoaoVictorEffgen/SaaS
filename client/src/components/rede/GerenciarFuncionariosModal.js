@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Users, UserPlus, ArrowRight, ArrowLeft, Building, User } from 'lucide-react';
+import { X, UserPlus, ArrowRight, Building, User } from 'lucide-react';
+import apiService from '../../services/apiService';
 
 const GerenciarFuncionariosModal = ({ isOpen, onClose, empresaId, empresaNome }) => {
   const [funcionarios, setFuncionarios] = useState([]);
@@ -13,11 +14,13 @@ const GerenciarFuncionariosModal = ({ isOpen, onClose, empresaId, empresaNome })
       carregarFuncionarios();
       carregarFuncionariosDisponiveis();
     }
+    // As funções leem o empresaId atual; o efeito deve reagir apenas à abertura ou troca da empresa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, empresaId]);
 
   const carregarFuncionarios = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = apiService.getToken();
       const response = await fetch(`/api/empresas/${empresaId}/funcionarios`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -39,7 +42,7 @@ const GerenciarFuncionariosModal = ({ isOpen, onClose, empresaId, empresaNome })
 
   const carregarFuncionariosDisponiveis = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = apiService.getToken();
       const response = await fetch(`/api/redes/funcionarios-disponiveis`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -62,7 +65,7 @@ const GerenciarFuncionariosModal = ({ isOpen, onClose, empresaId, empresaNome })
   const adicionarFuncionario = async (funcionarioId) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = apiService.getToken();
       const response = await fetch(`/api/empresas/${empresaId}/funcionarios`, {
         method: 'POST',
         headers: {
@@ -89,7 +92,7 @@ const GerenciarFuncionariosModal = ({ isOpen, onClose, empresaId, empresaNome })
   const removerFuncionario = async (funcionarioId) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = apiService.getToken();
       const response = await fetch(`/api/empresas/${empresaId}/funcionarios/${funcionarioId}`, {
         method: 'DELETE',
         headers: {
@@ -115,7 +118,7 @@ const GerenciarFuncionariosModal = ({ isOpen, onClose, empresaId, empresaNome })
   const criarNovoFuncionario = async (dadosFuncionario) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = apiService.getToken();
       const response = await fetch(`/api/empresas/${empresaId}/funcionarios`, {
         method: 'POST',
         headers: {

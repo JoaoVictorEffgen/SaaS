@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import apiService from '../../services/apiService';
 import { 
   Plus, 
   ArrowLeft, 
@@ -15,7 +16,6 @@ import {
   Settings,
   TrendingUp,
   CheckCircle,
-  XCircle,
   Gift,
   Percent,
   Clock,
@@ -40,7 +40,7 @@ const DashboardPacotes = () => {
 
   const carregarPromocoes = async () => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = apiService.getToken();
       const response = await fetch('/api/promocoes', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -60,7 +60,7 @@ const DashboardPacotes = () => {
   const carregarPacotes = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
+      const token = apiService.getToken();
       const response = await fetch('/api/pacotes', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -83,7 +83,7 @@ const DashboardPacotes = () => {
     try {
       console.log('🔍 [FRONTEND DEBUG] Dados da promoção:', dadosPromocao);
       
-      const token = localStorage.getItem('authToken');
+      const token = apiService.getToken();
       console.log('🔍 [FRONTEND DEBUG] Token encontrado:', token ? 'Sim' : 'Não');
       
       const response = await fetch('/api/promocoes', {
@@ -117,7 +117,7 @@ const DashboardPacotes = () => {
 
   const atualizarPromocao = async (id, dadosPromocao) => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = apiService.getToken();
       const response = await fetch(`/api/promocoes/${id}`, {
         method: 'PUT',
         headers: {
@@ -147,7 +147,7 @@ const DashboardPacotes = () => {
     }
 
     try {
-      const token = localStorage.getItem('authToken');
+      const token = apiService.getToken();
       const response = await fetch(`/api/promocoes/${id}`, {
         method: 'DELETE',
         headers: {
@@ -171,7 +171,7 @@ const DashboardPacotes = () => {
 
   const toggleDestaquePromocao = async (promocao) => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = apiService.getToken();
       const response = await fetch(`/api/promocoes/${promocao.id}/toggle-destaque`, {
         method: 'POST',
         headers: {
@@ -192,7 +192,7 @@ const DashboardPacotes = () => {
     try {
       console.log('🔍 [FRONTEND DEBUG] Dados do pacote:', dadosPacote);
       
-      const token = localStorage.getItem('authToken');
+      const token = apiService.getToken();
       console.log('🔍 [FRONTEND DEBUG] Token encontrado:', token ? 'Sim' : 'Não');
       
       const response = await fetch('/api/pacotes', {
@@ -226,7 +226,7 @@ const DashboardPacotes = () => {
 
   const atualizarPacote = async (id, dadosPacote) => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = apiService.getToken();
       const response = await fetch(`/api/pacotes/${id}`, {
         method: 'PUT',
         headers: {
@@ -256,7 +256,7 @@ const DashboardPacotes = () => {
     }
 
     try {
-      const token = localStorage.getItem('authToken');
+      const token = apiService.getToken();
       const response = await fetch(`/api/pacotes/${id}`, {
         method: 'DELETE',
         headers: {

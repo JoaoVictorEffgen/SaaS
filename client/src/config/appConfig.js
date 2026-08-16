@@ -1,4 +1,6 @@
-export const LOCAL_DEV = process.env.REACT_APP_LOCAL_DEV !== 'false';
+export const LOCAL_DEV =
+  process.env.NODE_ENV === 'development' &&
+  process.env.REACT_APP_LOCAL_DEV === 'true';
 
 export const LOCAL_DEV_USERS = {
   empresa: {

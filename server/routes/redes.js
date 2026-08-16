@@ -180,8 +180,6 @@ router.post('/:redeId/empresas', authenticateToken, checkTrialValid, isRedeAdmin
     const { redeId } = req.params;
     const { nome_unidade, endereco, cidade, estado, cep, whatsapp } = req.body;
     
-    console.log('📋 Dados recebidos:', { redeId, nome_unidade, endereco, cidade, estado, cep, whatsapp });
-    
     const rede = req.rede;
     console.log('🌐 Rede encontrada:', { id: rede.id, nome: rede.nome_rede, admin_id: rede.usuario_admin_id });
     
@@ -234,7 +232,6 @@ router.post('/:redeId/empresas', authenticateToken, checkTrialValid, isRedeAdmin
   } catch (error) {
     console.error('❌ Erro ao criar empresa na rede:', error);
     console.error('❌ Detalhes do erro:', error.message);
-    console.error('❌ Stack trace:', error.stack);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
@@ -424,9 +421,6 @@ router.get('/funcionarios-disponiveis', authenticateToken, async (req, res) => {
 router.delete('/empresas/:empresaId', authenticateToken, checkTrialValid, isRedeAdmin, checkEnterprisePlan, async (req, res) => {
   try {
     console.log('🗑️ Tentativa de exclusão de empresa:', req.params.empresaId);
-    console.log('👤 Usuário:', req.user);
-    console.log('🏢 Rede:', req.rede);
-    
     const { empresaId } = req.params;
     const rede = req.rede;
 

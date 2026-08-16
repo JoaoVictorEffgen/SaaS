@@ -160,13 +160,10 @@ router.post('/', auth, async (req, res) => {
 // PUT /api/empresas/:id - Atualizar empresa
 router.put('/:id', auth, checkEmpresaOwnership, async (req, res) => {
   try {
-    console.log('🔍 Atualizando empresa:', req.params.id, req.body);
-    
     const empresa = req.empresa; // Já validado pelo middleware
     
     // Se estão sendo enviadas configurações, salvar no campo horario_funcionamento
     if (req.body.configuracoes) {
-      console.log('⚙️ Salvando configurações:', req.body.configuracoes);
       await empresa.update({
         horario_funcionamento: req.body.configuracoes
       });

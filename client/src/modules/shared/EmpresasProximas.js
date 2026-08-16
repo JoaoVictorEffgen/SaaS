@@ -52,6 +52,8 @@ const EmpresasProximas = ({ empresas, radius = 15 }) => {
   useEffect(() => {
     // Tentar carregar localização automaticamente
     loadUserLocation();
+    // A geolocalização deve ser recalculada apenas quando a lista ou o raio mudar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [empresas, radius]);
 
   if (loading) {

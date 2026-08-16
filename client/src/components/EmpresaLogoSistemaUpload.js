@@ -6,9 +6,8 @@ const EmpresaLogoSistemaUpload = ({ empresaId, currentLogoSistema, onLogoSistema
 
   return (
     <PhotoUpload
-      userId={empresaId} // Usamos empresaId como userId para consistência no PhotoUpload
-      currentPhotoUrl={currentLogoSistema}
-      onPhotoUpload={onLogoSistemaUpload}
+      currentImage={currentLogoSistema}
+      onImageUpload={onLogoSistemaUpload}
       fieldName="logo_sistema"
       uploadEndpoint={uploadEndpoint}
       loading={loading}

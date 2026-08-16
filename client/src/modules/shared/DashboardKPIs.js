@@ -11,10 +11,8 @@ import {
   BarChart3,
   RefreshCw,
   ArrowLeft,
-  Filter,
   FileText,
-  UserPlus,
-  Eye
+  UserPlus
 } from 'lucide-react';
 // kpiService será criado se necessário
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
@@ -57,7 +55,7 @@ const DashboardKPIs = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, periodo]);
+  }, [user?.id]);
 
   const loadData = useCallback(() => {
     if (!user?.id) return;

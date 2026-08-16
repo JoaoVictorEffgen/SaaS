@@ -17,7 +17,7 @@ import AvaliacaoModal from './AvaliacaoModal';
 
 const ClienteAgendamentos = () => {
   const navigate = useNavigate();
-  const { user: currentUser, logout } = useMySqlAuth();
+  const { user: currentUser } = useMySqlAuth();
   const [agendamentos, setAgendamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAvaliacaoModal, setShowAvaliacaoModal] = useState(false);
@@ -31,6 +31,8 @@ const ClienteAgendamentos = () => {
       return;
     }
     loadAgendamentos();
+    // O carregamento acompanha apenas a sessão do cliente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, navigate]);
 
   const loadAgendamentos = () => {

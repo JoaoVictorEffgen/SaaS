@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Building2, Users, ArrowRight, Calendar, Clock, Zap, Star, Crown,
-  Users2, X, ClipboardList, ChevronLeft, ChevronRight, Facebook, Instagram, Twitter, Linkedin, Plus,
+  X, ClipboardList, ChevronLeft, ChevronRight, Facebook, Instagram, Twitter, Linkedin,
   Navigation
 } from 'lucide-react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
@@ -40,12 +40,11 @@ const AccessSelector = () => {
   const [codigoEnviado, setCodigoEnviado] = useState(false);
   const [clienteLoading, setClienteLoading] = useState(false);
   const [metodoVerificacao, setMetodoVerificacao] = useState('whatsapp'); // 'whatsapp' ou 'sms'
-  const [codigosGerados, setCodigosGerados] = useState({ whatsapp: '', sms: '' });
+  const [, setCodigosGerados] = useState({ whatsapp: '', sms: '' });
   
   // Estados para novas funcionalidades
   const [activeSection, setActiveSection] = useState('destaque'); // 'destaque', 'proximas'
   const [allEmpresas, setAllEmpresas] = useState([]);
-  const [isClientLoggedIn, setIsClientLoggedIn] = useState(false);
   const [empresaForm, setEmpresaForm] = useState({ email: '', senha: '', nome: '', telefone: '', endereco: '', cnpj: '' });
   const [funcionarioForm, setFuncionarioForm] = useState({ 
     companyIdentifier: '', // ID ou email da empresa
@@ -62,7 +61,7 @@ const AccessSelector = () => {
 
   
   const navigate = useNavigate();
-  const { login, register, user, setLocalDevUser } = useMySqlAuth();
+  const { login, user, setLocalDevUser } = useMySqlAuth();
   const { isDark } = useTheme();
 
   const beneficios = [
@@ -169,9 +168,6 @@ const AccessSelector = () => {
     localStorage.removeItem('currentUser');
     
     // Verificar se há um cliente logado
-    const clientLoggedIn = user && user.tipo === 'cliente';
-    setIsClientLoggedIn(clientLoggedIn);
-    
     // Sempre mostrar destaque por padrão na tela inicial
       setActiveSection('destaque');
   }, [loadEmpresasDestaque, user]);
@@ -1346,38 +1342,38 @@ const AccessSelector = () => {
                 <span className="font-semibold text-white"> Rápido, seguro e intuitivo.</span>
               </p>
               <div className="flex items-center gap-4">
-                <a href="#" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors duration-300">
+                <button type="button" aria-label="Facebook" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors duration-300">
                   <Facebook className="w-5 h-5 text-white" />
-                </a>
-                <a href="#" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors duration-300">
+                </button>
+                <button type="button" aria-label="Instagram" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors duration-300">
                   <Instagram className="w-5 h-5 text-white" />
-                </a>
-                <a href="#" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors duration-300">
+                </button>
+                <button type="button" aria-label="Twitter" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors duration-300">
                   <Twitter className="w-5 h-5 text-white" />
-                </a>
-                <a href="#" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors duration-300">
+                </button>
+                <button type="button" aria-label="LinkedIn" className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors duration-300">
                   <Linkedin className="w-5 h-5 text-white" />
-                </a>
+                </button>
               </div>
             </div>
             
             <div>
               <h4 className="text-lg font-semibold mb-4 text-white">Produto</h4>
               <ul className="space-y-2 text-sm text-gray-300">
-                <li><a href="#" className="hover:text-white transition-colors duration-300">Recursos</a></li>
-                <li><a href="#" className="hover:text-white transition-colors duration-300">Preços</a></li>
-                <li><a href="#" className="hover:text-white transition-colors duration-300">Integrações</a></li>
-                <li><a href="#" className="hover:text-white transition-colors duration-300">API</a></li>
+                <li><button type="button" className="hover:text-white transition-colors duration-300">Recursos</button></li>
+                <li><button type="button" className="hover:text-white transition-colors duration-300">Preços</button></li>
+                <li><button type="button" className="hover:text-white transition-colors duration-300">Integrações</button></li>
+                <li><button type="button" className="hover:text-white transition-colors duration-300">API</button></li>
               </ul>
             </div>
             
             <div>
               <h4 className="text-lg font-semibold mb-4 text-white">Suporte</h4>
               <ul className="space-y-2 text-sm text-gray-300">
-                <li><a href="#" className="hover:text-white transition-colors duration-300">Central de Ajuda</a></li>
-                <li><a href="#" className="hover:text-white transition-colors duration-300">Documentação</a></li>
-                <li><a href="#" className="hover:text-white transition-colors duration-300">Comunidade</a></li>
-                <li><a href="#" className="hover:text-white transition-colors duration-300">Status</a></li>
+                <li><button type="button" className="hover:text-white transition-colors duration-300">Central de Ajuda</button></li>
+                <li><button type="button" className="hover:text-white transition-colors duration-300">Documentação</button></li>
+                <li><button type="button" className="hover:text-white transition-colors duration-300">Comunidade</button></li>
+                <li><button type="button" className="hover:text-white transition-colors duration-300">Status</button></li>
               </ul>
             </div>
           </div>
@@ -1388,9 +1384,9 @@ const AccessSelector = () => {
                 © 2024 AgendaPro. Todos os direitos reservados.
               </div>
               <div className="flex items-center gap-6 text-sm text-gray-300">
-                <a href="#" className="hover:text-white transition-colors duration-300">Política de Privacidade</a>
-                <a href="#" className="hover:text-white transition-colors duration-300">Termos de Uso</a>
-                <a href="#" className="hover:text-white transition-colors duration-300">Cookies</a>
+                <button type="button" className="hover:text-white transition-colors duration-300">Política de Privacidade</button>
+                <button type="button" className="hover:text-white transition-colors duration-300">Termos de Uso</button>
+                <button type="button" className="hover:text-white transition-colors duration-300">Cookies</button>
               </div>
             </div>
           </div>

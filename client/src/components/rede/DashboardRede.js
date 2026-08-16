@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import apiService from '../../services/apiService';
 import AdicionarEmpresaModal from './AdicionarEmpresaModal';
 import GerenciarFuncionariosModal from './GerenciarFuncionariosModal';
 
 const DashboardRede = () => {
   const navigate = useNavigate();
-  const { user } = useMySqlAuth();
   const [rede, setRede] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -21,7 +19,7 @@ const DashboardRede = () => {
 
   const fetchRede = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = apiService.getToken();
       const response = await fetch('http://localhost:5000/api/redes', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -47,7 +45,7 @@ const DashboardRede = () => {
 
   const criarRede = async (dadosRede) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = apiService.getToken();
       const response = await fetch('http://localhost:5000/api/redes', {
         method: 'POST',
         headers: {

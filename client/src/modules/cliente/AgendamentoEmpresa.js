@@ -4,15 +4,19 @@ import { Calendar, Users, ArrowLeft, MessageCircle, CheckCircle, ChevronLeft, Ch
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import WhatsAppChat from '../shared/WhatsAppChat';
 import CompanyLocation from '../../components/shared/CompanyLocation';
+import useEmpresaBookingData from '../../hooks/useEmpresaBookingData';
 
 const AgendamentoEmpresa = () => {
   const { empresaId } = useParams();
   const { user } = useMySqlAuth();
   const navigate = useNavigate();
-  
-  const [empresa, setEmpresa] = useState(null);
-  const [funcionarios, setFuncionarios] = useState([]);
-  const [servicos, setServicos] = useState([]);
+  const {
+    empresa,
+    funcionarios,
+    servicos,
+    loading: empresaLoading,
+    error: empresaLoadError
+  } = useEmpresaBookingData(empresaId);
   const [showWhatsAppChat, setShowWhatsAppChat] = useState(false);
   const [agendamentoConfirmado, setAgendamentoConfirmado] = useState(null);
   const [agendamentoStatus, setAgendamentoStatus] = useState('pendente'); // 'pendente' ou 'confirmado'
@@ -47,31 +51,9 @@ const AgendamentoEmpresa = () => {
   const [calendarioMes, setCalendarioMes] = useState(new Date().getMonth());
   const [calendarioAno, setCalendarioAno] = useState(new Date().getFullYear());
 
-  // Todos os useEffect hooks devem vir antes de qualquer verificação condicional
-  useEffect(() => {
-    // Buscar dados da empresa
-    const empresas = JSON.parse(localStorage.getItem('empresas') || '[]');
-    const empresaEncontrada = empresas.find(emp => emp.id === empresaId);
-    
-    setEmpresa(empresaEncontrada);
-    
-    // Buscar funcionários e serviços da empresa
-    const funcionariosEmpresa = JSON.parse(localStorage.getItem(`funcionarios_${empresaId}`) || '[]');
-    setFuncionarios(funcionariosEmpresa);
-    
-    const servicosEmpresa = JSON.parse(localStorage.getItem(`servicos_${empresaId}`) || '[]');
-    setServicos(servicosEmpresa);
-  }, [empresaId]);
-
   // Atualizar campos do formulário quando o usuário for carregado
   useEffect(() => {
-    console.log('🔍 AgendamentoEmpresa - user carregado:', user);
     if (user) {
-      console.log('🔍 AgendamentoEmpresa - atualizando campos com:', {
-        nome: user.nome,
-        telefone: user.telefone,
-        whatsapp: user.whatsapp
-      });
       setQuickBooking(prev => ({
         ...prev,
         nome: user.nome || '',
@@ -115,42 +97,10 @@ const AgendamentoEmpresa = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showRecurringOptions, quickBooking.data, recurringConfig.tipo_recorrencia]);
 
-  // Função para marcar agendamento como realizado e verificar série
-  const marcarAgendamentoRealizado = (agendamentoId) => {
-    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
-    const agendamentoIndex = agendamentos.findIndex(a => a.id === agendamentoId);
-    
-    if (agendamentoIndex !== -1) {
-      // Marcar como realizado
-      agendamentos[agendamentoIndex].status = 'realizado';
-      agendamentos[agendamentoIndex].data_conclusao = new Date().toISOString();
-      
-      // Salvar alterações
-      localStorage.setItem(`agendamentos_${empresaId}`, JSON.stringify(agendamentos));
-      
-      // Verificar se é o último da série recorrente
-      if (verificarUltimoAgendamentoRecorrente(agendamentoId)) {
-        enviarNotificacaoSerieConcluida(agendamentos[agendamentoIndex]);
-      }
-    }
-  };
-
-  // Expor função globalmente para uso em outras partes do sistema
-  useEffect(() => {
-    window.marcarAgendamentoRealizado = marcarAgendamentoRealizado;
-    return () => {
-      delete window.marcarAgendamentoRealizado;
-    };
-  }, [empresaId, marcarAgendamentoRealizado]);
-
   // Verificar se o usuário está logado DEPOIS de todos os hooks
-  console.log('🔍 AgendamentoEmpresa - Verificando usuário:', user);
   if (!user) {
-    console.log('❌ AgendamentoEmpresa - Usuário não logado, redirecionando...');
     return <Navigate to="/" replace />;
   }
-  
-  console.log('✅ AgendamentoEmpresa - Usuário logado:', user);
 
   const gerarHorariosDisponiveis = () => {
     if (!empresa) return [];
@@ -179,12 +129,6 @@ const AgendamentoEmpresa = () => {
     return horarios;
   };
 
-
-  // Função para obter nome do dia da semana
-  const getNomeDiaSemana = (numeroDia) => {
-    const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    return dias[numeroDia];
-  };
 
   // Função para alternar dia da semana na seleção (apenas 1 dia)
   const toggleDiaSemana = (dia) => {
@@ -458,71 +402,6 @@ const AgendamentoEmpresa = () => {
     return funcionarios;
   };
 
-  // Função para enviar notificações
-  const enviarNotificacoes = async (agendamento, empresa, funcionario, cliente) => {
-    try {
-      console.log('📱 Enviando notificações...');
-      
-      // 1. Notificação para a empresa
-      const notificacaoEmpresa = {
-        id: Date.now(),
-        tipo: 'novo_agendamento',
-        titulo: 'Novo Agendamento',
-        mensagem: `Novo agendamento para ${cliente.nome} em ${new Date(agendamento.data).toLocaleDateString('pt-BR')} às ${agendamento.hora}`,
-        empresa_id: empresa.id,
-        agendamento_id: agendamento.id,
-        data: new Date().toISOString(),
-        lida: false
-      };
-      
-      // Salvar notificação da empresa
-      const notificacoesEmpresa = JSON.parse(localStorage.getItem('notificacoes_empresa') || '[]');
-      notificacoesEmpresa.push(notificacaoEmpresa);
-      localStorage.setItem('notificacoes_empresa', JSON.stringify(notificacoesEmpresa));
-      
-      // 2. Notificação para o funcionário
-      const notificacaoFuncionario = {
-        id: Date.now() + 1,
-        tipo: 'novo_agendamento',
-        titulo: 'Novo Agendamento',
-        mensagem: `Você tem um novo agendamento com ${cliente.nome} em ${new Date(agendamento.data).toLocaleDateString('pt-BR')} às ${agendamento.hora}`,
-        funcionario_id: funcionario.id,
-        empresa_id: empresa.id,
-        agendamento_id: agendamento.id,
-        data: new Date().toISOString(),
-        lida: false
-      };
-      
-      // Salvar notificação do funcionário
-      const notificacoesFuncionario = JSON.parse(localStorage.getItem('notificacoes_funcionario') || '[]');
-      notificacoesFuncionario.push(notificacaoFuncionario);
-      localStorage.setItem('notificacoes_funcionario', JSON.stringify(notificacoesFuncionario));
-      
-      // 3. Notificação via WhatsApp para o cliente
-      const mensagemWhatsApp = `🎉 *Agendamento Confirmado!*\n\n` +
-        `📅 *Data:* ${new Date(agendamento.data).toLocaleDateString('pt-BR')}\n` +
-        `⏰ *Horário:* ${agendamento.hora}\n` +
-        `🏢 *Empresa:* ${empresa.nome}\n` +
-        `👤 *Funcionário:* ${funcionario.nome}\n` +
-        `🛠️ *Serviços:* ${agendamento.servicos.map(s => s.nome).join(', ')}\n` +
-        `💰 *Total:* R$ ${agendamento.valor_total.toFixed(2)}\n\n` +
-        `✅ Seu agendamento foi confirmado com sucesso!`;
-      
-      // Abrir WhatsApp com a mensagem
-      if (cliente.whatsapp || cliente.telefone) {
-        const telefone = (cliente.whatsapp || cliente.telefone).replace(/\D/g, '');
-        const whatsappLink = `https://wa.me/55${telefone}?text=${encodeURIComponent(mensagemWhatsApp)}`;
-        window.open(whatsappLink, '_blank');
-      }
-      
-      console.log('✅ Notificações enviadas com sucesso!');
-      
-    } catch (error) {
-      console.error('❌ Erro ao enviar notificações:', error);
-    }
-  };
-
-
   const toggleServico = (servico) => {
     const servicosAtualizados = quickBooking.servicos.includes(servico)
       ? quickBooking.servicos.filter(s => s.id !== servico.id)
@@ -538,57 +417,6 @@ const AgendamentoEmpresa = () => {
   const calcularTempoTotal = () => {
     return quickBooking.servicos.reduce((total, servico) => total + (servico.duracao || 0), 0);
   };
-
-  // Função para verificar se é o último agendamento da série recorrente
-  const verificarUltimoAgendamentoRecorrente = (agendamentoId) => {
-    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
-    const agendamento = agendamentos.find(a => a.id === agendamentoId);
-    
-    if (!agendamento || !agendamento.serie_recorrente_id) {
-      return false;
-    }
-
-    // Buscar todos os agendamentos da mesma série
-    const agendamentosSerie = agendamentos.filter(a => 
-      a.serie_recorrente_id === agendamento.serie_recorrente_id && 
-      a.status === 'realizado'
-    );
-
-    // Se todos os agendamentos da série foram concluídos
-    return agendamentosSerie.length === agendamento.total_agendamentos;
-  };
-
-  // Função para enviar notificação de conclusão da série
-  const enviarNotificacaoSerieConcluida = (agendamento) => {
-    const notificacao = {
-      id: Date.now(),
-      tipo: 'serie_concluida',
-      titulo: '🎉 Série de Agendamentos Concluída!',
-      mensagem: `Parabéns! Você concluiu todos os ${agendamento.total_agendamentos} agendamentos da sua série recorrente. Obrigado pela confiança!`,
-      data: new Date().toISOString(),
-      lida: false,
-      agendamento_id: agendamento.id,
-      empresa_id: empresaId
-    };
-
-    // Salvar notificação
-    const notificacoes = JSON.parse(localStorage.getItem(`notificacoes_${user.id}`) || '[]');
-    notificacoes.unshift(notificacao);
-    localStorage.setItem(`notificacoes_${user.id}`, JSON.stringify(notificacoes));
-
-    // Disparar evento para atualizar contadores
-    window.dispatchEvent(new CustomEvent('notificacaoNova', { detail: notificacao }));
-
-    // Enviar WhatsApp (opcional)
-    if (user.telefone || user.whatsapp) {
-      const telefone = (user.whatsapp || user.telefone).replace(/\D/g, '');
-      const mensagemWhatsApp = `🎉 *Parabéns!*\n\nVocê concluiu todos os ${agendamento.total_agendamentos} agendamentos da sua série recorrente na ${empresa.nome}!\n\nObrigado pela confiança em nossos serviços! 🙏\n\nGostaria de agendar uma nova série?`;
-      const whatsappLink = `https://wa.me/55${telefone}?text=${encodeURIComponent(mensagemWhatsApp)}`;
-      window.open(whatsappLink, '_blank');
-    }
-  };
-
-
 
   // Funções para o calendário
   const formatarDataParaExibicao = (data) => {
@@ -662,16 +490,24 @@ const AgendamentoEmpresa = () => {
         const diaStr = String(dia).padStart(2, '0');
         const dataFormatada = `${anoStr}-${mesStr}-${diaStr}`;
         
-        console.log('📅 Dia clicado:', dia, 'Mês:', calendarioMes, 'Ano:', calendarioAno);
-        console.log('📅 Data formatada:', dataFormatada);
-        
         setQuickBooking({ ...quickBooking, data: dataFormatada });
         setShowCalendar(false);
       }
     }
   };
 
-  if (!empresa) {
+  if (empresaLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+          <p className="mt-4 text-gray-600">Carregando empresa...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (empresaLoadError || !empresa) {
   return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">

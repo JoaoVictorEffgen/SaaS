@@ -62,7 +62,7 @@ export const MySqlAuthProvider = ({ children }) => {
           return;
         }
 
-        const token = localStorage.getItem('token');
+        const token = apiService.getToken();
 
         if (token) {
           apiService.setToken(token);
@@ -91,7 +91,13 @@ export const MySqlAuthProvider = ({ children }) => {
     setError(null);
   };
 
-  const login = async (identifier, senha, tipo = null, companyIdentifier = null) => {
+  const login = async (
+    identifier,
+    senha,
+    tipo = null,
+    companyIdentifier = null,
+    rememberSession = true
+  ) => {
     if (LOCAL_DEV) {
       const devUser = setLocalDevUser(tipo || 'empresa');
       return { success: true, user: devUser };
@@ -101,7 +107,13 @@ export const MySqlAuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      const result = await apiService.login(identifier, senha, tipo, companyIdentifier);
+      const result = await apiService.login(
+        identifier,
+        senha,
+        tipo,
+        companyIdentifier,
+        rememberSession
+      );
 
       if (result && result.user) {
         const userData = result.user;

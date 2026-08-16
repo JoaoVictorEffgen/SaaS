@@ -93,7 +93,7 @@ const CompanySettings = () => {
       const formData = new FormData();
       formData.append('imagem', file);
 
-      const token = localStorage.getItem('token');
+      const token = apiService.getToken();
       if (!token) {
         window.alert('❌ Token de autenticação não encontrado. Faça login novamente.');
         return;
