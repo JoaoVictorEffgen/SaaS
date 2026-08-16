@@ -10,9 +10,8 @@
     "build": "cd client && npm run build",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
     "setup-db": "cd server && npm run setup-db",
-    "start": "node server/mysql-server.js",
-    "railway-build": "npm install --prefix server && npm install --prefix client && npm run build",
-    "railway-start": "node server/mysql-server.js"
+    "start": "node server/index.js",
+    "railway-start": "node server/index.js"
   },
   "keywords": [
     "saas",
@@ -28,7 +27,7 @@
     "concurrently": "^8.2.2"
   },
   "dependencies": {
-    "form-data": "^4.0.4",
+    "form-data": "^4.0.6",
     "node-fetch": "^3.3.2"
   }
 }

@@ -23,6 +23,7 @@ import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import apiService from '../../services/apiService';
 import ImageUpload from '../../components/shared/ImageUpload';
 import EmpresaLogoHeader from '../../components/EmpresaLogoHeader';
+import { LOCAL_DEV } from '../../config/appConfig';
 
 const EmpresaDashboard = () => {
   const navigate = useNavigate();
@@ -68,10 +69,12 @@ const EmpresaDashboard = () => {
 
   useEffect(() => {
     if (!user) {
+      if (LOCAL_DEV) {
+        return;
+      }
       navigate('/');
     } else {
       setCurrentUser(user);
-      // Buscar logo da empresa do banco de dados
       loadEmpresaLogo();
     }
   }, [navigate, user]);
@@ -83,20 +86,11 @@ const EmpresaDashboard = () => {
     try {
       const { default: apiService } = await import('../../services/apiService');
       
-      // Buscar todas as empresas e encontrar a associada ao usuário
-      const empresas = await apiService.getEmpresas();
-      const empresaDoUsuario = empresas.find(empresa => empresa.user_id === user.id);
-      
-      if (empresaDoUsuario) {
-        const empresaData = await apiService.getEmpresa(empresaDoUsuario.id);
-        
-        if (empresaData?.logo_url) {
-          setLogoUrl(empresaData.logo_url);
-        }
-        
-        // Salvar dados da empresa no estado
-        setEmpresaData(empresaData);
+      const empresaData = await apiService.getEmpresa('me');
+      if (empresaData?.logo_url) {
+        setLogoUrl(empresaData.logo_url);
       }
+      setEmpresaData(empresaData);
     } catch (error) {
       console.error('Erro ao carregar logo da empresa:', error);
     }

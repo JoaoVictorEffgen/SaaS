@@ -82,27 +82,10 @@ const upload = multer({
 // MIDDLEWARE DE VALIDAÇÃO PÚBLICA
 // =============================================
 
-const validatePublicUpload = (req, res, next) => {
-  // Verificar se o upload é para cadastro público
-  const allowedOrigins = [
-    '/cadastro',
-    '/registro',
-    '/signup',
-    '/public/upload'
-  ];
-
-  const referer = req.get('Referer') || '';
-  const isPublicUpload = allowedOrigins.some(origin => referer.includes(origin));
-
-  if (!isPublicUpload) {
-    return res.status(403).json({
-      success: false,
-      message: 'Upload público permitido apenas durante cadastro'
-    });
-  }
-
-  next();
-};
+const validatePublicUpload = (req, res) => res.status(410).json({
+  success: false,
+  message: 'Upload público desativado. Autentique-se antes de enviar arquivos.'
+});
 
 // =============================================
 // ROTAS PÚBLICAS

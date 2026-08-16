@@ -2,6 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../../middleware/auth');
+const { getJwtSecret } = require('../../middleware/auth');
+const rateLimit = require('express-rate-limit');
 
 // Importar rotas existentes para compatibilidade
 const authRoutes = require('../../routes/auth');
@@ -17,6 +19,15 @@ const uploadFotosRoutes = require('../../routes/upload-fotos');
 const funcionariosRoutes = require('../../routes/funcionarios');
 const clientesRoutes = require('../../routes/clientes');
 const notificationsRoutes = require('../../routes/notifications');
+const recuperarSenhaRoutes = require('../../routes/recuperar-senha');
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' }
+});
 
 class LegacyRoutes {
   constructor() {
@@ -27,10 +38,27 @@ class LegacyRoutes {
     // IMPORTANTE: Criar rotas públicas PRIMEIRO (sem middleware de autenticação)
     
     // Rota de login específica SEM autenticação
-    router.post('/users/login', async (req, res) => {
+    router.post('/users/login', authLimiter, async (req, res) => {
       try {
         const { identifier, senha, tipo, companyIdentifier } = req.body;
-        
+        const { isLocalDev, getLocalDevUser } = require('../../config/localDev');
+
+        if (isLocalDev) {
+          const devUser = getLocalDevUser(tipo || 'empresa');
+          const jwt = require('jsonwebtoken');
+          const token = jwt.sign(
+            { userId: devUser.id, tipo: devUser.tipo, email: devUser.email },
+            getJwtSecret(),
+            { expiresIn: '7d' }
+          );
+
+          return res.json({
+            message: 'Login local realizado com sucesso',
+            token,
+            user: devUser
+          });
+        }
+
         // Importar modelos diretamente
         const { User, Empresa } = require('../../models');
         const { Op } = require('sequelize');
@@ -96,7 +124,7 @@ class LegacyRoutes {
             empresa_id: user.empresa_id,
             empresa_nome: user.tipo === 'empresa' ? user.razao_social : null
           },
-          process.env.JWT_SECRET || 'sua-chave-secreta-aqui',
+          getJwtSecret(),
           { expiresIn: '24h' }
         );
         
@@ -122,9 +150,10 @@ class LegacyRoutes {
     
     // Outras rotas públicas
     router.use('/auth', authRoutes);
+    router.use('/auth', authLimiter, recuperarSenhaRoutes);
     
     // Rotas protegidas (com autenticação)
-    router.use('/users', authenticateToken, usersRoutes);
+    router.use('/users', usersRoutes);
     router.use('/empresas', authenticateToken, empresasRoutes);
     router.use('/agendamentos', authenticateToken, agendamentosRoutes);
     router.use('/redes', authenticateToken, redesRoutes);

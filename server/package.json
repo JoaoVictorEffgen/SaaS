@@ -4,8 +4,8 @@
   "description": "Backend do TimeFlow - Sistema de Agendamento Online",
   "main": "index.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "index": "node index.js",
     "simple": "node simple-server.js",
     "simple-dev": "nodemon simple-server.js",

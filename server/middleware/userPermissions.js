@@ -25,6 +25,14 @@ const checkEmpresaOwnership = async (req, res, next) => {
       });
     }
 
+    const requestedEmpresaId = req.params.id || req.params.empresaId;
+    if (requestedEmpresaId && String(empresa.id) !== String(requestedEmpresaId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Você não tem permissão para acessar esta empresa'
+      });
+    }
+
     // Adicionar empresa ao request
     req.empresa = empresa;
     next();

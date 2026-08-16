@@ -5,25 +5,40 @@ const { Agendamento, User, Empresa } = require('../models');
 
 const router = express.Router();
 
+async function canSendNotification(user, agendamento) {
+  if (user.tipo === 'cliente') return agendamento.cliente_id === user.id;
+  if (user.tipo === 'funcionario') return agendamento.funcionario_id === user.id;
+  if (user.tipo === 'empresa') {
+    const empresa = await Empresa.findOne({ where: { user_id: user.id } });
+    return empresa && agendamento.empresa_id === empresa.id;
+  }
+  return false;
+}
+
+async function findAuthorizedAppointment(req, res) {
+  const agendamento = await Agendamento.findByPk(req.params.agendamentoId, {
+    include: [
+      { model: User, as: 'cliente', attributes: ['nome', 'email', 'telefone'] },
+      { model: Empresa, as: 'empresa', attributes: ['nome', 'telefone'] }
+    ]
+  });
+  if (!agendamento) {
+    res.status(404).json({ success: false, message: 'Agendamento não encontrado' });
+    return null;
+  }
+  if (!await canSendNotification(req.user, agendamento)) {
+    res.status(403).json({ success: false, message: 'Sem permissão para este agendamento' });
+    return null;
+  }
+  return agendamento;
+}
+
 // POST /api/notifications/email/confirmation/:agendamentoId - Enviar confirmação por email
 router.post('/email/confirmation/:agendamentoId', authenticateToken, async (req, res) => {
   try {
     const { agendamentoId } = req.params;
-    
-    // Buscar agendamento
-    const agendamento = await Agendamento.findByPk(agendamentoId, {
-      include: [
-        { model: User, as: 'cliente', attributes: ['nome', 'email'] },
-        { model: Empresa, as: 'empresa', attributes: ['nome', 'telefone', 'email'] }
-      ]
-    });
-
-    if (!agendamento) {
-      return res.status(404).json({
-        success: false,
-        message: 'Agendamento não encontrado'
-      });
-    }
+    const agendamento = await findAuthorizedAppointment(req, res);
+    if (!agendamento) return;
 
     // Dados para o email
     const emailData = {
@@ -57,21 +72,8 @@ router.post('/email/confirmation/:agendamentoId', authenticateToken, async (req,
 router.post('/email/reminder/:agendamentoId', authenticateToken, async (req, res) => {
   try {
     const { agendamentoId } = req.params;
-    
-    // Buscar agendamento
-    const agendamento = await Agendamento.findByPk(agendamentoId, {
-      include: [
-        { model: User, as: 'cliente', attributes: ['nome', 'email'] },
-        { model: Empresa, as: 'empresa', attributes: ['nome', 'telefone', 'email'] }
-      ]
-    });
-
-    if (!agendamento) {
-      return res.status(404).json({
-        success: false,
-        message: 'Agendamento não encontrado'
-      });
-    }
+    const agendamento = await findAuthorizedAppointment(req, res);
+    if (!agendamento) return;
 
     // Dados para o email
     const emailData = {
@@ -106,21 +108,11 @@ router.post('/whatsapp/:agendamentoId', authenticateToken, async (req, res) => {
   try {
     const { agendamentoId } = req.params;
     const { tipo } = req.body; // 'confirmation', 'reminder', 'cancellation'
-    
-    // Buscar agendamento
-    const agendamento = await Agendamento.findByPk(agendamentoId, {
-      include: [
-        { model: User, as: 'cliente', attributes: ['nome', 'telefone'] },
-        { model: Empresa, as: 'empresa', attributes: ['nome', 'telefone'] }
-      ]
-    });
-
-    if (!agendamento) {
-      return res.status(404).json({
-        success: false,
-        message: 'Agendamento não encontrado'
-      });
+    if (!['confirmation', 'reminder', 'cancellation'].includes(tipo)) {
+      return res.status(400).json({ success: false, message: 'Tipo de notificação inválido' });
     }
+    const agendamento = await findAuthorizedAppointment(req, res);
+    if (!agendamento) return;
 
     if (!agendamento.cliente.telefone) {
       return res.status(400).json({

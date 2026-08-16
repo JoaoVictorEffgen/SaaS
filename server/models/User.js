@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
+const bcrypt = require('bcrypt');
 
 const User = sequelize.define('User', {
   id: {
@@ -77,6 +78,19 @@ const User = sequelize.define('User', {
   ativo: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  codigo_recuperacao_hash: {
+    type: DataTypes.STRING(64),
+    allowNull: true
+  },
+  expiracao_recuperacao: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  tentativas_recuperacao: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0
   }
 }, {
   tableName: 'users',
@@ -87,7 +101,27 @@ const User = sequelize.define('User', {
     { fields: ['tipo'] },
     { fields: ['email'] },
     { fields: ['empresa_id'] }
-  ]
+  ],
+  hooks: {
+    beforeCreate: async (user) => {
+      if (user.senha && !user.senha.startsWith('$2')) {
+        user.senha = await bcrypt.hash(user.senha, 12);
+      }
+    },
+    beforeUpdate: async (user) => {
+      if (user.changed('senha') && user.senha && !user.senha.startsWith('$2')) {
+        user.senha = await bcrypt.hash(user.senha, 12);
+      }
+    }
+  }
 });
+
+User.findByEmail = function findByEmail(email) {
+  return this.findOne({ where: { email } });
+};
+
+User.prototype.verificarSenha = function verificarSenha(senha) {
+  return bcrypt.compare(senha, this.senha);
+};
 
 module.exports = User;

@@ -4,7 +4,10 @@ const bcrypt = require('bcrypt');
 
 class AuthSecurity {
   constructor() {
-    this.jwtSecret = process.env.JWT_SECRET || 'seu_jwt_secret_muito_seguro_aqui_2024';
+    this.jwtSecret = process.env.JWT_SECRET;
+    if (!this.jwtSecret || this.jwtSecret.length < 32) {
+      throw new Error('JWT_SECRET deve ser configurado com pelo menos 32 caracteres');
+    }
     this.tokenExpiry = '24h';
   }
 

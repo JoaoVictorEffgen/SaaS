@@ -21,7 +21,7 @@ const config = {
 
   // Configurações de segurança
   security: {
-    jwtSecret: process.env.JWT_SECRET || 'seu_jwt_secret_super_seguro_aqui_2024_agendapro_saas',
+    jwtSecret: process.env.JWT_SECRET || '',
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
     corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5001,http://192.168.0.7:3000'
   },

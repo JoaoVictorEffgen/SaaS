@@ -16,12 +16,6 @@ const RecuperarSenha = ({ onBack, tipoUsuario = 'empresa' }) => {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
 
-  const tiposUsuario = {
-    empresa: 'Empresa',
-    cliente: 'Cliente',
-    funcionario: 'Funcionário'
-  };
-
   // Função para enviar código de recuperação
   const enviarCodigoRecuperacao = async () => {
     if (!email) {
@@ -34,7 +28,7 @@ const RecuperarSenha = ({ onBack, tipoUsuario = 'empresa' }) => {
     setMessage('');
 
     try {
-      const response = await apiService.post('/auth/recuperar-senha', {
+      const response = await apiService.post('/auth', {
         email,
         tipo: tipoUsuario
       });
@@ -107,7 +101,7 @@ const RecuperarSenha = ({ onBack, tipoUsuario = 'empresa' }) => {
     setMessage('');
 
     try {
-      const response = await apiService.post('/auth/redefinir-senha', {
+      const response = await apiService.post('/auth/redefinir', {
         email,
         codigo,
         novaSenha,
@@ -137,7 +131,7 @@ const RecuperarSenha = ({ onBack, tipoUsuario = 'empresa' }) => {
     setMessage('');
 
     try {
-      const response = await apiService.post('/auth/recuperar-senha', {
+      const response = await apiService.post('/auth', {
         email,
         tipo: tipoUsuario
       });

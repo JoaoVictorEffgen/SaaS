@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
+const { getJwtSecret } = require('../middleware/auth');
 const { sendWelcomeEmail } = require('../services/emailService');
 
 const router = express.Router();
@@ -103,7 +104,7 @@ const validateLogin = [
 const generateToken = (userId) => {
   return jwt.sign(
     { userId },
-    process.env.JWT_SECRET,
+    getJwtSecret(),
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 };

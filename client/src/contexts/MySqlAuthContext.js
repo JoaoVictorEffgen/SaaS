@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import apiService from '../services/apiService';
+import { LOCAL_DEV, getLocalDevUser } from '../config/appConfig';
 
 const MySqlAuthContext = createContext();
 
@@ -10,6 +11,9 @@ export const useMySqlAuth = () => {
   }
   return context;
 };
+
+const getStoredDevUserType = () =>
+  localStorage.getItem('localDevUserType') || 'empresa';
 
 export const MySqlAuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -25,81 +29,92 @@ export const MySqlAuthProvider = ({ children }) => {
     }
   });
 
-  // Carregar dados do MySQL na inicialização
+  const applySubscription = useCallback((userData) => {
+    setSubscription({
+      plano: userData?.plano || 'free',
+      status: 'ativo',
+      recursos: {
+        whatsapp: userData?.plano !== 'free',
+        relatorios: userData?.plano !== 'free',
+        multiusuario: userData?.plano === 'business'
+      }
+    });
+  }, []);
+
+  const setLocalDevUser = useCallback((tipo = 'empresa') => {
+    const devUser = getLocalDevUser(tipo);
+    localStorage.setItem('localDevUserType', tipo);
+    apiService.setDevUserType(tipo);
+    setUser(devUser);
+    applySubscription(devUser);
+    setLoading(false);
+    setError(null);
+    return devUser;
+  }, [applySubscription]);
+
   useEffect(() => {
     const loadUserFromToken = async () => {
       try {
         setLoading(true);
+
+        if (LOCAL_DEV) {
+          setLocalDevUser(getStoredDevUserType());
+          return;
+        }
+
         const token = localStorage.getItem('token');
-        
+
         if (token) {
           apiService.setToken(token);
-          
-          // Buscar perfil do usuário via API
           const profile = await apiService.getProfile();
           if (profile) {
             setUser(profile);
-            setSubscription({
-              plano: profile.plano || 'free',
-              status: 'ativo',
-              recursos: {
-                whatsapp: profile.plano !== 'free',
-                relatorios: profile.plano !== 'free',
-                multiusuario: profile.plano === 'business'
-              }
-            });
+            applySubscription(profile);
           }
         }
-      } catch (error) {
-        console.error('Erro ao carregar perfil:', error);
-        // Se não conseguir carregar, limpar tudo
-        apiService.logout();
+      } catch (loadError) {
+        console.error('Erro ao carregar perfil:', loadError);
+        if (LOCAL_DEV) {
+          setLocalDevUser(getStoredDevUserType());
+        } else {
+          apiService.logout();
+        }
       } finally {
         setLoading(false);
       }
     };
 
     loadUserFromToken();
-  }, []);
+  }, [applySubscription, setLocalDevUser]);
 
-  // Função para limpar erros
   const clearError = () => {
     setError(null);
   };
 
-  // Login via MySQL
   const login = async (identifier, senha, tipo = null, companyIdentifier = null) => {
+    if (LOCAL_DEV) {
+      const devUser = setLocalDevUser(tipo || 'empresa');
+      return { success: true, user: devUser };
+    }
+
     try {
       setLoading(true);
-      setError(null); // Limpar erros anteriores
-      console.log('MySqlAuth - Login via MySQL:', identifier, tipo, companyIdentifier);
-      
+      setError(null);
+
       const result = await apiService.login(identifier, senha, tipo, companyIdentifier);
-      
+
       if (result && result.user) {
         const userData = result.user;
         setUser(userData);
-        
-        setSubscription({
-          plano: userData.plano || 'free',
-          status: 'ativo',
-          recursos: {
-            whatsapp: userData.plano !== 'free',
-            relatorios: userData.plano !== 'free',
-            multiusuario: userData.plano === 'business'
-          }
-        });
-        
-        console.log('✅ Login MySQL bem-sucedido:', userData);
+        applySubscription(userData);
         return { success: true, user: userData };
-      } else {
-        const errorMsg = result?.error || 'Credenciais inválidas';
-        setError(errorMsg);
-        return { success: false, error: errorMsg };
       }
-    } catch (error) {
-      console.error('❌ Erro no login MySQL:', error);
-      const errorMsg = error.message || 'Erro ao fazer login';
+
+      const errorMsg = result?.error || 'Credenciais inválidas';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
+    } catch (loginError) {
+      const errorMsg = loginError.message || 'Erro ao fazer login';
       setError(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
@@ -107,77 +122,68 @@ export const MySqlAuthProvider = ({ children }) => {
     }
   };
 
-  // Registro via MySQL
   const register = async (userData) => {
+    if (LOCAL_DEV) {
+      const devUser = setLocalDevUser(userData?.tipo || 'cliente');
+      return { success: true, user: devUser };
+    }
+
     try {
       setLoading(true);
-      console.log('MySqlAuth - Registro via MySQL:', userData);
-      
       const result = await apiService.register(userData);
-      
+
       if (result && result.user) {
         setUser(result.user);
-        setSubscription({
-          plano: result.user.plano || 'free',
-          status: 'ativo',
-          recursos: {
-            whatsapp: result.user.plano !== 'free',
-            relatorios: result.user.plano !== 'free',
-            multiusuario: result.user.plano === 'business'
-          }
-        });
-        
-        console.log('✅ Registro MySQL bem-sucedido:', result.user);
+        applySubscription(result.user);
         return { success: true };
-      } else {
-        return { success: false, error: result?.error || 'Erro no registro' };
       }
-    } catch (error) {
-      console.error('❌ Erro no registro MySQL:', error);
-      return { success: false, error: error.message || 'Erro ao registrar' };
+
+      return { success: false, error: result?.error || 'Erro no registro' };
+    } catch (registerError) {
+      return { success: false, error: registerError.message || 'Erro ao registrar' };
     } finally {
       setLoading(false);
     }
   };
 
-  // Atualizar usuário
   const updateUser = async (userData) => {
     try {
-      console.log('MySqlAuth - Atualizando usuário:', userData);
-      
-      // Se for uma empresa, atualizar via endpoint de empresa
+      if (LOCAL_DEV) {
+        setUser((prev) => ({ ...prev, ...userData }));
+        return { success: true };
+      }
+
       if (user && user.tipo === 'empresa') {
-        // Buscar empresa associada ao usuário
         const empresas = await apiService.getEmpresas();
-        const empresa = empresas.find(e => e.user_id === user.id);
-        
+        const empresa = empresas.find((e) => e.user_id === user.id);
+
         if (empresa) {
           const result = await apiService.updateEmpresa(empresa.id, userData);
           if (result) {
-            // Atualizar estado local
-            setUser(prev => ({ ...prev, ...userData }));
+            setUser((prev) => ({ ...prev, ...userData }));
             return { success: true };
           }
         }
       }
-      
-      // Para outros tipos de usuário ou se não encontrar empresa
+
       const result = await apiService.updateProfile(userData);
       if (result) {
-        setUser(prev => ({ ...prev, ...userData }));
+        setUser((prev) => ({ ...prev, ...userData }));
         return { success: true };
       }
-      
+
       return { success: false, error: 'Erro ao atualizar usuário' };
-    } catch (error) {
-      console.error('❌ Erro ao atualizar usuário:', error);
-      return { success: false, error: error.message || 'Erro ao atualizar usuário' };
+    } catch (updateError) {
+      return { success: false, error: updateError.message || 'Erro ao atualizar usuário' };
     }
   };
 
-  // Logout
   const logout = () => {
-    console.log('MySqlAuth - Logout via MySQL');
+    if (LOCAL_DEV) {
+      setLocalDevUser('empresa');
+      return;
+    }
+
     apiService.logout();
     setUser(null);
     setSubscription({
@@ -201,6 +207,8 @@ export const MySqlAuthProvider = ({ children }) => {
     updateUser,
     logout,
     clearError,
+    setLocalDevUser,
+    localDev: LOCAL_DEV,
     apiService
   };
 

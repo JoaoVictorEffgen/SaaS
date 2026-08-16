@@ -195,7 +195,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    await pacote.update(req.body);
+    const allowedFields = ['nome', 'descricao', 'preco', 'duracao', 'ativo'];
+    const updateData = Object.fromEntries(
+      Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
+    );
+    await pacote.update(updateData);
 
     res.json({
       success: true,

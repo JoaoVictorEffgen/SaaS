@@ -167,7 +167,7 @@ const VALIDATION_RULES = {
  */
 const SECURITY_CONFIG = {
   JWT: {
-    SECRET: process.env.JWT_SECRET || 'seu_jwt_secret_muito_seguro_aqui_2024',
+    SECRET: process.env.JWT_SECRET || '',
     EXPIRES_IN: '24h',
     ALGORITHM: 'HS256'
   },
@@ -176,7 +176,7 @@ const SECURITY_CONFIG = {
   },
   RATE_LIMIT: {
     WINDOW_MS: 15 * 60 * 1000, // 15 minutos
-    MAX_REQUESTS: 1000, // máximo 1000 requisições por janela (aumentado para desenvolvimento)
+    MAX_REQUESTS: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 300,
     SKIP_SUCCESSFUL_REQUESTS: true
   },
   CORS: {

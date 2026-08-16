@@ -4,6 +4,7 @@ class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
     this.token = localStorage.getItem('token');
+    this.devUserType = localStorage.getItem('localDevUserType') || 'empresa';
     console.log('🔧 ApiService inicializado com token:', this.token ? 'Presente' : 'Ausente');
   }
 
@@ -17,6 +18,10 @@ class ApiService {
       },
       ...options
     };
+
+    if (this.devUserType) {
+      config.headers['X-Dev-User-Type'] = this.devUserType;
+    }
 
     // Adicionar token se disponível (verificar tanto na instância quanto no localStorage)
     const token = this.token || localStorage.getItem('token');
@@ -232,6 +237,11 @@ class ApiService {
     this.token = null;
     localStorage.removeItem('token');
     localStorage.removeItem('currentUser');
+  }
+
+  setDevUserType(tipo) {
+    this.devUserType = tipo;
+    localStorage.setItem('localDevUserType', tipo);
   }
 
   setToken(token) {

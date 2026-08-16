@@ -35,7 +35,6 @@ router.get('/', async (req, res) => {
       return {
         id: empresa.id,
         nome: empresa.nome,
-        user_id: empresa.user_id,
         endereco: empresa.endereco,
         cidade: empresa.cidade,
         estado: empresa.estado,
@@ -57,6 +56,11 @@ router.get('/', async (req, res) => {
     console.error('❌ Erro ao buscar empresas:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error.message });
   }
+});
+
+// GET /api/empresas/me - Buscar empresa da conta autenticada
+router.get('/me', auth, checkEmpresaOwnership, async (req, res) => {
+  res.json(req.empresa);
 });
 
 // GET /api/empresas/:id - Buscar empresa por ID
@@ -119,35 +123,34 @@ router.get('/:id/promocoes', async (req, res) => {
 });
 
 // POST /api/empresas - Criar nova empresa
-router.post('/', async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const { razaoSocial, cnpj, endereco, cidade, estado, cep, email_contato, telefone, descricao, categoria, horario_funcionamento } = req.body;
-    
-    // Criar usuário primeiro
-    const user = await User.create({
-      nome: razaoSocial,
-      email: email_contato,
-      senha: req.body.senha || '123456', // Senha padrão temporária
-      tipo: 'empresa'
-    });
+    if (req.user.tipo !== 'empresa') {
+      return res.status(403).json({ error: 'Apenas contas de empresa podem criar empresas' });
+    }
+
+    const existingEmpresa = await Empresa.findOne({ where: { user_id: req.user.id } });
+    if (existingEmpresa) {
+      return res.status(409).json({ error: 'Esta conta já possui uma empresa' });
+    }
     
     // Criar empresa
     const empresa = await Empresa.create({
-      user_id: user.id,
-      razaoSocial,
+      user_id: req.user.id,
+      nome: razaoSocial,
       cnpj,
       endereco,
       cidade,
       estado,
       cep,
-      email_contato,
       telefone,
       descricao,
       categoria,
       horario_funcionamento
     });
     
-    res.status(201).json({ empresa, user });
+    res.status(201).json({ empresa });
   } catch (error) {
     console.error('Erro ao criar empresa:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
@@ -168,8 +171,15 @@ router.put('/:id', auth, checkEmpresaOwnership, async (req, res) => {
         horario_funcionamento: req.body.configuracoes
       });
     } else {
-      // Atualizar outros campos normalmente
-      await empresa.update(req.body);
+      const allowedFields = [
+        'nome', 'cnpj', 'telefone', 'endereco', 'cidade', 'estado', 'cep',
+        'descricao', 'horario_funcionamento', 'logo_url', 'logo_sistema',
+        'imagem_fundo_url', 'website', 'instagram', 'whatsapp', 'latitude', 'longitude'
+      ];
+      const updateData = Object.fromEntries(
+        Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
+      );
+      await empresa.update(updateData);
     }
     
     console.log('✅ Empresa atualizada com sucesso');
@@ -181,9 +191,9 @@ router.put('/:id', auth, checkEmpresaOwnership, async (req, res) => {
 });
 
 // DELETE /api/empresas/:id - Deletar empresa
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, checkEmpresaOwnership, async (req, res) => {
   try {
-    const empresa = await Empresa.findByPk(req.params.id);
+    const empresa = req.empresa;
     
     if (!empresa) {
       return res.status(404).json({ error: 'Empresa não encontrada' });

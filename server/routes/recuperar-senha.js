@@ -3,11 +3,9 @@
 // =============================================
 
 const express = require('express');
-const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { User, Empresa } = require('../models');
-const { SECURITY_CONFIG } = require('../packages/shared/constants');
 
 const router = express.Router();
 
@@ -29,12 +27,21 @@ const transporter = nodemailer.createTransport({
 
 // Gerar código de recuperação
 const gerarCodigoRecuperacao = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 1000000).toString();
 };
 
-// Gerar token de recuperação
-const gerarTokenRecuperacao = () => {
-  return crypto.randomBytes(32).toString('hex');
+const hashCodigoRecuperacao = (codigo) =>
+  crypto.createHash('sha256').update(`${process.env.JWT_SECRET}:${codigo}`).digest('hex');
+
+const respostaGenerica = 'Se os dados informados existirem, você receberá instruções para redefinir sua senha';
+
+const codigoValido = (user, codigo, tipo) => {
+  if (!user || user.tipo !== tipo || !user.codigo_recuperacao_hash || !user.expiracao_recuperacao) return false;
+  if (user.tentativas_recuperacao >= 5 || new Date() > user.expiracao_recuperacao) return false;
+  return crypto.timingSafeEqual(
+    Buffer.from(user.codigo_recuperacao_hash, 'hex'),
+    Buffer.from(hashCodigoRecuperacao(codigo), 'hex')
+  );
 };
 
 // Enviar email de recuperação
@@ -109,11 +116,8 @@ router.post('/', async (req, res) => {
   try {
     const { email, tipo } = req.body;
 
-    if (!email || !tipo) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email e tipo são obrigatórios'
-      });
+    if (!email || !['empresa', 'cliente', 'funcionario'].includes(tipo)) {
+      return res.status(400).json({ success: false, message: 'Dados inválidos' });
     }
 
     // Buscar usuário
@@ -122,31 +126,17 @@ router.post('/', async (req, res) => {
       include: tipo === 'empresa' ? [{ model: Empresa, as: 'empresa' }] : []
     });
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Usuário não encontrado'
-      });
-    }
-
-    // Verificar se o tipo do usuário corresponde
-    if (user.tipo !== tipo) {
-      return res.status(400).json({
-        success: false,
-        message: 'Tipo de usuário incorreto'
-      });
-    }
+    if (!user || user.tipo !== tipo) return res.json({ success: true, message: respostaGenerica });
 
     // Gerar código de recuperação
     const codigoRecuperacao = gerarCodigoRecuperacao();
-    const tokenRecuperacao = gerarTokenRecuperacao();
     const expiracao = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
 
     // Salvar código no banco (usando campos temporários)
     await user.update({
-      codigo_recuperacao: codigoRecuperacao,
-      token_recuperacao: tokenRecuperacao,
-      expiracao_recuperacao: expiracao
+      codigo_recuperacao_hash: hashCodigoRecuperacao(codigoRecuperacao),
+      expiracao_recuperacao: expiracao,
+      tentativas_recuperacao: 0
     });
 
     // Enviar email
@@ -162,8 +152,7 @@ router.post('/', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Código de recuperação enviado para seu e-mail',
-      expiracao: expiracao
+      message: respostaGenerica
     });
 
   } catch (error) {
@@ -189,43 +178,15 @@ router.post('/verificar-codigo', async (req, res) => {
     }
 
     // Buscar usuário
-    const user = await User.findOne({
-      where: { email }
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Usuário não encontrado'
-      });
-    }
-
-    // Verificar se o código existe e não expirou
-    if (!user.codigo_recuperacao || !user.expiracao_recuperacao) {
-      return res.status(400).json({
-        success: false,
-        message: 'Código de recuperação não encontrado ou expirado'
-      });
-    }
-
-    if (new Date() > user.expiracao_recuperacao) {
-      return res.status(400).json({
-        success: false,
-        message: 'Código de recuperação expirado'
-      });
-    }
-
-    if (user.codigo_recuperacao !== codigo) {
-      return res.status(400).json({
-        success: false,
-        message: 'Código de recuperação inválido'
-      });
+    const user = await User.findOne({ where: { email } });
+    if (!codigoValido(user, codigo, tipo)) {
+      if (user) await user.increment('tentativas_recuperacao');
+      return res.status(400).json({ success: false, message: 'Código inválido ou expirado' });
     }
 
     res.json({
       success: true,
-      message: 'Código verificado com sucesso',
-      token: user.token_recuperacao
+      message: 'Código verificado com sucesso'
     });
 
   } catch (error) {
@@ -250,56 +211,26 @@ router.post('/redefinir', async (req, res) => {
       });
     }
 
-    if (novaSenha.length < 6) {
+    if (novaSenha.length < 8) {
       return res.status(400).json({
         success: false,
-        message: 'A senha deve ter pelo menos 6 caracteres'
+        message: 'A senha deve ter pelo menos 8 caracteres'
       });
     }
 
     // Buscar usuário
-    const user = await User.findOne({
-      where: { email }
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Usuário não encontrado'
-      });
+    const user = await User.findOne({ where: { email } });
+    if (!codigoValido(user, codigo, tipo)) {
+      if (user) await user.increment('tentativas_recuperacao');
+      return res.status(400).json({ success: false, message: 'Código inválido ou expirado' });
     }
-
-    // Verificar se o código existe e não expirou
-    if (!user.codigo_recuperacao || !user.expiracao_recuperacao) {
-      return res.status(400).json({
-        success: false,
-        message: 'Código de recuperação não encontrado ou expirado'
-      });
-    }
-
-    if (new Date() > user.expiracao_recuperacao) {
-      return res.status(400).json({
-        success: false,
-        message: 'Código de recuperação expirado'
-      });
-    }
-
-    if (user.codigo_recuperacao !== codigo) {
-      return res.status(400).json({
-        success: false,
-        message: 'Código de recuperação inválido'
-      });
-    }
-
-    // Hash da nova senha
-    const senhaHash = await bcrypt.hash(novaSenha, 10);
 
     // Atualizar senha e limpar campos de recuperação
     await user.update({
-      senha: senhaHash,
-      codigo_recuperacao: null,
-      token_recuperacao: null,
-      expiracao_recuperacao: null
+      senha: novaSenha,
+      codigo_recuperacao_hash: null,
+      expiracao_recuperacao: null,
+      tentativas_recuperacao: 0
     });
 
     res.json({

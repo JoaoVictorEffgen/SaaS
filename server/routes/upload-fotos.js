@@ -6,6 +6,11 @@ const { authenticateToken } = require('../middleware/auth');
 const { User, Empresa } = require('../models');
 
 const router = express.Router();
+const ALLOWED_IMAGE_TYPES = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp'
+};
 
 // Configuração do Multer para upload de fotos de perfil
 const storageFotosPerfil = multer.diskStorage({
@@ -23,10 +28,7 @@ const storageFotosPerfil = multer.diskStorage({
     // Gerar nome único: usuario_[ID]_[timestamp].[extensão]
     const userId = req.user?.id || 'unknown';
     const timestamp = Date.now();
-    const extension = path.extname(file.originalname);
-    const sanitizedName = file.originalname
-      .replace(/[^a-zA-Z0-9.-]/g, '_') // Remove caracteres especiais
-      .substring(0, 50); // Limita tamanho
+    const extension = ALLOWED_IMAGE_TYPES[file.mimetype];
     
     const filename = `usuario_${userId}_${timestamp}${extension}`;
     cb(null, filename);
@@ -49,10 +51,7 @@ const storageLogosEmpresa = multer.diskStorage({
     // Gerar nome único: empresa_[ID]_[timestamp].[extensão]
     const empresaId = req.empresa?.id || 'unknown';
     const timestamp = Date.now();
-    const extension = path.extname(file.originalname);
-    const sanitizedName = file.originalname
-      .replace(/[^a-zA-Z0-9.-]/g, '_') // Remove caracteres especiais
-      .substring(0, 50); // Limita tamanho
+    const extension = ALLOWED_IMAGE_TYPES[file.mimetype];
     
     const filename = `empresa_${empresaId}_${timestamp}${extension}`;
     cb(null, filename);
@@ -61,8 +60,7 @@ const storageLogosEmpresa = multer.diskStorage({
 
 // Filtro de validação de arquivos
 const fileFilter = (req, file, cb) => {
-  // Verificar se é uma imagem
-  if (file.mimetype.startsWith('image/')) {
+  if (ALLOWED_IMAGE_TYPES[file.mimetype]) {
     cb(null, true);
   } else {
     cb(new Error('Apenas arquivos de imagem são permitidos!'), false);
@@ -74,7 +72,7 @@ const uploadFotosPerfil = multer({
   storage: storageFotosPerfil,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 30 * 1024 * 1024, // 30MB
+    fileSize: 5 * 1024 * 1024,
     files: 1 // Apenas 1 arquivo por vez
   }
 });
@@ -84,7 +82,7 @@ const uploadLogosEmpresa = multer({
   storage: storageLogosEmpresa,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 30 * 1024 * 1024, // 30MB
+    fileSize: 5 * 1024 * 1024,
     files: 1 // Apenas 1 arquivo por vez
   }
 });

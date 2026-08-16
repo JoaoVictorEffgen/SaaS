@@ -4,6 +4,21 @@ const { Agendamento, User, Empresa, Servico } = require('../models');
 const { Op } = require('sequelize');
 const { authenticateToken: auth } = require('../middleware/auth');
 
+async function getEmpresaIdDoUsuario(user) {
+  if (user.tipo === 'empresa') {
+    const empresa = await Empresa.findOne({ where: { user_id: user.id } });
+    return empresa?.id || null;
+  }
+  return user.empresa_id || null;
+}
+
+async function canManageAgendamento(user, agendamento) {
+  if (user.tipo === 'cliente') return agendamento.cliente_id === user.id;
+  if (user.tipo === 'funcionario') return agendamento.funcionario_id === user.id;
+  if (user.tipo === 'empresa') return agendamento.empresa_id === await getEmpresaIdDoUsuario(user);
+  return false;
+}
+
 // GET /api/agendamentos - Listar agendamentos
 router.get('/', auth, async (req, res) => {
   try {
@@ -11,7 +26,9 @@ router.get('/', auth, async (req, res) => {
     
     // Filtrar por tipo de usuário
     if (req.user.tipo === 'empresa') {
-      whereClause.empresa_id = req.user.id;
+      const empresaId = await getEmpresaIdDoUsuario(req.user);
+      if (!empresaId) return res.status(404).json({ error: 'Empresa não encontrada' });
+      whereClause.empresa_id = empresaId;
     } else if (req.user.tipo === 'funcionario') {
       whereClause.funcionario_id = req.user.id;
     } else if (req.user.tipo === 'cliente') {
@@ -61,17 +78,32 @@ router.post('/', auth, async (req, res) => {
       valor_total
     } = req.body;
     
+    if (req.user.tipo !== 'cliente') {
+      return res.status(403).json({ error: 'Apenas clientes podem criar agendamentos' });
+    }
+    const empresa = await Empresa.findOne({ where: { id: empresa_id, ativo: true } });
+    const funcionario = await User.findOne({
+      where: { id: funcionario_id, tipo: 'funcionario', empresa_id }
+    });
+    if (!empresa || !funcionario) {
+      return res.status(400).json({ error: 'Empresa ou funcionário inválido' });
+    }
+    const data = data_agendamento || req.body.data;
+    const hora = hora_inicio || req.body.hora;
+    if (!data || !hora) {
+      return res.status(400).json({ error: 'Data e horário são obrigatórios' });
+    }
+
     // Criar agendamento
     const agendamento = await Agendamento.create({
       empresa_id,
       cliente_id: req.user.id,
       funcionario_id,
-      data_agendamento,
-      hora_inicio,
-      hora_fim,
-      status: 'pendente',
+      data,
+      hora,
+      status: 'em_aprovacao',
       observacoes,
-      valor_total
+      valor_total: Number.isFinite(Number(valor_total)) ? Number(valor_total) : null
     });
     
     // Associar serviços (se houver tabela de relacionamento)
@@ -95,8 +127,7 @@ router.put('/:id/confirmar', auth, async (req, res) => {
       return res.status(404).json({ error: 'Agendamento não encontrado' });
     }
     
-    // Verificar se o usuário pode confirmar
-    if (req.user.tipo !== 'funcionario' && req.user.tipo !== 'empresa') {
+    if (!['funcionario', 'empresa'].includes(req.user.tipo) || !await canManageAgendamento(req.user, agendamento)) {
       return res.status(403).json({ error: 'Sem permissão para confirmar' });
     }
     
@@ -121,6 +152,9 @@ router.put('/:id/cancelar', auth, async (req, res) => {
       return res.status(404).json({ error: 'Agendamento não encontrado' });
     }
     
+    if (!await canManageAgendamento(req.user, agendamento)) {
+      return res.status(403).json({ error: 'Sem permissão para cancelar este agendamento' });
+    }
     const { justificativa } = req.body;
     
     await agendamento.update({
@@ -151,7 +185,9 @@ router.get('/hoje', auth, async (req, res) => {
     
     // Filtrar por tipo de usuário
     if (req.user.tipo === 'empresa') {
-      whereClause.empresa_id = req.user.id;
+      const empresaId = await getEmpresaIdDoUsuario(req.user);
+      if (!empresaId) return res.status(404).json({ error: 'Empresa não encontrada' });
+      whereClause.empresa_id = empresaId;
     } else if (req.user.tipo === 'funcionario') {
       whereClause.funcionario_id = req.user.id;
     }

@@ -1,23 +1,20 @@
 import React, { useEffect } from 'react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { useNavigate } from 'react-router-dom';
+import { LOCAL_DEV } from '../../config/appConfig';
 
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useMySqlAuth();
+  const { user, loading, localDev } = useMySqlAuth();
   const navigate = useNavigate();
-  
-  console.log('ProtectedRoute - user:', user, 'loading:', loading);
+  const bypassAuth = LOCAL_DEV || localDev;
 
   useEffect(() => {
-    // Se não está carregando e não há usuário, redirecionar para tela inicial
-    console.log('🔍 ProtectedRoute Debug:', { loading, user, userTipo: user?.tipo });
-    if (!loading && !user) {
-      console.log('❌ ProtectedRoute: Redirecionando para /');
+    if (!bypassAuth && !loading && !user) {
       navigate('/');
     }
-  }, [loading, user, navigate]);
+  }, [loading, user, navigate, bypassAuth]);
 
-  if (loading) {
+  if (loading && !bypassAuth) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -28,7 +25,7 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  if (!user) {
+  if (!user && !bypassAuth) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

@@ -9,6 +9,7 @@ import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import ThemeIconToggle from '../../components/ThemeIconToggle';
 import RecuperarSenha from '../../components/RecuperarSenha';
+import { LOCAL_DEV } from '../../config/appConfig';
 
 const AccessSelector = () => {
   const [empresasDestaque, setEmpresasDestaque] = useState([]);
@@ -61,7 +62,7 @@ const AccessSelector = () => {
 
   
   const navigate = useNavigate();
-  const { login, register, user } = useMySqlAuth();
+  const { login, register, user, setLocalDevUser } = useMySqlAuth();
   const { isDark } = useTheme();
 
   const beneficios = [
@@ -102,11 +103,15 @@ const AccessSelector = () => {
   };
 
   const handleAgendarEmpresa = (empresa) => {
-    // Salvar empresa selecionada
     localStorage.setItem('empresaSelecionada', JSON.stringify(empresa));
-    
-    // Forçar modal a aparecer
-      setShowClienteModal(true);
+
+    if (LOCAL_DEV) {
+      setLocalDevUser('cliente');
+      navigate('/cliente');
+      return;
+    }
+
+    setShowClienteModal(true);
       setClienteError('');
       setClienteForm({ nome: '', sobrenome: '', email: '', senha: '', confirmarSenha: '', whatsapp: '' });
       setIsCadastroMode(false);
@@ -172,6 +177,12 @@ const AccessSelector = () => {
   }, [loadEmpresasDestaque, user]);
 
   const openEmpresaModal = () => {
+    if (LOCAL_DEV) {
+      setLocalDevUser('empresa');
+      navigate('/empresa/dashboard');
+      return;
+    }
+
     setShowEmpresaModal(true);
     setEmpresaError('');
     setEmpresaForm({ email: '', senha: '', nome: '', telefone: '', endereco: '', cnpj: '' });
@@ -179,6 +190,12 @@ const AccessSelector = () => {
 
 
   const openFuncionarioModal = () => {
+    if (LOCAL_DEV) {
+      setLocalDevUser('funcionario');
+      navigate('/funcionario/agenda');
+      return;
+    }
+
     setShowFuncionarioModal(true);
     setFuncionarioError('');
     setFuncionarioForm({ companyIdentifier: '', identifier: '', senha: '' });
@@ -529,9 +546,14 @@ const AccessSelector = () => {
       </div>
 
       {/* Theme Toggle */}
-      <div className="absolute top-4 right-4 z-20">
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
+        {LOCAL_DEV && (
+          <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold border border-amber-300">
+            Modo Local (sem login)
+          </span>
+        )}
         <ThemeIconToggle />
-              </div>
+      </div>
 
       <div className="relative z-10">
         {/* Header com conteúdo TimeFlow - Com efeitos */}
@@ -693,7 +715,7 @@ const AccessSelector = () => {
                     Encontre e agende serviços com as melhores empresas da sua região
                   </p>
                   <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-4 md:mb-6">
-Z                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-green-300">
+                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-green-300">
                       <Clock className="w-3 h-3 md:w-4 md:h-4" />
                       <span>24/7</span>
                     </div>

@@ -1,38 +1,24 @@
 import React, { useEffect } from 'react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { useNavigate } from 'react-router-dom';
+import { LOCAL_DEV } from '../../config/appConfig';
 
 const TypedProtectedRoute = ({ children, allowedTypes = [] }) => {
-  const { user, loading } = useMySqlAuth();
+  const { user, loading, localDev } = useMySqlAuth();
   const navigate = useNavigate();
-  
-  // 🧪 MODO TESTE: Desabilitar proteções de tipo de usuário
-  const TEST_MODE = true; // Altere para false em produção
-  
-  console.log('TypedProtectedRoute - user:', user, 'loading:', loading, 'allowedTypes:', allowedTypes);
+  const bypassAuth = LOCAL_DEV || localDev;
 
   useEffect(() => {
-    // Se estiver em modo de teste, não fazer verificações de tipo
-    if (TEST_MODE) {
-      console.log('🧪 MODO TESTE: Verificações de tipo de usuário desabilitadas');
-      console.log('🔍 Usuário atual:', user?.tipo, 'Tipos permitidos:', allowedTypes);
+    if (bypassAuth) {
       return;
     }
 
-    console.log('🔍 TypedProtectedRoute: Verificando acesso. Loading:', loading, 'User:', user?.tipo, 'Allowed:', allowedTypes);
-    
-    // Se não está carregando e não há usuário, redirecionar para tela inicial
     if (!loading && !user) {
-      console.log('❌ TypedProtectedRoute: Usuário não logado, redirecionando para /');
       navigate('/');
       return;
     }
 
-    // Se há usuário mas não é do tipo permitido
     if (!loading && user && allowedTypes.length > 0 && !allowedTypes.includes(user.tipo)) {
-      console.log('🚫 TypedProtectedRoute: Tipo de usuário não permitido:', user.tipo, 'Permitidos:', allowedTypes);
-      
-      // Redirecionar para a área correta do usuário
       switch (user.tipo) {
         case 'empresa':
           navigate('/empresa/dashboard', { replace: true });
@@ -47,9 +33,9 @@ const TypedProtectedRoute = ({ children, allowedTypes = [] }) => {
           navigate('/', { replace: true });
       }
     }
-  }, [loading, user, allowedTypes, navigate]);
+  }, [loading, user, allowedTypes, navigate, bypassAuth]);
 
-  if (loading) {
+  if (loading && !bypassAuth) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -60,7 +46,7 @@ const TypedProtectedRoute = ({ children, allowedTypes = [] }) => {
     );
   }
 
-  if (!user) {
+  if (!user && !bypassAuth) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -72,8 +58,7 @@ const TypedProtectedRoute = ({ children, allowedTypes = [] }) => {
     );
   }
 
-  // Verificar se o tipo do usuário está permitido (apenas se não estiver em modo de teste)
-  if (!TEST_MODE && allowedTypes.length > 0 && !allowedTypes.includes(user.tipo)) {
+  if (!bypassAuth && allowedTypes.length > 0 && !allowedTypes.includes(user.tipo)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { User, Empresa } = require('../models');
+const { User, Empresa, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const { authenticateToken: auth } = require('../middleware/auth');
 const bcrypt = require('bcrypt');
@@ -9,11 +9,9 @@ const jwt = require('jsonwebtoken');
 // POST /api/users/login - Login do usuário
 router.post('/login', async (req, res) => {
   try {
-    console.log('🔍 Tentativa de login:', req.body);
     const { identifier, senha, tipo, companyIdentifier } = req.body;
     
     // Buscar usuário por email, telefone, CNPJ ou CPF (para funcionários)
-    console.log('🔍 Buscando usuário...');
     
     let whereCondition = {
       [Op.or]: [
@@ -59,10 +57,6 @@ router.post('/login', async (req, res) => {
     const user = await User.findOne({
       where: whereCondition
     });
-    console.log('👤 Usuário encontrado:', user ? user.id : 'Nenhum');
-    console.log('🔍 Senha recebida:', senha);
-    console.log('🔍 Senha no banco:', user ? user.senha : 'N/A');
-    console.log('🔍 Where condition:', JSON.stringify(whereCondition, null, 2));
 
     if (!user) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
@@ -75,7 +69,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
     
-    console.log('✅ Senha confere!');
     
     // Buscar dados da empresa se for funcionário
     let empresaData = null;
@@ -85,7 +78,8 @@ router.post('/login', async (req, res) => {
     }
 
     // Gerar JWT token
-    const jwtSecret = process.env.JWT_SECRET || 'seu_jwt_secret_muito_seguro_aqui_2024';
+    const { getJwtSecret } = require('../middleware/auth');
+    const jwtSecret = getJwtSecret();
     const token = jwt.sign(
       { 
         userId: user.id,
@@ -127,7 +121,10 @@ router.post('/login', async (req, res) => {
 router.get('/funcionarios/:empresaId', auth, async (req, res) => {
   try {
     const { empresaId } = req.params;
-    console.log('🔍 Buscando funcionários da empresa:', empresaId);
+    const empresa = await Empresa.findOne({ where: { id: empresaId, user_id: req.user.id } });
+    if (!empresa || req.user.tipo !== 'empresa') {
+      return res.status(403).json({ error: 'Você não tem permissão para ver estes funcionários' });
+    }
     
     const funcionarios = await User.findAll({
       where: {
@@ -137,7 +134,6 @@ router.get('/funcionarios/:empresaId', auth, async (req, res) => {
       attributes: ['id', 'nome', 'email', 'telefone', 'cpf', 'cargo', 'foto_url', 'ativo', 'created_at']
     });
     
-    console.log('👥 Funcionários encontrados:', funcionarios.length);
     res.json(funcionarios);
   } catch (error) {
     console.error('❌ Erro ao buscar funcionários:', error);
@@ -149,7 +145,15 @@ router.get('/funcionarios/:empresaId', auth, async (req, res) => {
 // POST /api/users/register - Registrar novo usuário
 router.post('/register', async (req, res) => {
   try {
-    const { nome, email, senha, tipo, telefone } = req.body;
+    const { nome, email, senha, telefone, razaoSocial, cnpj, endereco, cidade, estado, cep, descricao_servico, logo_url, whatsapp_contato } = req.body;
+    const isCompanyRegistration = Boolean(razaoSocial || cnpj);
+
+    if (!email || !senha || senha.length < 8) {
+      return res.status(400).json({ error: 'E-mail e uma senha de pelo menos 8 caracteres são obrigatórios' });
+    }
+    if (isCompanyRegistration && (!razaoSocial || !cnpj)) {
+      return res.status(400).json({ error: 'Razão social e CNPJ são obrigatórios para cadastrar uma empresa' });
+    }
     
     // Verificar se email já existe
     const existingUser = await User.findOne({ where: { email } });
@@ -157,14 +161,34 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Email já cadastrado' });
     }
     
-    // Criar usuário
-    const user = await User.create({
-      nome,
-      email,
-      senha, // Em produção, hash da senha
-      tipo: tipo || 'cliente',
-      telefone
+    const result = await sequelize.transaction(async (transaction) => {
+      const user = await User.create({
+        nome: isCompanyRegistration ? razaoSocial : nome,
+        email,
+        senha,
+        tipo: isCompanyRegistration ? 'empresa' : 'cliente',
+        telefone
+      }, { transaction });
+
+      let empresa = null;
+      if (isCompanyRegistration) {
+        empresa = await Empresa.create({
+          user_id: user.id,
+          nome: razaoSocial,
+          cnpj,
+          telefone,
+          endereco,
+          cidade,
+          estado,
+          cep,
+          descricao: descricao_servico,
+          logo_url,
+          whatsapp: whatsapp_contato
+        }, { transaction });
+      }
+      return { user, empresa };
     });
+    const { user, empresa } = result;
     
     res.status(201).json({
       user: {
@@ -173,7 +197,8 @@ router.post('/register', async (req, res) => {
         email: user.email,
         tipo: user.tipo,
         plano: user.plano
-      }
+      },
+      empresa
     });
   } catch (error) {
     console.error('Erro no registro:', error);
@@ -208,8 +233,14 @@ router.put('/profile', auth, async (req, res) => {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
     
-    await user.update(req.body);
-    res.json(user);
+    const allowedFields = ['nome', 'telefone', 'cpf', 'cargo', 'foto_url', 'url_foto_perfil'];
+    const updateData = Object.fromEntries(
+      Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
+    );
+    await user.update(updateData);
+    const safeUser = user.toJSON();
+    delete safeUser.senha;
+    res.json(safeUser);
   } catch (error) {
     console.error('Erro ao atualizar perfil:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });

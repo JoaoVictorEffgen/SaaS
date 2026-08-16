@@ -1,36 +1,56 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { isLocalDev, getLocalDevUser } = require('../config/localDev');
 
-// Middleware para verificar token JWT
-const authenticateToken = async (req, res, next) => {
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('JWT_SECRET deve ser configurado com pelo menos 32 caracteres');
+  }
+  return secret;
+};
+
+const attachLocalDevUser = async (req, res, next) => {
+  const devUserType = req.headers['x-dev-user-type'] || 'empresa';
+
   try {
-    console.log('🔍 [AUTH DEBUG] authenticateToken executado');
+    const dbUser = await User.findOne({
+      where: { tipo: devUserType },
+      order: [['id', 'ASC']]
+    });
+
+    if (dbUser) {
+      req.user = dbUser;
+      return next();
+    }
+  } catch (error) {
+    console.warn('⚠️ [LOCAL_DEV] Usando usuário mock em memória:', error.message);
+  }
+
+  req.user = getLocalDevUser(devUserType);
+  next();
+};
+
+const authenticateToken = async (req, res, next) => {
+  if (isLocalDev) {
+    return attachLocalDevUser(req, res, next);
+  }
+
+  try {
     const authHeader = req.headers['authorization'];
-    console.log('🔍 [AUTH DEBUG] authHeader:', authHeader);
-    
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-    console.log('🔍 [AUTH DEBUG] token extraído:', token ? 'Sim' : 'Não');
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      console.log('❌ [AUTH DEBUG] Token não fornecido');
       return res.status(401).json({
         error: 'Token de acesso não fornecido',
         message: 'É necessário fazer login para acessar este recurso'
       });
     }
 
-    // Verificar token
-    const jwtSecret = process.env.JWT_SECRET || 'seu_jwt_secret_muito_seguro_aqui_2024';
-    console.log('🔍 [AUTH DEBUG] Verificando token...');
-    
+    const jwtSecret = getJwtSecret();
     const decoded = jwt.verify(token, jwtSecret);
-    console.log('🔍 [AUTH DEBUG] Token decodificado:', decoded);
-    
-    // Buscar usuário no banco
-    console.log('🔍 [AUTH DEBUG] Buscando usuário com ID:', decoded.userId);
     const user = await User.findByPk(decoded.userId);
-    console.log('🔍 [AUTH DEBUG] Usuário encontrado:', user ? { id: user.id, tipo: user.tipo, ativo: user.ativo } : 'Nenhum');
-    
+
     if (!user) {
       return res.status(401).json({
         error: 'Usuário não encontrado',
@@ -45,7 +65,6 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Adicionar usuário ao request
     req.user = user;
     next();
   } catch (error) {
@@ -55,7 +74,7 @@ const authenticateToken = async (req, res, next) => {
         message: 'Token de acesso inválido'
       });
     }
-    
+
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         error: 'Token expirado',
@@ -71,9 +90,12 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
-// Middleware para verificar se usuário tem plano específico
 const requirePlan = (planoMinimo) => {
   return (req, res, next) => {
+    if (isLocalDev) {
+      return next();
+    }
+
     const planos = ['free', 'pro', 'business'];
     const planoUsuario = req.user.plano;
     const planoIndex = planos.indexOf(planoUsuario);
@@ -92,20 +114,19 @@ const requirePlan = (planoMinimo) => {
   };
 };
 
-// Middleware para verificar se usuário tem plano Pro ou superior
 const requirePro = requirePlan('pro');
-
-// Middleware para verificar se usuário tem plano Business
 const requireBusiness = requirePlan('business');
 
-// Middleware para verificar se usuário tem limite de agendamentos
 const checkAgendamentoLimit = async (req, res, next) => {
+  if (isLocalDev) {
+    return next();
+  }
+
   try {
     if (req.user.plano === 'free') {
-      // Buscar assinatura ativa para verificar limite
       const { Subscription } = require('../models');
       const subscription = await Subscription.findAtiva(req.user.id);
-      
+
       if (subscription && subscription.agendamentos_utilizados >= 10) {
         return res.status(403).json({
           error: 'Limite atingido',
@@ -115,7 +136,7 @@ const checkAgendamentoLimit = async (req, res, next) => {
         });
       }
     }
-    
+
     next();
   } catch (error) {
     console.error('Erro ao verificar limite de agendamentos:', error);
@@ -123,18 +144,21 @@ const checkAgendamentoLimit = async (req, res, next) => {
   }
 };
 
-// Middleware para verificar se usuário pode acessar recurso específico
 const checkResourceAccess = (resourceType) => {
   return async (req, res, next) => {
+    if (isLocalDev) {
+      return next();
+    }
+
     try {
       const resourceId = req.params.id || req.params.agendaId || req.params.agendamentoId;
-      
+
       if (!resourceId) {
         return next();
       }
 
       let resource;
-      
+
       switch (resourceType) {
         case 'agenda':
           const { Agenda } = require('../models');
@@ -155,7 +179,6 @@ const checkResourceAccess = (resourceType) => {
         });
       }
 
-      // Verificar se o usuário é dono do recurso
       if (resource.usuario_id !== req.user.id) {
         return res.status(403).json({
           error: 'Acesso negado',
@@ -163,7 +186,6 @@ const checkResourceAccess = (resourceType) => {
         });
       }
 
-      // Adicionar recurso ao request
       req.resource = resource;
       next();
     } catch (error) {
@@ -178,9 +200,10 @@ const checkResourceAccess = (resourceType) => {
 
 module.exports = {
   authenticateToken,
+  getJwtSecret,
   requirePlan,
   requirePro,
   requireBusiness,
   checkAgendamentoLimit,
   checkResourceAccess
-}; 
+};
