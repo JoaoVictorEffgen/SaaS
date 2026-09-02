@@ -17,6 +17,8 @@ import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import localStorageService from '../../services/localStorageService';
 import FuncionarioProfileTab from '../../components/funcionario/FuncionarioProfileTab';
 import FuncionarioStatsTab from '../../components/funcionario/FuncionarioStatsTab';
+import { listarAgendamentosLocais } from '../../services/agendamentoPersistence';
+import apiService from '../../services/apiService';
 
 const FuncionarioAgenda = () => {
   const navigate = useNavigate();
@@ -139,10 +141,27 @@ const FuncionarioAgenda = () => {
 
   const loadAgendamentos = async () => {
     try {
-      const agendamentosData = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+      let agendamentosData = [];
+
+      try {
+        const respostaApi = await apiService.getFuncionarioAgendamentos();
+        const dadosApi = respostaApi?.data ?? respostaApi;
+        if (Array.isArray(dadosApi)) {
+          agendamentosData = dadosApi;
+        }
+      } catch (apiError) {
+        console.warn('Não foi possível carregar agenda da API:', apiError.message);
+      }
+
+      if (agendamentosData.length === 0) {
+        agendamentosData = listarAgendamentosLocais({
+          funcionarioId: currentUser.id,
+          empresaId: currentUser.empresa_id
+        });
+      }
       
       const funcionarioAgendamentos = agendamentosData.filter(
-        agendamento => agendamento.funcionario_id === currentUser.id
+        agendamento => String(agendamento.funcionario_id) === String(currentUser.id)
       );
       
       // Verificar e marcar automaticamente agendamentos que já passaram como realizados
@@ -206,7 +225,7 @@ const FuncionarioAgenda = () => {
       const agendamentosMapeados = funcionarioAgendamentos.map(agendamento => ({
         ...agendamento,
         // Garantir que os campos estão corretos
-        clienteNome: agendamento.cliente_nome || agendamento.clienteNome || 'Cliente não informado',
+        clienteNome: agendamento.cliente_nome || agendamento.clienteNome || agendamento.cliente?.nome || 'Cliente não informado',
         servicoNome: agendamento.servicos ? 
           (Array.isArray(agendamento.servicos) ? 
             agendamento.servicos.map(s => s.nome).join(', ') : 
