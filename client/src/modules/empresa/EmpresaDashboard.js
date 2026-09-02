@@ -22,6 +22,8 @@ import {
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import EmpresaLogoHeader from '../../components/EmpresaLogoHeader';
 import { LOCAL_DEV } from '../../config/appConfig';
+import { listarAgendamentosLocais } from '../../services/agendamentoPersistence';
+import apiService from '../../services/apiService';
 
 const EmpresaDashboard = () => {
   const navigate = useNavigate();
@@ -32,16 +34,21 @@ const EmpresaDashboard = () => {
   const [currentRankingIndex, setCurrentRankingIndex] = useState(0);
   const [, setLogoUrl] = useState(null);
   const [empresaData, setEmpresaData] = useState(null);
+  const [apiAgendamentos, setApiAgendamentos] = useState(null);
   
   // Memoização dos dados para evitar recálculos desnecessários
+  const storageEmpresaId = empresaData?.id || user?.id;
   const { agendamentos, funcionarios } = useMemo(() => {
-    if (!user?.id) return { agendamentos: [], funcionarios: [] };
+    if (!storageEmpresaId) return { agendamentos: [], funcionarios: [] };
     
-    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${user.id}`) || '[]');
-    const funcionarios = JSON.parse(localStorage.getItem(`funcionarios_${user.id}`) || '[]');
+    const agendamentosLocais = listarAgendamentosLocais({ empresaId: storageEmpresaId });
+    const funcionarios = JSON.parse(localStorage.getItem(`funcionarios_${storageEmpresaId}`) || '[]');
     
-    return { agendamentos, funcionarios };
-  }, [user?.id]);
+    return {
+      agendamentos: apiAgendamentos ?? agendamentosLocais,
+      funcionarios
+    };
+  }, [storageEmpresaId, apiAgendamentos]);
 
   // Cálculo memoizado das estatísticas
   const stats = useMemo(() => {
@@ -84,15 +91,22 @@ const EmpresaDashboard = () => {
     if (!user?.id) return;
     
     try {
-      const { default: apiService } = await import('../../services/apiService');
-      
-      const empresaData = await apiService.getEmpresa('me');
-      if (empresaData?.logo_url) {
-        setLogoUrl(empresaData.logo_url);
+      const empresaAtual = await apiService.getEmpresa('me');
+      if (empresaAtual?.logo_url) {
+        setLogoUrl(empresaAtual.logo_url);
       }
-      setEmpresaData(empresaData);
+      setEmpresaData(empresaAtual);
     } catch (error) {
       console.error('Erro ao carregar logo da empresa:', error);
+    }
+
+    try {
+      const agendamentosApi = await apiService.getAgendamentos();
+      if (Array.isArray(agendamentosApi)) {
+        setApiAgendamentos(agendamentosApi);
+      }
+    } catch (error) {
+      console.warn('Não foi possível carregar agendamentos da API:', error.message);
     }
   };
 
@@ -128,7 +142,9 @@ const EmpresaDashboard = () => {
   const loadNotifications = () => {
     if (!currentUser?.id) return;
     
-    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${currentUser.id}`) || '[]');
+    const agendamentos = apiAgendamentos ?? listarAgendamentosLocais({
+      empresaId: empresaData?.id || currentUser.id
+    });
     const notificacoes = agendamentos
       .filter(a => a.status === 'agendado' || a.status === 'confirmado')
       .map(a => ({
@@ -149,9 +165,9 @@ const EmpresaDashboard = () => {
   // Carregar notificações quando o componente monta
   useEffect(() => {
     loadNotifications();
-    // Recarregar apenas quando a empresa autenticada mudar.
+    // Recarregar quando a empresa autenticada ou o cadastro da empresa mudar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id]);
+  }, [currentUser?.id, empresaData?.id, apiAgendamentos]);
 
   // Fechar dropdown quando clicar fora
   useEffect(() => {

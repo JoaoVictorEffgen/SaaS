@@ -14,6 +14,8 @@ import {
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import LoginStatusIndicator from '../shared/LoginStatusIndicator';
 import AvaliacaoModal from './AvaliacaoModal';
+import { listarAgendamentosLocais } from '../../services/agendamentoPersistence';
+import apiService from '../../services/apiService';
 
 const ClienteAgendamentos = () => {
   const navigate = useNavigate();
@@ -35,14 +37,25 @@ const ClienteAgendamentos = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, navigate]);
 
-  const loadAgendamentos = () => {
+  const loadAgendamentos = async () => {
     try {
-      const todosAgendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-      const agendamentosCliente = todosAgendamentos.filter(ag => 
-        ag.cliente_email === currentUser.email
-      );
+      try {
+        const agendamentosApi = await apiService.getAgendamentos();
+        if (Array.isArray(agendamentosApi)) {
+          const ordenados = [...agendamentosApi].sort(
+            (a, b) => new Date(`${b.data}T${b.hora || '00:00'}`) - new Date(`${a.data}T${a.hora || '00:00'}`)
+          );
+          setAgendamentos(ordenados);
+          return;
+        }
+      } catch (apiError) {
+        console.warn('Não foi possível carregar agendamentos da API:', apiError.message);
+      }
 
-      // Ordenar por data (mais recentes primeiro)
+      const agendamentosCliente = listarAgendamentosLocais({
+        clienteEmail: currentUser.email
+      });
+
       agendamentosCliente.sort((a, b) => new Date(b.data) - new Date(a.data));
       
       setAgendamentos(agendamentosCliente);
@@ -226,7 +239,9 @@ const ClienteAgendamentos = () => {
                       <div className="flex items-center gap-3 mb-3">
                         {getStatusIcon(agendamento.status)}
                         <h3 className="text-lg font-medium text-gray-900">
-                          {agendamento.servico_nome || 'Serviço'}
+                          {agendamento.servico_nome
+                            || (Array.isArray(agendamento.servicos) ? agendamento.servicos.map((servico) => servico.nome).join(', ') : null)
+                            || 'Serviço'}
                         </h3>
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(agendamento.status)}`}>
                           {getStatusText(agendamento.status)}
@@ -243,13 +258,13 @@ const ClienteAgendamentos = () => {
                         <div className="flex items-center gap-2">
                           <Clock className="w-4 h-4 text-gray-500" />
                           <span className="text-gray-600">Horário:</span>
-                          <span className="font-medium">{formatarHora(agendamento.hora_inicio)}</span>
+                          <span className="font-medium">{formatarHora(agendamento.hora || agendamento.hora_inicio)}</span>
                         </div>
                         
                         <div className="flex items-center gap-2">
                           <User className="w-4 h-4 text-gray-500" />
                           <span className="text-gray-600">Funcionário:</span>
-                          <span className="font-medium">{agendamento.funcionario_nome || 'Não definido'}</span>
+                          <span className="font-medium">{agendamento.funcionario_nome || agendamento.funcionario?.nome || 'Não definido'}</span>
                         </div>
                       </div>
 

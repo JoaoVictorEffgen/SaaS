@@ -33,8 +33,10 @@ router.get('/', auth, async (req, res) => {
       whereClause.funcionario_id = req.user.id;
     } else if (req.user.tipo === 'cliente') {
       whereClause.cliente_id = req.user.id;
+    } else {
+      return res.status(403).json({ error: 'Sem permissão para listar agendamentos' });
     }
-    
+
     const agendamentos = await Agendamento.findAll({
       where: whereClause,
       include: [
@@ -51,10 +53,10 @@ router.get('/', auth, async (req, res) => {
         {
           model: Empresa,
           as: 'empresa',
-          attributes: ['razaoSocial', 'endereco', 'telefone']
+          attributes: ['nome', 'endereco', 'telefone']
         }
       ],
-      order: [['data_agendamento', 'DESC']]
+      order: [['data', 'DESC'], ['hora', 'DESC']]
     });
     
     res.json(agendamentos);
@@ -92,6 +94,18 @@ router.post('/', auth, async (req, res) => {
     const hora = hora_inicio || req.body.hora;
     if (!data || !hora) {
       return res.status(400).json({ error: 'Data e horário são obrigatórios' });
+    }
+
+    const horarioOcupado = await Agendamento.findOne({
+      where: {
+        funcionario_id,
+        data,
+        hora,
+        status: { [Op.notIn]: ['cancelado'] }
+      }
+    });
+    if (horarioOcupado) {
+      return res.status(409).json({ error: 'Horário indisponível para este funcionário' });
     }
 
     // Criar agendamento
@@ -174,13 +188,14 @@ router.put('/:id/cancelar', auth, async (req, res) => {
 router.get('/hoje', auth, async (req, res) => {
   try {
     const hoje = new Date();
-    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-    const fimDia = new Date(inicioDia.getTime() + 24 * 60 * 60 * 1000);
+    const dataHoje = [
+      hoje.getFullYear(),
+      String(hoje.getMonth() + 1).padStart(2, '0'),
+      String(hoje.getDate()).padStart(2, '0')
+    ].join('-');
     
     let whereClause = {
-      data_agendamento: {
-        [Op.between]: [inicioDia, fimDia]
-      }
+      data: dataHoje
     };
     
     // Filtrar por tipo de usuário
@@ -190,6 +205,10 @@ router.get('/hoje', auth, async (req, res) => {
       whereClause.empresa_id = empresaId;
     } else if (req.user.tipo === 'funcionario') {
       whereClause.funcionario_id = req.user.id;
+    } else if (req.user.tipo === 'cliente') {
+      whereClause.cliente_id = req.user.id;
+    } else {
+      return res.status(403).json({ error: 'Sem permissão para listar agendamentos' });
     }
     
     const agendamentos = await Agendamento.findAll({
@@ -206,7 +225,7 @@ router.get('/hoje', auth, async (req, res) => {
           attributes: ['nome', 'email']
         }
       ],
-      order: [['hora_inicio', 'ASC']]
+      order: [['hora', 'ASC']]
     });
     
     res.json(agendamentos);

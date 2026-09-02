@@ -5,6 +5,7 @@ import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import WhatsAppChat from '../shared/WhatsAppChat';
 import CompanyLocation from '../../components/shared/CompanyLocation';
 import useEmpresaBookingData from '../../hooks/useEmpresaBookingData';
+import { persistirAgendamento } from '../../services/agendamentoPersistence';
 
 const AgendamentoEmpresa = () => {
   const { empresaId } = useParams();
@@ -140,7 +141,7 @@ const AgendamentoEmpresa = () => {
 
 
   // Nova função para confirmar agendamento (primeiro agendamento normal)
-  const handleConfirmarAgendamento = () => {
+  const handleConfirmarAgendamento = async () => {
     // Validar campos obrigatórios
     if (!quickBooking.nome || !quickBooking.telefone || !quickBooking.data || 
         !quickBooking.hora || !quickBooking.funcionario_id || quickBooking.servicos.length === 0) {
@@ -164,10 +165,13 @@ const AgendamentoEmpresa = () => {
       data_criacao: new Date().toISOString()
     };
 
-    // Salvar agendamento
-    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
-    agendamentos.push(novoAgendamento);
-    localStorage.setItem(`agendamentos_${empresaId}`, JSON.stringify(agendamentos));
+    try {
+      await persistirAgendamento(novoAgendamento);
+    } catch (error) {
+      console.error('Erro ao persistir agendamento:', error);
+      alert(error.message || 'Não foi possível salvar o agendamento. Tente novamente.');
+      return;
+    }
 
     // Definir status como pendente
     setAgendamentoStatus('pendente');
@@ -236,7 +240,7 @@ const AgendamentoEmpresa = () => {
   };
 
   // Função para confirmar recorrência e criar os agendamentos adicionais
-  const handleConfirmarRecorrencia = () => {
+  const handleConfirmarRecorrencia = async () => {
     if (recurringConfig.total_agendamentos === 0) {
       alert('Por favor, selecione o número de agendamentos.');
       return;
@@ -285,10 +289,15 @@ const AgendamentoEmpresa = () => {
       agendamentosRecorrentes.push(agendamentoRecorrente);
     }
 
-    // Salvar agendamentos recorrentes
-    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
-    agendamentos.push(...agendamentosRecorrentes);
-    localStorage.setItem(`agendamentos_${empresaId}`, JSON.stringify(agendamentos));
+    try {
+      for (const agendamentoRecorrente of agendamentosRecorrentes) {
+        await persistirAgendamento(agendamentoRecorrente);
+      }
+    } catch (error) {
+      console.error('Erro ao persistir agendamentos recorrentes:', error);
+      alert(error.message || 'Não foi possível salvar todos os agendamentos recorrentes.');
+      return;
+    }
 
     // Fechar modal e mostrar confirmação
     setShowRecurringOptions(false);

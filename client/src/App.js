@@ -21,6 +21,7 @@ import {
   AgendamentoEmpresa,
   FuncionarioAgenda
 } from './modules';
+import ClienteAgendamentos from './components/cliente/ClienteAgendamentos';
 
 // Importações dos componentes de pacotes
 import DashboardPacotes from './components/pacotes/DashboardPacotes';
@@ -62,6 +63,7 @@ function App() {
           {/* Rotas B2C (Clientes) - Apenas para usuários tipo 'cliente' */}
           <Route path="/cliente" element={<TypedProtectedRoute allowedTypes={['cliente']}><SelecaoEmpresa /></TypedProtectedRoute>} />
           <Route path="/cliente/empresa/:empresaId" element={<TypedProtectedRoute allowedTypes={['cliente']}><AgendamentoEmpresa /></TypedProtectedRoute>} />
+          <Route path="/cliente/agendamentos" element={<TypedProtectedRoute allowedTypes={['cliente']}><ClienteAgendamentos /></TypedProtectedRoute>} />
           
           {/* Rotas de Funcionários - Apenas para usuários tipo 'funcionario' */}
           <Route path="/funcionario/agenda" element={<TypedProtectedRoute allowedTypes={['funcionario']}><FuncionarioAgenda /></TypedProtectedRoute>} />

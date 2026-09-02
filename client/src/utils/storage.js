@@ -13,3 +13,8 @@ export const readJsonStorage = (key, fallback, storage = localStorage) => {
   }
 };
 
+export const writeJsonStorage = (key, value, storage = localStorage) => {
+  storage.setItem(key, JSON.stringify(value));
+  return value;
+};
+
