@@ -75,6 +75,21 @@ const User = sequelize.define('User', {
     defaultValue: null,
     comment: 'URL da foto de perfil do usuário'
   },
+  disponibilidade: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null
+  },
+  pausas: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: []
+  },
+  plano: {
+    type: DataTypes.ENUM('free', 'pro', 'business'),
+    allowNull: false,
+    defaultValue: 'free'
+  },
   ativo: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

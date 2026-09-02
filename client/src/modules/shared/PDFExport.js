@@ -141,9 +141,9 @@ const PDFExport = ({
         yPosition += 15;
 
         const funcionariosData = funcionarios.map(funcionario => {
-          const agendamentosFuncionario = agendamentos.filter(a => a.funcionario_id === funcionario.id);
+          const agendamentosFuncionario = agendamentos.filter(a => String(a.funcionario_id) === String(funcionario.id));
           const receitaFuncionario = agendamentosFuncionario
-            .filter(a => a.status === 'confirmado')
+            .filter(a => a.status === 'realizado')
             .reduce((sum, a) => sum + (parseFloat(a.valor_total) || 0), 0);
 
           return [
@@ -265,12 +265,12 @@ const PDFExport = ({
     const texts = [];
     
     if (filters.funcionario) {
-      const funcionario = funcionarios.find(f => f.id === filters.funcionario);
+      const funcionario = funcionarios.find(f => String(f.id) === String(filters.funcionario));
       texts.push(`• Funcionário: ${funcionario?.nome || 'Não encontrado'}`);
     }
     
     if (filters.servico) {
-      const servico = servicos.find(s => s.id === filters.servico);
+      const servico = servicos.find(s => String(s.id) === String(filters.servico));
       texts.push(`• Serviço: ${servico?.nome || 'Não encontrado'}`);
     }
     
@@ -314,15 +314,17 @@ const PDFExport = ({
   const getServicosMaisSolicitados = () => {
     const servicosCount = {};
     agendamentos.forEach(agendamento => {
-      const servicoId = agendamento.servico_id;
-      servicosCount[servicoId] = (servicosCount[servicoId] || 0) + 1;
+      (agendamento.servicos || []).forEach((service) => {
+        const servicoId = String(service.id);
+        servicosCount[servicoId] = (servicosCount[servicoId] || 0) + 1;
+      });
     });
 
     return Object.entries(servicosCount)
       .map(([servicoId, count]) => {
-        const servico = servicos.find(s => s.id === servicoId);
+        const servico = servicos.find(s => String(s.id) === servicoId);
         const receita = agendamentos
-          .filter(a => a.servico_id === servicoId && a.status === 'confirmado')
+          .filter(a => (a.servicos || []).some((service) => String(service.id) === String(servicoId)) && a.status === 'realizado')
           .reduce((sum, a) => sum + (parseFloat(a.valor_total) || 0), 0);
 
         return {
@@ -344,7 +346,7 @@ const PDFExport = ({
       
       const agendamentosDia = agendamentos.filter(a => a.data === dataStr);
       const receitaDia = agendamentosDia
-        .filter(a => a.status === 'confirmado')
+        .filter(a => a.status === 'realizado')
         .reduce((sum, a) => sum + (parseFloat(a.valor_total) || 0), 0);
 
       ultimos7Dias.push({

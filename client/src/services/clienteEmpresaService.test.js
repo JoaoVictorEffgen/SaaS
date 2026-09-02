@@ -24,7 +24,13 @@ describe('clienteEmpresaService', () => {
   it('normaliza a lista de empresas recebida da API', async () => {
     apiService.getClientesEmpresas.mockResolvedValue({
       success: true,
-      data: [{ id: 1, nome: 'Empresa Demo' }]
+      data: [{
+        id: 1,
+        nome: 'Empresa Demo',
+        total_profissionais: 2,
+        disponivel_para_agendamento: true,
+        servicos: [{ id: 4, nome: 'Corte', preco: '45.50', duracao_minutos: 30 }]
+      }]
     });
 
     await expect(listarEmpresasCliente()).resolves.toEqual([
@@ -32,7 +38,11 @@ describe('clienteEmpresaService', () => {
         id: '1',
         nome: 'Empresa Demo',
         horario_inicio: '08:00',
-        horario_fim: '18:00'
+        horario_fim: '18:00',
+        horario_informado: false,
+        total_profissionais: 2,
+        disponivel_para_agendamento: true,
+        servicos: [expect.objectContaining({ id: '4', preco: 45.5, duracao: 30 })]
       })
     ]);
   });
@@ -63,4 +73,3 @@ describe('clienteEmpresaService', () => {
     );
   });
 });
-

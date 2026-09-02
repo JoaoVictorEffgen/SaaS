@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { checkIsCliente } = require('../middleware/userPermissions');
-const { Empresa, Promocao, Servico, User } = require('../models');
+const { Empresa, Promocao, Servico, User, Agendamento } = require('../models');
 
 // GET /api/clientes/empresas - Buscar empresas disponíveis para clientes
-router.get('/empresas', authenticateToken, checkIsCliente, async (req, res) => {
+router.get('/empresas', async (req, res) => {
   try {
     console.log('🔍 Buscando empresas para cliente...');
     
@@ -14,8 +14,8 @@ router.get('/empresas', authenticateToken, checkIsCliente, async (req, res) => {
       where: { ativo: true },
       attributes: [
         'id', 'nome', 'endereco', 'cidade', 'estado', 'cep', 
-        'descricao', 'logo_url', 'imagem_fundo_url', 'website', 
-        'instagram', 'whatsapp'
+        'descricao', 'categoria', 'logo_url', 'imagem_fundo_url', 'website',
+        'instagram', 'whatsapp', 'horario_funcionamento'
       ]
     });
     
@@ -40,16 +40,37 @@ router.get('/empresas', authenticateToken, checkIsCliente, async (req, res) => {
             : `${req.protocol}://${req.get('host')}${empresa.imagem_fundo_url}`;
         }
 
-        // Buscar promoções ativas e em destaque
-        const promocoes = await Promocao.findAll({
-          where: { 
-            empresa_id: empresa.id,
-            ativo: true,
-            destaque: true
-          },
-          attributes: ['id', 'nome', 'tipo_desconto', 'valor_desconto', 'meses_gratis'],
-          order: [['created_at', 'DESC']]
-        });
+        const [promocoes, servicos, totalProfissionais] = await Promise.all([
+          Promocao.findAll({
+            where: {
+              empresa_id: empresa.id,
+              ativo: true,
+              destaque: true
+            },
+            attributes: ['id', 'nome', 'tipo_desconto', 'valor_desconto', 'meses_gratis'],
+            order: [['created_at', 'DESC']]
+          }),
+          Servico.findAll({
+            where: {
+              empresa_id: empresa.id,
+              ativo: true
+            },
+            attributes: ['id', 'nome', 'categoria', 'duracao_minutos', 'preco'],
+            order: [['nome', 'ASC']]
+          }),
+          User.count({
+            where: {
+              empresa_id: empresa.id,
+              tipo: 'funcionario',
+              ativo: true
+            }
+          })
+        ]);
+
+        const categorias = [...new Set([
+          empresa.categoria,
+          ...servicos.map(servico => servico.categoria)
+        ].filter(Boolean))];
 
         return {
           id: empresa.id,
@@ -59,12 +80,18 @@ router.get('/empresas', authenticateToken, checkIsCliente, async (req, res) => {
           estado: empresa.estado,
           cep: empresa.cep,
           descricao: empresa.descricao,
+          categoria: empresa.categoria,
           logo_url: logoUrl,
           imagem_fundo_url: imagemFundoUrl,
           website: empresa.website,
           instagram: empresa.instagram,
           whatsapp: empresa.whatsapp,
-          promocoes: promocoes
+          horario_funcionamento: empresa.horario_funcionamento,
+          promocoes,
+          servicos,
+          categorias,
+          total_profissionais: totalProfissionais,
+          disponivel_para_agendamento: servicos.length > 0 && totalProfissionais > 0
         };
       })
     );
@@ -95,7 +122,7 @@ router.get('/empresa/:id', authenticateToken, checkIsCliente, async (req, res) =
       },
       attributes: [
         'id', 'nome', 'endereco', 'cidade', 'estado', 'cep', 
-        'descricao', 'logo_url', 'imagem_fundo_url', 'website', 
+        'descricao', 'categoria', 'logo_url', 'imagem_fundo_url', 'website',
         'instagram', 'whatsapp', 'horario_funcionamento'
       ]
     });
@@ -145,7 +172,7 @@ router.get('/empresa/:id', authenticateToken, checkIsCliente, async (req, res) =
           tipo: 'funcionario',
           ativo: true
         },
-        attributes: ['id', 'nome', 'cargo', 'foto_url', 'url_foto_perfil'],
+        attributes: ['id', 'nome', 'cargo', 'foto_url', 'url_foto_perfil', 'disponibilidade', 'pausas'],
         order: [['nome', 'ASC']]
       })
     ]);
@@ -170,6 +197,44 @@ router.get('/empresa/:id', authenticateToken, checkIsCliente, async (req, res) =
       success: false,
       message: 'Erro interno do servidor'
     });
+  }
+});
+
+// Retorna apenas blocos ocupados, sem expor dados de outros clientes.
+router.get('/empresa/:id/disponibilidade', authenticateToken, checkIsCliente, async (req, res) => {
+  try {
+    const { data, funcionario_id: funcionarioId } = req.query;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data || '')) || !funcionarioId) {
+      return res.status(400).json({ error: 'Data e funcionário são obrigatórios' });
+    }
+    const funcionario = await User.findOne({
+      where: { id: funcionarioId, empresa_id: req.params.id, tipo: 'funcionario', ativo: true },
+      attributes: ['id']
+    });
+    if (!funcionario) return res.status(404).json({ error: 'Funcionário não encontrado' });
+
+    const appointments = await Agendamento.findAll({
+      where: {
+        empresa_id: req.params.id,
+        funcionario_id: funcionarioId,
+        data,
+        status: ['em_aprovacao', 'agendado', 'confirmado']
+      },
+      attributes: ['hora', 'servicos']
+    });
+    res.json({
+      success: true,
+      data: appointments.map((appointment) => ({
+        hora: appointment.hora,
+        duracao_minutos: (appointment.servicos || []).reduce(
+          (total, service) => total + (Number(service.duracao_minutos) || 0),
+          0
+        ) || 60
+      }))
+    });
+  } catch (error) {
+    console.error('Erro ao consultar disponibilidade:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
 

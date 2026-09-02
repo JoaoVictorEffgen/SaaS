@@ -5,72 +5,126 @@ const { Op } = require('sequelize');
 const { authenticateToken: auth } = require('../middleware/auth');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
+const { isLocalDev, LOCAL_DEV_USERS, getLocalDevUser } = require('../config/localDev');
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' }
+});
+
+const supportedUserTypes = new Set(['empresa', 'funcionario', 'cliente']);
+
+const formatCpf = (digits) =>
+  digits.length === 11
+    ? digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+    : null;
+
+const formatCnpj = (digits) =>
+  digits.length === 14
+    ? digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+    : null;
+
+const buildIdentifierConditions = (identifier) => {
+  const value = String(identifier || '').trim();
+  const digits = value.replace(/\D/g, '');
+  const variants = [...new Set([value, digits, formatCpf(digits), formatCnpj(digits)].filter(Boolean))];
+
+  return variants.flatMap((variant) => [
+    { email: variant.toLowerCase() },
+    { telefone: variant },
+    { cpf: variant },
+    { cnpj: variant }
+  ]);
+};
+
+const inferLocalUserType = (identifier, requestedType) => {
+  if (requestedType && supportedUserTypes.has(requestedType)) return requestedType;
+
+  const value = String(identifier || '').trim().toLowerCase();
+  const match = Object.entries(LOCAL_DEV_USERS).find(([, profile]) =>
+    [profile.email, profile.telefone, profile.cpf, profile.cnpj]
+      .filter(Boolean)
+      .some((candidate) => String(candidate).toLowerCase() === value)
+  );
+
+  return match?.[0] || 'empresa';
+};
+
+const isLocalDevIdentifier = (identifier) => {
+  const value = String(identifier || '').trim().toLowerCase();
+  return Object.values(LOCAL_DEV_USERS).some((profile) =>
+    [profile.email, profile.telefone, profile.cpf, profile.cnpj]
+      .filter(Boolean)
+      .some((candidate) => String(candidate).toLowerCase() === value)
+  );
+};
+
+const companyMatchesIdentifier = async (empresaId, companyIdentifier) => {
+  if (!companyIdentifier) return true;
+
+  const value = String(companyIdentifier).trim();
+  const companyConditions = [
+    { cnpj: value },
+    { telefone: value },
+    { identificador_empresa: value }
+  ];
+
+  if (/^\d+$/.test(value)) companyConditions.push({ id: Number(value) });
+
+  const owner = value.includes('@')
+    ? await User.findOne({ where: { email: value.toLowerCase(), tipo: 'empresa' } })
+    : null;
+  if (owner) companyConditions.push({ user_id: owner.id });
+
+  const company = await Empresa.findOne({ where: { [Op.or]: companyConditions } });
+  return Boolean(company && String(company.id) === String(empresaId));
+};
 
 // POST /api/users/login - Login do usuário
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { identifier, senha, tipo, companyIdentifier } = req.body;
-    
-    // Buscar usuário por email, telefone, CNPJ ou CPF (para funcionários)
-    
-    let whereCondition = {
-      [Op.or]: [
-        { email: identifier },
-        { telefone: identifier },
-        { cnpj: identifier }
-      ],
-      tipo: tipo || 'cliente'
-    };
-    
-    // Para funcionários, também buscar por CPF (com e sem formatação)
-    if (tipo === 'funcionario') {
-      whereCondition[Op.or].push({ cpf: identifier });
-      // Também buscar CPF com formatação (ex: 123.456.789-00)
-      const cpfFormatado = identifier.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-      whereCondition[Op.or].push({ cpf: cpfFormatado });
-      
-      // FUNCIONÁRIO PRECISA ESTAR LIGADO À EMPRESA
-      if (companyIdentifier) {
-        const empresa = await Empresa.findOne({
-          where: {
-            [Op.or]: [
-              { email: companyIdentifier },
-              { telefone: companyIdentifier },
-              { cnpj: companyIdentifier },
-              { id: companyIdentifier }
-            ]
-          }
-        });
-        
-        if (!empresa) {
-          return res.status(401).json({ error: 'Empresa não encontrada' });
-        }
-        
-        whereCondition.empresa_id = empresa.id;
-      } else {
-        return res.status(400).json({ error: 'Funcionário precisa informar a empresa' });
-      }
-    }
-    
-    const user = await User.findOne({
-      where: whereCondition
-    });
 
-    if (!user) {
+    if (!identifier || !senha || (tipo && !supportedUserTypes.has(tipo))) {
+      return res.status(400).json({ error: 'Dados de acesso inválidos' });
+    }
+
+    if (isLocalDev && isLocalDevIdentifier(identifier)) {
+      const devUser = getLocalDevUser(inferLocalUserType(identifier, tipo));
+      const { getJwtSecret } = require('../middleware/auth');
+      const token = jwt.sign(
+        { userId: devUser.id, tipo: devUser.tipo, email: devUser.email, empresa_id: devUser.empresa_id },
+        getJwtSecret(),
+        { expiresIn: '24h' }
+      );
+      return res.json({ user: devUser, token });
+    }
+
+    const whereCondition = { [Op.or]: buildIdentifierConditions(identifier) };
+    if (tipo) whereCondition.tipo = tipo;
+
+    const candidates = await User.findAll({ where: whereCondition });
+    const passwordMatches = (await Promise.all(candidates.map(async (candidate) =>
+      await bcrypt.compare(senha, candidate.senha) ? candidate : null
+    ))).filter(Boolean);
+    // Nunca escolha arbitrariamente entre contas que compartilham telefone ou documento.
+    const user = passwordMatches.length === 1 ? passwordMatches[0] : null;
+
+    if (!user || user.ativo === false) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
-    
-    // Verificar senha com bcrypt
-    const senhaValida = await bcrypt.compare(senha, user.senha);
-    if (!senhaValida) {
+
+    if (user.tipo === 'funcionario' && !(await companyMatchesIdentifier(user.empresa_id, companyIdentifier))) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
-    
     
     // Buscar dados da empresa se for funcionário
     let empresaData = null;
     if (user.tipo === 'funcionario' && user.empresa_id) {
-      const { Empresa } = require('../models');
       empresaData = await Empresa.findByPk(user.empresa_id);
     }
 
@@ -102,7 +156,8 @@ router.post('/login', async (req, res) => {
         empresa_id: user.empresa_id,
         empresa_nome: empresaData?.nome || null,
         cargo: user.cargo,
-        foto_url: user.foto_url
+        foto_url: user.foto_url,
+        plano: user.plano
       },
       token: token
     });
@@ -140,50 +195,96 @@ router.get('/funcionarios/:empresaId', auth, async (req, res) => {
 // POST /api/users/register - Registrar novo usuário
 router.post('/register', async (req, res) => {
   try {
-    const { nome, email, senha, telefone, razaoSocial, cnpj, endereco, cidade, estado, cep, descricao_servico, logo_url, whatsapp_contato } = req.body;
+    const {
+      nome,
+      email,
+      senha,
+      telefone,
+      razaoSocial,
+      cnpj,
+      endereco,
+      cidade,
+      estado,
+      cep,
+      especializacao,
+      descricao_servico,
+      whatsapp_contato,
+      horario_inicio,
+      horario_fim,
+      dias_funcionamento
+    } = req.body;
     const isCompanyRegistration = Boolean(razaoSocial || cnpj);
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const normalizedCnpj = String(cnpj || '').replace(/\D/g, '');
 
-    if (!email || !senha || senha.length < 8) {
+    if (!normalizedEmail || !senha || senha.length < 8) {
       return res.status(400).json({ error: 'E-mail e uma senha de pelo menos 8 caracteres são obrigatórios' });
     }
-    if (isCompanyRegistration && (!razaoSocial || !cnpj)) {
-      return res.status(400).json({ error: 'Razão social e CNPJ são obrigatórios para cadastrar uma empresa' });
+    if (isCompanyRegistration && (!String(razaoSocial || '').trim() || normalizedCnpj.length !== 14)) {
+      return res.status(400).json({ error: 'Razão social e um CNPJ com 14 dígitos são obrigatórios para cadastrar uma empresa' });
     }
     
     // Verificar se email já existe
-    const existingUser = await User.findOne({ where: { email } });
+    const existingUser = await User.findOne({ where: { email: normalizedEmail } });
     if (existingUser) {
       return res.status(400).json({ error: 'Email já cadastrado' });
+    }
+
+    if (isCompanyRegistration) {
+      const existingCompany = await Empresa.findOne({ where: { cnpj: normalizedCnpj } });
+      if (existingCompany) {
+        return res.status(409).json({ error: 'CNPJ já cadastrado' });
+      }
     }
     
     const result = await sequelize.transaction(async (transaction) => {
       const user = await User.create({
-        nome: isCompanyRegistration ? razaoSocial : nome,
-        email,
+        nome: isCompanyRegistration ? String(razaoSocial).trim() : nome,
+        email: normalizedEmail,
         senha,
         tipo: isCompanyRegistration ? 'empresa' : 'cliente',
-        telefone
+        plano: 'free',
+        telefone,
+        cnpj: isCompanyRegistration ? normalizedCnpj : null,
+        razao_social: isCompanyRegistration ? String(razaoSocial).trim() : null
       }, { transaction });
 
       let empresa = null;
       if (isCompanyRegistration) {
         empresa = await Empresa.create({
           user_id: user.id,
-          nome: razaoSocial,
-          cnpj,
+          nome: String(razaoSocial).trim(),
+          cnpj: normalizedCnpj,
           telefone,
           endereco,
           cidade,
           estado,
           cep,
           descricao: descricao_servico,
-          logo_url,
+          categoria: String(especializacao || '').trim() || null,
+          horario_funcionamento: {
+            horario_inicio: horario_inicio || null,
+            horario_fim: horario_fim || null,
+            dias_trabalho: Array.isArray(dias_funcionamento) ? dias_funcionamento : []
+          },
+          logo_url: null,
           whatsapp: whatsapp_contato
         }, { transaction });
       }
       return { user, empresa };
     });
     const { user, empresa } = result;
+    const { getJwtSecret } = require('../middleware/auth');
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        tipo: user.tipo,
+        email: user.email,
+        empresa_id: empresa?.id || null
+      },
+      getJwtSecret(),
+      { expiresIn: '24h' }
+    );
     
     res.status(201).json({
       user: {
@@ -191,9 +292,11 @@ router.post('/register', async (req, res) => {
         nome: user.nome,
         email: user.email,
         tipo: user.tipo,
-        plano: user.plano
+        plano: user.plano,
+        empresa_id: empresa?.id || null
       },
-      empresa
+      empresa,
+      token
     });
   } catch (error) {
     console.error('Erro no registro:', error);
@@ -228,7 +331,7 @@ router.put('/profile', auth, async (req, res) => {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
     
-    const allowedFields = ['nome', 'telefone', 'cpf', 'cargo', 'foto_url', 'url_foto_perfil'];
+    const allowedFields = ['nome', 'telefone', 'cpf', 'cargo', 'foto_url', 'url_foto_perfil', 'disponibilidade', 'pausas'];
     const updateData = Object.fromEntries(
       Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
     );

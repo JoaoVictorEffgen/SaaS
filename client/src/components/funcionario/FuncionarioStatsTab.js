@@ -1,69 +1,80 @@
 import React from 'react';
-import { BarChart3, CheckSquare, Star, User } from 'lucide-react';
+import { BarChart3, CalendarCheck2, CheckCircle2, Info, Users } from 'lucide-react';
 
 const FuncionarioStatsTab = ({ agendamentos }) => {
   const realizados = agendamentos.filter((item) => item.status === 'realizado').length;
-  const taxaComparecimento = agendamentos.length > 0
-    ? Math.round((realizados / agendamentos.length) * 100)
+  const cancelados = agendamentos.filter((item) => item.status === 'cancelado').length;
+  const finalizados = realizados + cancelados;
+  const taxaConclusao = finalizados > 0
+    ? Math.round((realizados / finalizados) * 100)
     : 0;
-  const totalClientes = new Set(agendamentos.map((item) => item.clienteId)).size;
+  const totalClientes = new Set(
+    agendamentos
+      .map((item) => item.cliente_id || item.clienteId || item.clienteNome)
+      .filter(Boolean)
+  ).size;
+
+  const metrics = [
+    { label: 'Atendimentos concluídos', value: realizados, icon: CheckCircle2, tone: 'emerald' },
+    { label: 'Taxa de conclusão', value: `${taxaConclusao}%`, icon: BarChart3, tone: 'blue' },
+    { label: 'Clientes únicos', value: totalClientes, icon: Users, tone: 'cyan' },
+    { label: 'Reservas registradas', value: agendamentos.length, icon: CalendarCheck2, tone: 'violet' }
+  ];
+
+  const tones = {
+    emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+    blue: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+    cyan: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300',
+    violet: 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300'
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-        <BarChart3 className="h-5 w-5 mr-2 text-purple-600" />
-        Minhas Estatísticas
-      </h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100">Agendamentos Realizados</p>
-              <p className="text-3xl font-bold">{realizados}</p>
-            </div>
-            <CheckSquare className="h-8 w-8 text-green-200" />
-          </div>
+    <div className="space-y-6">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+        <div className="mb-6">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600 dark:text-cyan-400">Desempenho</p>
+          <h2 className="mt-1 text-2xl font-extrabold text-slate-950 dark:text-white">Minhas estatísticas</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Indicadores calculados a partir dos seus agendamentos.</p>
         </div>
 
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100">Taxa de Comparecimento</p>
-              <p className="text-3xl font-bold">{taxaComparecimento}%</p>
-            </div>
-            <Star className="h-8 w-8 text-blue-200" />
-          </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {metrics.map((metric) => {
+            const Icon = metric.icon;
+            return (
+              <article key={metric.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/50 sm:p-5">
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${tones[metric.tone]}`}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <p className="mt-4 text-2xl font-extrabold text-slate-950 dark:text-white sm:text-3xl">{metric.value}</p>
+                <p className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{metric.label}</p>
+              </article>
+            );
+          })}
         </div>
+      </section>
 
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100">Total de Clientes</p>
-              <p className="text-3xl font-bold">{totalClientes}</p>
-            </div>
-            <User className="h-8 w-8 text-purple-200" />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Avaliações dos Clientes</h3>
-        <p className="text-gray-600">
-          As avaliações dos clientes são gerenciadas pela empresa e ficam disponíveis
-          no sistema de gestão. Você pode solicitar feedback direto aos clientes
-          após a realização dos serviços.
-        </p>
-        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">
-            <strong>Dica:</strong> Sempre pergunte aos clientes como foi o atendimento
-            e se ficaram satisfeitos com o serviço prestado.
+      <section className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+          <h3 className="font-extrabold text-slate-950 dark:text-white">Como esta taxa é calculada?</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            A taxa de conclusão considera apenas atendimentos já finalizados: concluídos divididos pela soma de concluídos e cancelados. Reservas futuras não reduzem o indicador.
           </p>
         </div>
-      </div>
+
+        <aside className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30 sm:p-6">
+          <div className="flex gap-3">
+            <Info className="mt-0.5 h-5 w-5 flex-none text-amber-700 dark:text-amber-300" />
+            <div>
+              <h3 className="font-extrabold text-amber-950 dark:text-amber-100">Avaliações ainda não integradas</h3>
+              <p className="mt-2 text-sm leading-6 text-amber-900/80 dark:text-amber-200/80">
+                O sistema ainda não registra notas individuais por funcionário. Por isso, nenhuma média fictícia é exibida nesta tela.
+              </p>
+            </div>
+          </div>
+        </aside>
+      </section>
     </div>
   );
 };
 
 export default FuncionarioStatsTab;
-

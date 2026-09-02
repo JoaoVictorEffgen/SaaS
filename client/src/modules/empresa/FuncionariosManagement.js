@@ -2,25 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, User, Save, X, ArrowLeft } from 'lucide-react';
-import ImageUpload from '../../components/shared/ImageUpload';
+import apiService from '../../services/apiService';
 
 const FuncionariosManagement = () => {
   const { user, loading } = useMySqlAuth();
   const navigate = useNavigate();
   const [funcionarios, setFuncionarios] = useState([]);
-  
-  console.log('FuncionariosManagement - user:', user, 'loading:', loading);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingFuncionario, setEditingFuncionario] = useState(null);
   const [formData, setFormData] = useState({
     nome: '',
     sobrenome: '',
+    email: '',
     telefone: '',
     cpf: '',
     cargo: '',
     senha: '',
     confirmarSenha: '',
-    foto_url: null
   });
 
   useEffect(() => {
@@ -31,7 +32,6 @@ const FuncionariosManagement = () => {
 
   // Se ainda está carregando, mostrar loading
   if (loading) {
-    console.log('FuncionariosManagement - Mostrando loading...');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -44,7 +44,6 @@ const FuncionariosManagement = () => {
 
   // Se não há usuário, mostrar mensagem
   if (!user) {
-    console.log('FuncionariosManagement - Nenhum usuário encontrado');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -59,30 +58,19 @@ const FuncionariosManagement = () => {
   const loadFuncionarios = async () => {
     if (!user?.id) return;
     try {
-      console.log('🔍 Carregando funcionários da empresa:', user.id);
-      
-      // Por enquanto, usar localStorage até implementar a rota no backend
-      const funcionariosData = JSON.parse(localStorage.getItem(`funcionarios_${user.id}`) || '[]');
-      
-      console.log('📊 Funcionários encontrados:', funcionariosData);
-      setFuncionarios(funcionariosData);
-    } catch (error) {
-      console.error('❌ Erro ao carregar funcionários:', error);
+      setDataLoading(true);
+      setError('');
+      const response = await apiService.getMeusFuncionarios();
+      setFuncionarios(response?.data || []);
+    } catch (loadError) {
+      setError(loadError.message || 'Não foi possível carregar os funcionários.');
       setFuncionarios([]);
+    } finally {
+      setDataLoading(false);
     }
   };
 
-  const saveFuncionarios = (newFuncionarios) => {
-    if (!user?.id) return;
-    try {
-      localStorage.setItem(`funcionarios_${user.id}`, JSON.stringify(newFuncionarios));
-      setFuncionarios(newFuncionarios);
-    } catch (error) {
-      console.error('Erro ao salvar funcionários no localStorage:', error);
-    }
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!user?.id) {
@@ -98,6 +86,11 @@ const FuncionariosManagement = () => {
 
     if (!formData.telefone.trim()) {
       alert('Telefone é obrigatório.');
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      alert('E-mail é obrigatório.');
       return;
     }
 
@@ -125,8 +118,8 @@ const FuncionariosManagement = () => {
         return;
       }
 
-      if (formData.senha.length < 6) {
-        alert('A senha deve ter pelo menos 6 caracteres.');
+      if (formData.senha.length < 8) {
+        alert('A senha deve ter pelo menos 8 caracteres.');
         return;
       }
 
@@ -137,41 +130,41 @@ const FuncionariosManagement = () => {
     }
     
     const funcionarioData = {
-      id: editingFuncionario?.id || Date.now().toString(),
-      nome_completo: `${formData.nome.trim()} ${formData.sobrenome.trim()}`,
-      nome: formData.nome.trim(),
-      sobrenome: formData.sobrenome.trim(),
+      nome: `${formData.nome.trim()} ${formData.sobrenome.trim()}`,
+      email: formData.email.trim(),
       telefone: formData.telefone.trim(),
       cpf: cpfNumbers,
       cargo: formData.cargo.trim(),
-      senha: formData.senha.trim(), // Senha para login
-      foto: formData.foto_url,
-      empresa_id: user.id,
-      created_at: editingFuncionario?.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      ...(formData.senha.trim() ? { senha: formData.senha.trim() } : {})
     };
 
-    let newFuncionarios;
-    if (editingFuncionario) {
-      newFuncionarios = funcionarios.map(f => f.id === editingFuncionario.id ? funcionarioData : f);
-    } else {
-      newFuncionarios = [...funcionarios, funcionarioData];
+    try {
+      setSaving(true);
+      setError('');
+      if (editingFuncionario) {
+        await apiService.updateMeuFuncionario(editingFuncionario.id, funcionarioData);
+      } else {
+        await apiService.createMeuFuncionario(funcionarioData);
+      }
+      await loadFuncionarios();
+      resetForm();
+    } catch (saveError) {
+      setError(saveError.message || 'Não foi possível salvar o funcionário.');
+    } finally {
+      setSaving(false);
     }
-
-    saveFuncionarios(newFuncionarios);
-    resetForm();
   };
 
   const resetForm = () => {
     setFormData({
       nome: '',
       sobrenome: '',
+      email: '',
       telefone: '',
       cpf: '',
       cargo: '',
       senha: '',
-      confirmarSenha: '',
-      foto_url: null
+      confirmarSenha: ''
     });
     setEditingFuncionario(null);
     setShowModal(false);
@@ -181,29 +174,33 @@ const FuncionariosManagement = () => {
     if (!funcionario) return;
     
     setEditingFuncionario(funcionario);
+    const partesNome = String(funcionario.nome || '').trim().split(/\s+/);
     setFormData({
-      nome: funcionario.nome || '',
-      sobrenome: funcionario.sobrenome || '',
+      nome: partesNome.shift() || '',
+      sobrenome: partesNome.join(' '),
+      email: funcionario.email || '',
       telefone: funcionario.telefone || '',
       cpf: funcionario.cpf || '',
       cargo: funcionario.cargo || '',
       senha: '', // Não mostrar senha na edição
-      confirmarSenha: '',
-      foto_url: funcionario.foto || funcionario.foto_url || null
+      confirmarSenha: ''
     });
     setShowModal(true);
   };
 
-  const handleDelete = (funcionarioId) => {
+  const handleDelete = async (funcionarioId) => {
     if (!funcionarioId) return;
     
-    if (window.confirm('Tem certeza que deseja excluir este funcionário?')) {
-      const newFuncionarios = funcionarios.filter(f => f.id !== funcionarioId);
-      saveFuncionarios(newFuncionarios);
+    if (window.confirm('Tem certeza que deseja desativar este funcionário?')) {
+      try {
+        setError('');
+        await apiService.deleteMeuFuncionario(funcionarioId);
+        await loadFuncionarios();
+      } catch (deleteError) {
+        setError(deleteError.message || 'Não foi possível desativar o funcionário.');
+      }
     }
   };
-
-  console.log('FuncionariosManagement - Renderizando componente principal');
   
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -238,9 +235,13 @@ const FuncionariosManagement = () => {
           </button>
         </div>
 
+        {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+
         {/* Funcionários List */}
         <div className="bg-white shadow rounded-lg">
-          {funcionarios.length === 0 ? (
+          {dataLoading ? (
+            <div className="py-12 text-center text-sm text-gray-500">Carregando funcionários...</div>
+          ) : funcionarios.length === 0 ? (
             <div className="text-center py-12">
               <div className="mx-auto h-12 w-12 text-gray-400">
                 <User className="h-full w-full" />
@@ -281,9 +282,9 @@ const FuncionariosManagement = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
-                            {funcionario.foto || funcionario.foto_url ? (
+                            {funcionario.foto || funcionario.foto_url || funcionario.url_foto_perfil ? (
                               <img 
-                                src={funcionario.foto || funcionario.foto_url} 
+                                src={funcionario.foto || funcionario.foto_url || funcionario.url_foto_perfil} 
                                 alt={funcionario.nome_completo || funcionario.nome}
                                 className="h-10 w-10 rounded-full object-cover"
                               />
@@ -295,7 +296,7 @@ const FuncionariosManagement = () => {
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">
-                              {funcionario.nome_completo || `${funcionario.nome} ${funcionario.sobrenome}`}
+                              {funcionario.nome}
                             </div>
                           </div>
                         </div>
@@ -373,6 +374,20 @@ const FuncionariosManagement = () => {
                         placeholder="Sobrenome"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      E-mail *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="funcionario@empresa.com"
+                    />
                   </div>
 
                   <div>
@@ -462,20 +477,9 @@ const FuncionariosManagement = () => {
                     </>
                   )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Foto do Funcionário (opcional)
-                    </label>
-                    <div className="flex justify-center">
-                      <ImageUpload
-                        currentImage={formData.foto_url}
-                        onImageChange={(imageUrl, file) => setFormData({...formData, foto_url: imageUrl})}
-                        type="foto"
-                        size="large"
-                        className="mx-auto"
-                      />
-                    </div>
-                  </div>
+                  <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                    A foto pode ser adicionada pelo funcionário no próprio perfil após o primeiro acesso.
+                  </p>
 
                   <div className="flex justify-end space-x-3 pt-4">
                     <button
@@ -487,10 +491,11 @@ const FuncionariosManagement = () => {
                     </button>
                     <button
                       type="submit"
+                      disabled={saving}
                       className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
                     >
                       <Save className="h-4 w-4 mr-2" />
-                      {editingFuncionario ? 'Atualizar' : 'Criar'}
+                      {saving ? 'Salvando...' : editingFuncionario ? 'Atualizar' : 'Criar'}
                     </button>
                   </div>
                 </form>

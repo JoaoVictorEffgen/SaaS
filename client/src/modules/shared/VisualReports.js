@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
-const VisualReports = ({ filters, userId, userPlan }) => {
+const VisualReports = ({ filters, userId, userPlan, agendamentos = [], funcionarios = [], servicos = [] }) => {
   const [chartData, setChartData] = useState({
     agendamentosPorDia: [],
     receitaPorMes: [],
@@ -47,7 +47,7 @@ const VisualReports = ({ filters, userId, userPlan }) => {
     }
     // Os dados são recalculados quando o usuário, os filtros ou o plano mudam.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, filters, hasVisualReportsAccess]);
+  }, [userId, filters, hasVisualReportsAccess, agendamentos, funcionarios, servicos]);
 
   const loadChartData = async () => {
     setLoading(true);
@@ -62,10 +62,6 @@ const VisualReports = ({ filters, userId, userPlan }) => {
   };
 
   const generateChartData = async () => {
-    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${userId}`) || '[]');
-    const servicos = JSON.parse(localStorage.getItem(`servicos_${userId}`) || '[]');
-    const funcionarios = JSON.parse(localStorage.getItem(`funcionarios_${userId}`) || '[]');
-
     // Filtrar agendamentos baseado nos filtros
     const filteredAgendamentos = filterAgendamentos(agendamentos);
 
@@ -82,12 +78,12 @@ const VisualReports = ({ filters, userId, userPlan }) => {
   const filterAgendamentos = (agendamentos) => {
     return agendamentos.filter(agendamento => {
       // Filtro por funcionário
-      if (filters.funcionario && agendamento.funcionario_id !== filters.funcionario) {
+      if (filters.funcionario && String(agendamento.funcionario_id) !== String(filters.funcionario)) {
         return false;
       }
 
       // Filtro por serviço
-      if (filters.servico && agendamento.servico_id !== filters.servico) {
+      if (filters.servico && !(agendamento.servicos || []).some((service) => String(service.id) === String(filters.servico))) {
         return false;
       }
 
@@ -106,7 +102,7 @@ const VisualReports = ({ filters, userId, userPlan }) => {
       }
 
       // Filtro por período
-      if (filters.periodo !== 'custom' && filters.periodo !== '30d') {
+      if (filters.periodo !== 'custom') {
         const dataAgendamento = new Date(agendamento.data);
         const hoje = new Date();
         const dias = parseInt(filters.periodo.replace('d', '')) || 30;
@@ -152,7 +148,7 @@ const VisualReports = ({ filters, userId, userPlan }) => {
   const generateReceitaPorMes = (agendamentos) => {
     const meses = {};
     agendamentos.forEach(agendamento => {
-      if (agendamento.status === 'confirmado') {
+      if (agendamento.status === 'realizado') {
         const mes = agendamento.data.substring(0, 7); // YYYY-MM
         const valor = parseFloat(agendamento.valor_total) || 0;
         meses[mes] = (meses[mes] || 0) + valor;
@@ -170,13 +166,15 @@ const VisualReports = ({ filters, userId, userPlan }) => {
   const generateServicosMaisSolicitados = (agendamentos, servicos) => {
     const servicosCount = {};
     agendamentos.forEach(agendamento => {
-      const servicoId = agendamento.servico_id;
-      servicosCount[servicoId] = (servicosCount[servicoId] || 0) + 1;
+      (agendamento.servicos || []).forEach((service) => {
+        const servicoId = String(service.id);
+        servicosCount[servicoId] = (servicosCount[servicoId] || 0) + 1;
+      });
     });
 
     return Object.entries(servicosCount)
       .map(([servicoId, count]) => {
-        const servico = servicos.find(s => s.id === servicoId);
+        const servico = servicos.find(s => String(s.id) === servicoId);
         return {
           nome: servico?.nome || 'Serviço não encontrado',
           agendamentos: count,
@@ -196,7 +194,7 @@ const VisualReports = ({ filters, userId, userPlan }) => {
 
     return Object.entries(funcionariosCount)
       .map(([funcionarioId, count]) => {
-        const funcionario = funcionarios.find(f => f.id === funcionarioId);
+        const funcionario = funcionarios.find(f => String(f.id) === funcionarioId);
         return {
           nome: funcionario?.nome || 'Funcionário não encontrado',
           agendamentos: count
@@ -212,10 +210,10 @@ const VisualReports = ({ filters, userId, userPlan }) => {
     });
 
     const colors = {
-      'pendente': '#F59E0B',
+      'em_aprovacao': '#F59E0B',
       'confirmado': '#10B981',
       'cancelado': '#EF4444',
-      'concluido': '#6366F1'
+      'realizado': '#6366F1'
     };
 
     return Object.entries(statusCount).map(([status, count]) => ({
@@ -234,7 +232,7 @@ const VisualReports = ({ filters, userId, userPlan }) => {
       
       const agendamentosMes = agendamentos.filter(a => a.data.startsWith(mes));
       const receitaMes = agendamentosMes
-        .filter(a => a.status === 'confirmado')
+        .filter(a => a.status === 'realizado')
         .reduce((sum, a) => sum + (parseFloat(a.valor_total) || 0), 0);
 
       ultimos3Meses.push({

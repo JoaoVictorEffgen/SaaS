@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { useNavigate } from 'react-router-dom';
 import { LOCAL_DEV } from '../../config/appConfig';
+import { getUserHomeRoute } from '../../utils/authRoutes';
 
 const TypedProtectedRoute = ({ children, allowedTypes = [] }) => {
   const { user, loading, localDev } = useMySqlAuth();
@@ -19,19 +20,7 @@ const TypedProtectedRoute = ({ children, allowedTypes = [] }) => {
     }
 
     if (!loading && user && allowedTypes.length > 0 && !allowedTypes.includes(user.tipo)) {
-      switch (user.tipo) {
-        case 'empresa':
-          navigate('/empresa/dashboard', { replace: true });
-          break;
-        case 'funcionario':
-          navigate('/funcionario/agenda', { replace: true });
-          break;
-        case 'cliente':
-          navigate('/cliente', { replace: true });
-          break;
-        default:
-          navigate('/', { replace: true });
-      }
+      navigate(getUserHomeRoute(user.tipo) || '/', { replace: true });
     }
   }, [loading, user, allowedTypes, navigate, bypassAuth]);
 

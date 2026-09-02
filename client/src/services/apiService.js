@@ -1,4 +1,4 @@
-const API_BASE_URL = '/api';
+import { API_BASE_URL, LOCAL_DEV } from '../config/appConfig';
 const TOKEN_KEY = 'token';
 const USER_KEY = 'currentUser';
 
@@ -15,15 +15,17 @@ class ApiService {
   // Método genérico para fazer requisições
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    const { headers: optionHeaders = {}, ...requestOptions } = options;
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
     const config = {
+      ...requestOptions,
       headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      },
-      ...options
+        ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
+        ...optionHeaders
+      }
     };
 
-    if (this.devUserType) {
+    if (LOCAL_DEV && this.devUserType) {
       config.headers['X-Dev-User-Type'] = this.devUserType;
     }
 
@@ -45,7 +47,7 @@ class ApiService {
       }
 
       if (!response.ok) {
-        throw new Error(data.error || `Erro ${response.status}: ${response.statusText}`);
+        throw new Error(data.error || data.message || `Erro ${response.status}: ${response.statusText}`);
       }
 
       return data;
@@ -119,6 +121,13 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(userData)
     });
+
+    if (data.token) {
+      this.setToken(data.token, true);
+      this.setDevUserType(data.user?.tipo || 'empresa');
+      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    }
+
     return data;
   }
 
@@ -156,6 +165,32 @@ class ApiService {
     });
   }
 
+  async uploadCompanyLogo(empresaId, file) {
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    return await this.request(`/upload-fotos/logo-empresa/${empresaId}`, {
+      method: 'POST',
+      body: formData
+    });
+  }
+
+  async removeCompanyLogo(empresaId) {
+    return await this.request(`/upload-fotos/logo-empresa/${empresaId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  async uploadProfilePhoto(file) {
+    const formData = new FormData();
+    formData.append('foto', file);
+
+    return await this.request('/upload-fotos/foto-perfil', {
+      method: 'POST',
+      body: formData
+    });
+  }
+
   async deleteEmpresa(id) {
     return await this.request(`/empresas/${id}`, {
       method: 'DELETE'
@@ -165,6 +200,16 @@ class ApiService {
   async getPromocoesEmpresa(empresaId) {
     return await this.request(`/empresas/${empresaId}/promocoes`);
   }
+
+  async getMeusServicos() { return await this.get('/empresas/me/servicos'); }
+  async createMeuServico(data) { return await this.post('/empresas/me/servicos', data); }
+  async updateMeuServico(id, data) { return await this.put(`/empresas/me/servicos/${id}`, data); }
+  async deleteMeuServico(id) { return await this.delete(`/empresas/me/servicos/${id}`); }
+
+  async getMeusFuncionarios() { return await this.get('/empresas/me/funcionarios'); }
+  async createMeuFuncionario(data) { return await this.post('/empresas/me/funcionarios', data); }
+  async updateMeuFuncionario(id, data) { return await this.put(`/empresas/me/funcionarios/${id}`, data); }
+  async deleteMeuFuncionario(id) { return await this.delete(`/empresas/me/funcionarios/${id}`); }
 
   // ===== ENDPOINTS ESPECÍFICOS POR TIPO DE USUÁRIO =====
   // Endpoints para funcionários
@@ -190,6 +235,11 @@ class ApiService {
 
   async getClienteEmpresa(empresaId) {
     return await this.request(`/clientes/empresa/${empresaId}`);
+  }
+
+  async getDisponibilidadeEmpresa(empresaId, funcionarioId, data) {
+    const params = new URLSearchParams({ funcionario_id: funcionarioId, data });
+    return await this.request(`/clientes/empresa/${empresaId}/disponibilidade?${params}`);
   }
 
   // ===== AGENDAMENTOS =====

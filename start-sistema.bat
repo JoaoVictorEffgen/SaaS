@@ -38,7 +38,7 @@ if not exist "server\.env" (
 echo 🚀 Iniciando servidor backend...
 echo.
 cd server
-start "Servidor Backend" cmd /k "node index.js"
+start "Servidor Backend" cmd /k "npm run dev"
 cd ..
 
 echo ⏳ Aguardando servidor iniciar...

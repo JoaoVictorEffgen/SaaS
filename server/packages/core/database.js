@@ -80,7 +80,8 @@ class DatabaseManager {
 
   async syncDatabase() {
     try {
-      await this.sequelize.sync({ alter: true });
+      const syncOptions = isLocalDev ? {} : { alter: true };
+      await this.sequelize.sync(syncOptions);
       console.log('✅ [CORE] Banco de dados sincronizado');
     } catch (error) {
       console.error('❌ [CORE] Erro ao sincronizar banco:', error);

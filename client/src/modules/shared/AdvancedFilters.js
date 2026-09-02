@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Filter, 
   Calendar, 
@@ -8,7 +8,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 
-const AdvancedFilters = ({ onFiltersChange, userId }) => {
+const AdvancedFilters = ({ onFiltersChange, funcionarios = [], servicos = [] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [filters, setFilters] = useState({
     funcionario: '',
@@ -20,16 +20,6 @@ const AdvancedFilters = ({ onFiltersChange, userId }) => {
     valorMin: '',
     valorMax: ''
   });
-
-  const [funcionarios, setFuncionarios] = useState([]);
-  const [servicos, setServicos] = useState([]);
-
-  useEffect(() => {
-    if (userId) {
-      setFuncionarios(JSON.parse(localStorage.getItem(`funcionarios_${userId}`) || '[]'));
-      setServicos(JSON.parse(localStorage.getItem(`servicos_${userId}`) || '[]'));
-    }
-  }, [userId]);
 
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value };
@@ -187,10 +177,10 @@ const AdvancedFilters = ({ onFiltersChange, userId }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Todos os status</option>
-                <option value="pendente">Pendente</option>
+                <option value="em_aprovacao">Em aprovação</option>
                 <option value="confirmado">Confirmado</option>
                 <option value="cancelado">Cancelado</option>
-                <option value="concluido">Concluído</option>
+                <option value="realizado">Realizado</option>
               </select>
             </div>
 

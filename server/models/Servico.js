@@ -11,7 +11,7 @@ const Servico = sequelize.define('Servico', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'users',
+      model: 'empresas',
       key: 'id'
     }
   },

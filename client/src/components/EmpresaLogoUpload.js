@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Upload, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
 import apiService from '../services/apiService';
 
 const EmpresaLogoUpload = ({ 
@@ -11,6 +11,9 @@ const EmpresaLogoUpload = ({
   const [dragActive, setDragActive] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null); // 'success', 'error', null
   const [uploadMessage, setUploadMessage] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+  const isDisabled = loading || uploading || !empresaId;
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -27,48 +30,36 @@ const EmpresaLogoUpload = ({
     e.stopPropagation();
     setDragActive(false);
     
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    if (!isDisabled && e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFile(e.dataTransfer.files[0]);
     }
   };
 
   const handleFile = async (file) => {
     // Validações
-    if (!file.type.startsWith('image/')) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       setUploadStatus('error');
-      setUploadMessage('Apenas arquivos de imagem são permitidos');
+      setUploadMessage('Escolha uma imagem JPG, PNG ou WebP.');
       return;
     }
 
-    if (file.size > 30 * 1024 * 1024) { // 30MB
+    if (file.size > 5 * 1024 * 1024) {
       setUploadStatus('error');
-      setUploadMessage('Arquivo muito grande. Máximo permitido: 30MB');
+      setUploadMessage('A imagem deve ter no máximo 5MB.');
       return;
     }
 
     try {
+      setUploading(true);
       setUploadStatus(null);
       setUploadMessage('');
-      
-      const formData = new FormData();
-      formData.append('logo', file);
 
-      const token = apiService.getToken();
-      
-      const response = await fetch(`http://localhost:5000/api/upload-fotos/logo-empresa/${empresaId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const result = await response.json();
+      const result = await apiService.uploadCompanyLogo(empresaId, file);
 
       if (result.success) {
         setUploadStatus('success');
         setUploadMessage('Logo enviado com sucesso!');
-        onLogoUpload(result.url);
+        onLogoUpload?.(result.url);
         
         // Limpar mensagem de sucesso após 3 segundos
         setTimeout(() => {
@@ -82,12 +73,31 @@ const EmpresaLogoUpload = ({
     } catch (error) {
       setUploadStatus('error');
       setUploadMessage('Erro ao enviar logo: ' + error.message);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleFileInput = (e) => {
     if (e.target.files && e.target.files[0]) {
       handleFile(e.target.files[0]);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    try {
+      setUploading(true);
+      setUploadStatus(null);
+      const result = await apiService.removeCompanyLogo(empresaId);
+      setUploadStatus('success');
+      setUploadMessage(result.message || 'Logo removido com sucesso!');
+      onLogoUpload?.(null);
+    } catch (error) {
+      setUploadStatus('error');
+      setUploadMessage(error.message || 'Não foi possível remover o logo.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -108,8 +118,7 @@ const EmpresaLogoUpload = ({
               Identidade visual da empresa
             </h3>
             <p className="mt-1 text-sm text-blue-700">
-              O logo da sua empresa aparecerá em todos os lugares do sistema, 
-              tornando sua marca mais reconhecível e profissional.
+              O logo identifica sua empresa no catálogo dos clientes e nas áreas de gestão.
             </p>
           </div>
         </div>
@@ -125,7 +134,7 @@ const EmpresaLogoUpload = ({
               dragActive 
                 ? 'border-blue-400 bg-blue-50' 
                 : 'border-gray-300 hover:border-blue-400'
-            } ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            } ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
@@ -136,29 +145,41 @@ const EmpresaLogoUpload = ({
               Arraste um logo aqui ou clique para selecionar
             </p>
             <div className="text-sm text-gray-500 space-y-1">
-              <p>📷 Formatos aceitos: JPG, PNG, GIF, WebP</p>
-              <p>📏 Tamanho máximo: 30MB</p>
+              <p>📷 Formatos aceitos: JPG, PNG e WebP</p>
+              <p>📏 Tamanho máximo: 5MB</p>
               <p>🎨 Recomendado: 200x200px ou superior</p>
               <p>💡 Dica: Use logo com fundo transparente</p>
             </div>
             <input
+              ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               className="hidden"
               id="logo-upload"
               onChange={handleFileInput}
-              disabled={loading}
+              disabled={isDisabled}
             />
             <label
               htmlFor="logo-upload"
               className={`mt-6 inline-block px-6 py-3 rounded-lg font-medium transition-colors ${
-                loading 
+                isDisabled
                   ? 'bg-gray-400 text-white cursor-not-allowed' 
                   : 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
               }`}
             >
-              {loading ? 'Enviando...' : 'Selecionar Logo'}
+              {uploading ? 'Enviando...' : 'Selecionar Logo'}
             </label>
+            {currentLogo && (
+              <button
+                type="button"
+                onClick={handleRemoveLogo}
+                disabled={isDisabled}
+                className="ml-2 mt-3 inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-3 font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Remover logo
+              </button>
+            )}
           </div>
           
           {/* Status do upload */}
@@ -205,8 +226,8 @@ const EmpresaLogoUpload = ({
           </div>
           <div className="mt-3 text-sm text-gray-600">
             <p>✅ Este logo aparecerá no dashboard da empresa</p>
-            <p>✅ Será exibido em todos os documentos e comunicações</p>
-            <p>✅ Deixa sua empresa mais profissional</p>
+            <p>✅ Será exibido no catálogo e no agendamento</p>
+            <p>✅ Você poderá substituí-lo quando quiser</p>
           </div>
         </div>
       </div>

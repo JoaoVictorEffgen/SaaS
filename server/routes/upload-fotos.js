@@ -11,18 +11,80 @@ const ALLOWED_IMAGE_TYPES = {
   'image/png': '.png',
   'image/webp': '.webp'
 };
+const LOGO_UPLOAD_DIR = path.join(__dirname, '../uploads/logos-empresa');
+const PROFILE_UPLOAD_DIR = path.join(__dirname, '../uploads/fotos-perfil');
+
+const hasValidImageSignature = async (file) => {
+  const bytes = await fs.promises.readFile(file.path);
+
+  if (file.mimetype === 'image/jpeg') {
+    return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  }
+
+  if (file.mimetype === 'image/png') {
+    return bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'));
+  }
+
+  if (file.mimetype === 'image/webp') {
+    return bytes.length >= 12 &&
+      bytes.subarray(0, 4).toString('ascii') === 'RIFF' &&
+      bytes.subarray(8, 12).toString('ascii') === 'WEBP';
+  }
+
+  return false;
+};
+
+const removeManagedLogo = async (logoUrl) => {
+  if (!logoUrl) return;
+
+  try {
+    const pathname = new URL(logoUrl, 'http://timeflow.local').pathname;
+    const filename = path.basename(pathname);
+    const resolvedDirectory = path.resolve(LOGO_UPLOAD_DIR);
+    const resolvedFile = path.resolve(LOGO_UPLOAD_DIR, filename);
+
+    if (!resolvedFile.startsWith(`${resolvedDirectory}${path.sep}`) || !/^empresa_\d+_\d+\.(jpg|png|webp)$/i.test(filename)) {
+      return;
+    }
+
+    await fs.promises.unlink(resolvedFile).catch((error) => {
+      if (error.code !== 'ENOENT') throw error;
+    });
+  } catch (error) {
+    console.warn('⚠️ Não foi possível remover o logo anterior:', error.message);
+  }
+};
+
+const removeManagedProfilePhoto = async (photoUrl) => {
+  if (!photoUrl) return;
+
+  try {
+    const pathname = new URL(photoUrl, 'http://timeflow.local').pathname;
+    const filename = path.basename(pathname);
+    const resolvedDirectory = path.resolve(PROFILE_UPLOAD_DIR);
+    const resolvedFile = path.resolve(PROFILE_UPLOAD_DIR, filename);
+
+    if (!resolvedFile.startsWith(`${resolvedDirectory}${path.sep}`) || !/^usuario_\d+_\d+\.(jpg|png|webp)$/i.test(filename)) {
+      return;
+    }
+
+    await fs.promises.unlink(resolvedFile).catch((error) => {
+      if (error.code !== 'ENOENT') throw error;
+    });
+  } catch (error) {
+    console.warn('⚠️ Não foi possível remover a foto anterior:', error.message);
+  }
+};
 
 // Configuração do Multer para upload de fotos de perfil
 const storageFotosPerfil = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../uploads/fotos-perfil');
-    
     // Criar diretório se não existir
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!fs.existsSync(PROFILE_UPLOAD_DIR)) {
+      fs.mkdirSync(PROFILE_UPLOAD_DIR, { recursive: true });
     }
     
-    cb(null, uploadDir);
+    cb(null, PROFILE_UPLOAD_DIR);
   },
   filename: function (req, file, cb) {
     // Gerar nome único: usuario_[ID]_[timestamp].[extensão]
@@ -38,14 +100,12 @@ const storageFotosPerfil = multer.diskStorage({
 // Configuração do Multer para upload de logos de empresa
 const storageLogosEmpresa = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../uploads/logos-empresa');
-    
     // Criar diretório se não existir
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!fs.existsSync(LOGO_UPLOAD_DIR)) {
+      fs.mkdirSync(LOGO_UPLOAD_DIR, { recursive: true });
     }
     
-    cb(null, uploadDir);
+    cb(null, LOGO_UPLOAD_DIR);
   },
   filename: function (req, file, cb) {
     // Gerar nome único: empresa_[ID]_[timestamp].[extensão]
@@ -114,15 +174,9 @@ const checkEmpresaOwnership = async (req, res, next) => {
       return next();
     }
 
-    // Se for funcionário, verificar se pertence à empresa
-    if (req.user.tipo === 'funcionario' && req.user.empresa_id === empresa.id) {
-      req.empresa = empresa;
-      return next();
-    }
-
     return res.status(403).json({ 
       success: false, 
-      message: 'Você não tem permissão para acessar esta empresa' 
+      message: 'Apenas o proprietário pode alterar a identidade visual da empresa'
     });
 
   } catch (error) {
@@ -148,11 +202,20 @@ router.post('/foto-perfil', authenticateToken, uploadFotosPerfil.single('foto'),
       });
     }
 
-    const userId = req.user.id;
+    if (!(await hasValidImageSignature(req.file))) {
+      const invalidFilePath = req.file.path;
+      req.file = null;
+      await fs.promises.unlink(invalidFilePath).catch(() => {});
+      return res.status(400).json({
+        success: false,
+        message: 'O arquivo enviado não é uma imagem JPG, PNG ou WebP válida.'
+      });
+    }
 
-    // URL da imagem com protocolo completo
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const imageUrl = `${baseUrl}/api/uploads/fotos-perfil/${req.file.filename}`;
+    const userId = req.user.id;
+    const user = await User.findByPk(userId);
+    const previousPhoto = user?.url_foto_perfil;
+    const imageUrl = `/api/uploads/fotos-perfil/${req.file.filename}`;
     
     console.log('🔍 URL da foto:', imageUrl);
     
@@ -161,6 +224,7 @@ router.post('/foto-perfil', authenticateToken, uploadFotosPerfil.single('foto'),
       { url_foto_perfil: imageUrl },
       { where: { id: userId } }
     );
+    await removeManagedProfilePhoto(previousPhoto);
     
     console.log('✅ Foto de perfil salva com sucesso:', imageUrl);
     
@@ -206,16 +270,25 @@ router.post('/logo-empresa/:empresaId', authenticateToken, checkEmpresaOwnership
       });
     }
 
-    const empresa = req.empresa; // Já validado pelo middleware
+    if (!(await hasValidImageSignature(req.file))) {
+      const invalidFilePath = req.file.path;
+      req.file = null;
+      await fs.promises.unlink(invalidFilePath).catch(() => {});
+      return res.status(400).json({
+        success: false,
+        message: 'O arquivo enviado não é uma imagem JPG, PNG ou WebP válida.'
+      });
+    }
 
-    // URL da imagem com protocolo completo
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const imageUrl = `${baseUrl}/api/uploads/logos-empresa/${req.file.filename}`;
+    const empresa = req.empresa; // Já validado pelo middleware
+    const previousLogo = empresa.logo_url;
+    const imageUrl = `/api/uploads/logos-empresa/${req.file.filename}`;
     
     console.log('🔍 URL do logo:', imageUrl);
     
     // Atualizar empresa com a URL do logo
     await empresa.update({ logo_url: imageUrl });
+    await removeManagedLogo(previousLogo);
     
     console.log('✅ Logo salvo com sucesso:', imageUrl);
     
@@ -242,6 +315,26 @@ router.post('/logo-empresa/:empresaId', authenticateToken, checkEmpresaOwnership
       success: false,
       message: 'Erro interno do servidor',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+router.delete('/logo-empresa/:empresaId', authenticateToken, checkEmpresaOwnership, async (req, res) => {
+  try {
+    const previousLogo = req.empresa.logo_url;
+    await req.empresa.update({ logo_url: null });
+    await removeManagedLogo(previousLogo);
+
+    res.json({
+      success: true,
+      message: 'Logo removido com sucesso.',
+      url: null
+    });
+  } catch (error) {
+    console.error('❌ Erro ao remover logo:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Não foi possível remover o logo.'
     });
   }
 });
@@ -337,5 +430,23 @@ router.post('/logo-sistema/:empresaId', authenticateToken, checkEmpresaOwnership
 
 // Middleware para servir arquivos estáticos
 router.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+router.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      success: false,
+      message: 'A imagem deve ter no máximo 5MB.'
+    });
+  }
+
+  if (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message || 'Não foi possível processar a imagem.'
+    });
+  }
+
+  next();
+});
 
 module.exports = router;

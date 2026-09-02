@@ -32,14 +32,16 @@ const attachLocalDevUser = async (req, res, next) => {
 };
 
 const authenticateToken = async (req, res, next) => {
-  if (isLocalDev) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  // Mantém os perfis de demonstração sem login, mas respeita a identidade
+  // real quando uma conta recém-cadastrada envia seu token.
+  if (isLocalDev && !token) {
     return attachLocalDevUser(req, res, next);
   }
 
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
     if (!token) {
       return res.status(401).json({
         error: 'Token de acesso não fornecido',

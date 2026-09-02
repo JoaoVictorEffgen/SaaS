@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { LOCAL_DEV } from '../../config/appConfig';
+import { getUserHomeRoute } from '../../utils/authRoutes';
 
 const RedirectHandler = () => {
   const { user, loading } = useMySqlAuth();
@@ -15,60 +16,23 @@ const RedirectHandler = () => {
 
     if (!loading && user) {
       const currentPath = location.pathname;
+      const userHomeRoute = getUserHomeRoute(user.tipo);
 
-      if (currentPath === '/') {
-        switch (user.tipo) {
-          case 'empresa':
-            navigate('/empresa/dashboard', { replace: true });
-            break;
-          case 'funcionario':
-            navigate('/funcionario/agenda', { replace: true });
-            break;
-          case 'cliente':
-            navigate('/cliente', { replace: true });
-            break;
-          default:
-            break;
-        }
+      if (currentPath === '/' && userHomeRoute) {
+        navigate(userHomeRoute, { replace: true });
+        return;
       }
 
       if (currentPath.startsWith('/empresa/') && user.tipo !== 'empresa') {
-        switch (user.tipo) {
-          case 'funcionario':
-            navigate('/funcionario/agenda', { replace: true });
-            break;
-          case 'cliente':
-            navigate('/cliente', { replace: true });
-            break;
-          default:
-            navigate('/', { replace: true });
-        }
+        navigate(userHomeRoute || '/', { replace: true });
       }
 
       if (currentPath.startsWith('/funcionario/') && user.tipo !== 'funcionario') {
-        switch (user.tipo) {
-          case 'empresa':
-            navigate('/empresa/dashboard', { replace: true });
-            break;
-          case 'cliente':
-            navigate('/cliente', { replace: true });
-            break;
-          default:
-            navigate('/', { replace: true });
-        }
+        navigate(userHomeRoute || '/', { replace: true });
       }
 
       if (currentPath.startsWith('/cliente/') && user.tipo !== 'cliente') {
-        switch (user.tipo) {
-          case 'empresa':
-            navigate('/empresa/dashboard', { replace: true });
-            break;
-          case 'funcionario':
-            navigate('/funcionario/agenda', { replace: true });
-            break;
-          default:
-            navigate('/', { replace: true });
-        }
+        navigate(userHomeRoute || '/', { replace: true });
       }
     }
   }, [user, loading, navigate, location.pathname]);

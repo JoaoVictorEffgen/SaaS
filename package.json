@@ -10,8 +10,8 @@
     "build": "cd client && npm run build",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
     "setup-db": "cd server && npm run setup-db",
-    "start": "node server/index.js",
-    "railway-start": "node server/index.js"
+    "start": "cd server && npm run start:production",
+    "railway-start": "cd server && npm run start:production"
   },
   "keywords": [
     "saas",

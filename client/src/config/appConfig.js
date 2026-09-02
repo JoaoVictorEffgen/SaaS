@@ -1,6 +1,14 @@
+const parseBoolean = (value, fallback = false) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  return String(value).toLowerCase() === 'true';
+};
+
+export const BASIC_MODE = parseBoolean(process.env.REACT_APP_BASIC_MODE, true);
 export const LOCAL_DEV =
   process.env.NODE_ENV === 'development' &&
-  process.env.REACT_APP_LOCAL_DEV === 'true';
+  parseBoolean(process.env.REACT_APP_LOCAL_DEV, false);
+export const API_BASE_URL =
+  process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api` : '/api';
 
 export const LOCAL_DEV_USERS = {
   empresa: {

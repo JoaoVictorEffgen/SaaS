@@ -14,9 +14,9 @@ import {
   FileText,
   UserPlus
 } from 'lucide-react';
-// kpiService será criado se necessário
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
-// formatCurrency será criado se necessário
+import apiService from '../../services/apiService';
+import { calculateDashboardMetrics } from '../../utils/dashboardMetrics';
 import AdvancedFilters from './AdvancedFilters';
 import VisualReports from './VisualReports';
 import PDFExport from './PDFExport';
@@ -28,51 +28,43 @@ const DashboardKPIs = () => {
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState('30d');
-  const [filters, setFilters] = useState({});
+  const [filters, setFilters] = useState({
+    funcionario: '', servico: '', periodo: '30d', dataInicio: '', dataFim: '',
+    status: '', valorMin: '', valorMax: ''
+  });
   const [activeTab, setActiveTab] = useState('overview'); // overview, reports, crm, export
   const [agendamentos, setAgendamentos] = useState([]);
   const [funcionarios, setFuncionarios] = useState([]);
   const [servicos, setServicos] = useState([]);
 
 
-  const loadKPIs = useCallback(() => {
+  const loadData = useCallback(async () => {
     if (!user?.id) return;
-    setLoading(true);
     try {
-      // kpiService será implementado posteriormente
-      const kpisData = {
-        totalAgendamentos: 0,
-        agendamentosConfirmados: 0,
-        agendamentosCancelados: 0,
-        receitaTotal: 0,
-        receitaMediaPorAgendamento: 0,
-        taxaConfirmacao: 0,
-        clientesAtivos: 0
-      };
-      setKpis(kpisData);
+      setLoading(true);
+      const [appointmentsResponse, employeesResponse, servicesResponse] = await Promise.all([
+        apiService.getAgendamentos(),
+        apiService.getMeusFuncionarios(),
+        apiService.getMeusServicos()
+      ]);
+      const appointments = Array.isArray(appointmentsResponse) ? appointmentsResponse : appointmentsResponse?.data || [];
+      const employees = employeesResponse?.data || [];
+      const catalog = servicesResponse?.data || [];
+      setAgendamentos(appointments);
+      setFuncionarios(employees);
+      setServicos(catalog);
+      setKpis(calculateDashboardMetrics(appointments, employees, catalog, periodo));
     } catch (error) {
       console.error('Erro ao carregar KPIs:', error);
+      setKpis(null);
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
-
-  const loadData = useCallback(() => {
-    if (!user?.id) return;
-    
-    const agendamentosData = JSON.parse(localStorage.getItem(`agendamentos_${user.id}`) || '[]');
-    const funcionariosData = JSON.parse(localStorage.getItem(`funcionarios_${user.id}`) || '[]');
-    const servicosData = JSON.parse(localStorage.getItem(`servicos_${user.id}`) || '[]');
-    
-    setAgendamentos(agendamentosData);
-    setFuncionarios(funcionariosData);
-    setServicos(servicosData);
-  }, [user?.id]);
+  }, [periodo, user?.id]);
 
   useEffect(() => {
-    loadKPIs();
     loadData();
-  }, [loadKPIs, loadData]);
+  }, [loadData]);
 
   const handleFiltersChange = (newFilters) => {
     setFilters(newFilters);
@@ -130,7 +122,8 @@ const DashboardKPIs = () => {
         <div className="flex space-x-4">
           <AdvancedFilters 
             onFiltersChange={handleFiltersChange} 
-            userId={user?.id}
+            funcionarios={funcionarios}
+            servicos={servicos}
           />
           <select
             value={periodo}
@@ -143,7 +136,7 @@ const DashboardKPIs = () => {
             <option value="1y">Último ano</option>
           </select>
           <button
-            onClick={loadKPIs}
+            onClick={loadData}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <RefreshCw className="h-4 w-4 mr-2 inline" />
@@ -396,6 +389,9 @@ const DashboardKPIs = () => {
           filters={filters}
           userId={user?.id}
           userPlan={user?.plano}
+          agendamentos={agendamentos}
+          funcionarios={funcionarios}
+          servicos={servicos}
         />
       )}
 
@@ -403,6 +399,7 @@ const DashboardKPIs = () => {
         <CRMClientes 
           userId={user?.id}
           userPlan={user?.plano}
+          appointments={agendamentos}
         />
       )}
 

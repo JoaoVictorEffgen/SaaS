@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useMySqlAuth } from '../contexts/MySqlAuthContext';
 import apiService from '../services/apiService';
-import { LOCAL_DEV } from '../config/appConfig';
 
 const EmpresaLogoHeader = ({ className = "", showText = true }) => {
   const { user } = useMySqlAuth();
@@ -15,17 +14,9 @@ const EmpresaLogoHeader = ({ className = "", showText = true }) => {
         return;
       }
 
-      if (LOCAL_DEV) {
-        setEmpresaData(user);
-        setLoading(false);
-        return;
-      }
-
       try {
-        const response = await apiService.get(`/empresas/user/${user.id}`);
-        if (response.success) {
-          setEmpresaData(response.data);
-        }
+        const response = await apiService.getEmpresa('me');
+        setEmpresaData(response?.data || response);
       } catch (error) {
         console.error('Erro ao carregar dados da empresa:', error);
       } finally {

@@ -64,6 +64,11 @@ const Empresa = sequelize.define('Empresa', {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  categoria: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Segmento principal exibido para clientes'
+  },
   horario_funcionamento: {
     type: DataTypes.JSON,
     allowNull: true

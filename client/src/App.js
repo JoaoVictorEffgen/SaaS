@@ -42,7 +42,7 @@ function App() {
           {/* Rotas B2B (Empresas) - Apenas para usuários tipo 'empresa' */}
         <Route path="/empresa/cadastro" element={<EmpresaCadastro />} />
         <Route path="/empresa/login" element={<EmpresaLogin />} />
-        <Route path="/empresa/dashboard" element={<EmpresaDashboard />} />
+        <Route path="/empresa/dashboard" element={<TypedProtectedRoute allowedTypes={['empresa']}><EmpresaDashboard /></TypedProtectedRoute>} />
         <Route path="/empresa/configuracoes" element={<TypedProtectedRoute allowedTypes={['empresa']}><ConfiguracoesEmpresa /></TypedProtectedRoute>} />
         
           {/* Rotas de Gestão - Apenas para usuários tipo 'empresa' */}

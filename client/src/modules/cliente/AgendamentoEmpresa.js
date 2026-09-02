@@ -5,6 +5,7 @@ import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import WhatsAppChat from '../shared/WhatsAppChat';
 import CompanyLocation from '../../components/shared/CompanyLocation';
 import useEmpresaBookingData from '../../hooks/useEmpresaBookingData';
+import apiService from '../../services/apiService';
 
 const AgendamentoEmpresa = () => {
   const { empresaId } = useParams();
@@ -19,7 +20,9 @@ const AgendamentoEmpresa = () => {
   } = useEmpresaBookingData(empresaId);
   const [showWhatsAppChat, setShowWhatsAppChat] = useState(false);
   const [agendamentoConfirmado, setAgendamentoConfirmado] = useState(null);
-  const [agendamentoStatus, setAgendamentoStatus] = useState('pendente'); // 'pendente' ou 'confirmado'
+  const [agendamentoStatus, setAgendamentoStatus] = useState('em_aprovacao');
+  const [bookingSubmitting, setBookingSubmitting] = useState(false);
+  const [occupiedSlots, setOccupiedSlots] = useState([]);
   const [showCalendar, setShowCalendar] = useState(false);
   const [lembreteReagendamento, setLembreteReagendamento] = useState(null);
   const [showLocation, setShowLocation] = useState(false);
@@ -60,12 +63,18 @@ const AgendamentoEmpresa = () => {
         telefone: user.telefone || user.whatsapp || ''
       }));
 
-      // Verificar lembrete de reagendamento
-      const lembrete = verificarLembreteReagendamento(user.id);
-      if (lembrete.sugerir) {
-        setLembreteReagendamento(lembrete);
-      }
+      let active = true;
+      apiService.getAgendamentos()
+        .then((appointments) => {
+          if (!active) return;
+          setLembreteReagendamento(criarLembreteReagendamento(appointments));
+        })
+        .catch(() => {
+          if (active) setLembreteReagendamento(null);
+        });
+      return () => { active = false; };
     }
+    return undefined;
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fechar calendário ao clicar fora
@@ -82,10 +91,22 @@ const AgendamentoEmpresa = () => {
     };
   }, [showCalendar]);
 
+  useEffect(() => {
+    let active = true;
+    if (!quickBooking.data || !quickBooking.funcionario_id) {
+      setOccupiedSlots([]);
+      return undefined;
+    }
+    apiService.getDisponibilidadeEmpresa(empresaId, quickBooking.funcionario_id, quickBooking.data)
+      .then((response) => { if (active) setOccupiedSlots(response?.data || []); })
+      .catch(() => { if (active) setOccupiedSlots([]); });
+    return () => { active = false; };
+  }, [empresaId, quickBooking.data, quickBooking.funcionario_id]);
+
   // Inicializar dia da semana quando o modal de recorrência for aberto
   useEffect(() => {
     if (showRecurringOptions && quickBooking.data && recurringConfig.tipo_recorrencia === 'semanal') {
-      const dataSelecionada = new Date(quickBooking.data);
+      const dataSelecionada = new Date(`${quickBooking.data}T00:00:00`);
       const diaSemana = dataSelecionada.getDay();
       
       // Sempre atualizar o dia da semana baseado na data selecionada
@@ -140,7 +161,15 @@ const AgendamentoEmpresa = () => {
 
 
   // Nova função para confirmar agendamento (primeiro agendamento normal)
-  const handleConfirmarAgendamento = () => {
+  const criarAgendamento = (data) => apiService.createAgendamento({
+    empresa_id: Number(empresaId),
+    funcionario_id: Number(quickBooking.funcionario_id),
+    data_agendamento: data,
+    hora_inicio: quickBooking.hora,
+    servicos: quickBooking.servicos.map((servico) => Number(servico.id))
+  });
+
+  const handleConfirmarAgendamento = async () => {
     // Validar campos obrigatórios
     if (!quickBooking.nome || !quickBooking.telefone || !quickBooking.data || 
         !quickBooking.hora || !quickBooking.funcionario_id || quickBooking.servicos.length === 0) {
@@ -148,32 +177,16 @@ const AgendamentoEmpresa = () => {
       return;
     }
 
-    // Criar o primeiro agendamento
-    const novoAgendamento = {
-      id: Date.now(),
-      cliente_nome: quickBooking.nome,
-      cliente_telefone: quickBooking.telefone,
-      cliente_email: user.email,
-      data: quickBooking.data,
-      hora: quickBooking.hora,
-      funcionario_id: quickBooking.funcionario_id,
-      empresa_id: empresaId,
-      servicos: quickBooking.servicos,
-      valor_total: calcularValorTotal(),
-      status: 'pendente',
-      data_criacao: new Date().toISOString()
-    };
-
-    // Salvar agendamento
-    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
-    agendamentos.push(novoAgendamento);
-    localStorage.setItem(`agendamentos_${empresaId}`, JSON.stringify(agendamentos));
-
-    // Definir status como pendente
-    setAgendamentoStatus('pendente');
-
-    // Mostrar opções de recorrência
-    setShowRecurringOptions(true);
+    try {
+      setBookingSubmitting(true);
+      const agendamento = await criarAgendamento(quickBooking.data);
+      setAgendamentoStatus(agendamento.status || 'em_aprovacao');
+      setShowRecurringOptions(true);
+    } catch (error) {
+      alert(error.message || 'Não foi possível criar o agendamento.');
+    } finally {
+      setBookingSubmitting(false);
+    }
   };
 
   // Função para calcular datas recorrentes para prévia
@@ -236,80 +249,44 @@ const AgendamentoEmpresa = () => {
   };
 
   // Função para confirmar recorrência e criar os agendamentos adicionais
-  const handleConfirmarRecorrencia = () => {
+  const handleConfirmarRecorrencia = async () => {
     if (recurringConfig.total_agendamentos === 0) {
       alert('Por favor, selecione o número de agendamentos.');
       return;
     }
 
-    // Criar agendamentos recorrentes
-    const agendamentosRecorrentes = [];
-    const dataBase = new Date(quickBooking.data);
-    
-    for (let i = 1; i < recurringConfig.total_agendamentos; i++) {
-      let proximaData = new Date(dataBase);
-      
-      switch (recurringConfig.tipo_recorrencia) {
-        case 'semanal':
-          proximaData.setDate(proximaData.getDate() + (7 * i));
-          break;
-        case 'quinzenal':
-          proximaData.setDate(proximaData.getDate() + (15 * i));
-          break;
-        case 'mensal':
-          proximaData.setMonth(proximaData.getMonth() + i);
-          break;
-        default:
-          proximaData.setDate(proximaData.getDate() + (7 * i));
-      }
+    try {
+      setBookingSubmitting(true);
+      const datasAdicionais = calcularDatasRecorrentes().slice(1);
+      const resultados = await Promise.allSettled(
+        datasAdicionais.map((data) => criarAgendamento(data.toISOString().split('T')[0]))
+      );
+      const criados = resultados.filter((resultado) => resultado.status === 'fulfilled').length + 1;
+      const falhas = resultados.length - (criados - 1);
 
-      const agendamentoRecorrente = {
-        id: Date.now() + i,
-        cliente_nome: quickBooking.nome,
-        cliente_telefone: quickBooking.telefone,
-        cliente_email: user.email,
-        data: proximaData.toISOString().split('T')[0],
+      setShowRecurringOptions(false);
+      setAgendamentoConfirmado({
+        empresa_nome: empresa.nome,
+        funcionario_nome: funcionarios.find((item) => item.id === quickBooking.funcionario_id)?.nome || 'Profissional',
+        data: quickBooking.data,
         hora: quickBooking.hora,
-        funcionario_id: quickBooking.funcionario_id,
-        empresa_id: empresaId,
-        servicos: quickBooking.servicos,
+        servicos: quickBooking.servicos.map(s => s.nome).join(', '),
         valor_total: calcularValorTotal(),
-        status: 'pendente',
-        data_criacao: new Date().toISOString(),
-        recorrente: true,
-        serie_recorrente_id: Date.now(), // ID para agrupar agendamentos da mesma série
-        posicao_serie: i + 1,
-        total_agendamentos: recurringConfig.total_agendamentos
-      };
-
-      agendamentosRecorrentes.push(agendamentoRecorrente);
+        recorrente: criados > 1,
+        total_agendamentos: recurringConfig.total_agendamentos,
+        agendamentos_criados: criados
+      });
+      if (falhas > 0) alert(`${falhas} horário(s) da recorrência já não estavam disponíveis.`);
+    } finally {
+      setBookingSubmitting(false);
     }
-
-    // Salvar agendamentos recorrentes
-    const agendamentos = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
-    agendamentos.push(...agendamentosRecorrentes);
-    localStorage.setItem(`agendamentos_${empresaId}`, JSON.stringify(agendamentos));
-
-    // Fechar modal e mostrar confirmação
-    setShowRecurringOptions(false);
-    setAgendamentoConfirmado({
-      empresa_nome: empresa.nome,
-      data: new Date(quickBooking.data + 'T00:00:00').toLocaleDateString('pt-BR'),
-      hora: quickBooking.hora,
-      servicos: quickBooking.servicos.map(s => s.nome).join(', '),
-      valor_total: calcularValorTotal(),
-      recorrente: true,
-      total_agendamentos: recurringConfig.total_agendamentos,
-      agendamentos_criados: recurringConfig.total_agendamentos
-    });
   };
 
   // Função para verificar se deve sugerir reagendamento após 5 conclusões
-  const verificarLembreteReagendamento = (clienteId) => {
-    const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-    const agendamentosCliente = agendamentos.filter(ag => 
-      ag.cliente_email === user.email && ag.status === 'realizado'
-    );
+  const criarLembreteReagendamento = (appointments) => {
+    const agendamentosCliente = (Array.isArray(appointments) ? appointments : [])
+      .filter((appointment) => appointment.status === 'realizado')
+      .sort((left, right) => String(left.data).localeCompare(String(right.data)));
     
     // Se o cliente tem 5 ou mais agendamentos realizados, sugerir reagendamento
     if (agendamentosCliente.length >= 5) {
@@ -328,29 +305,19 @@ const AgendamentoEmpresa = () => {
       }
     }
     
-    return { sugerir: false };
+    return null;
   };
 
   const verificarDisponibilidadeFuncionario = (horario) => {
-    const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-    const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
-    
-    // Combinar agendamentos de ambas as chaves para verificação completa
-    const todosAgendamentos = [...agendamentos, ...agendamentosEmpresa];
-    
-    // Remover duplicatas baseado no ID
-    const agendamentosUnicos = todosAgendamentos.filter((agendamento, index, self) => 
-      index === self.findIndex(a => a.id === agendamento.id)
-    );
-    
-    const agendamentosHoje = agendamentosUnicos.filter(a => 
-      a.data === quickBooking.data && 
-      a.hora === horario && 
-      a.empresa_id === empresaId &&
-      a.status !== 'cancelado'
-    );
-    
-    return agendamentosHoje.length === 0;
+    const [hours, minutes] = horario.split(':').map(Number);
+    const candidateStart = hours * 60 + minutes;
+    const candidateEnd = candidateStart + (calcularTempoTotal() || 30);
+    return !occupiedSlots.some((slot) => {
+      const [slotHours, slotMinutes] = String(slot.hora).split(':').map(Number);
+      const slotStart = slotHours * 60 + slotMinutes;
+      const slotEnd = slotStart + (Number(slot.duracao_minutos) || 60);
+      return candidateStart < slotEnd && candidateEnd > slotStart;
+    });
   };
 
   const verificarHorarioDisponivel = (horario) => {
@@ -359,41 +326,31 @@ const AgendamentoEmpresa = () => {
     const funcionarioSelecionado = funcionarios.find(f => f.id === quickBooking.funcionario_id);
     if (!funcionarioSelecionado) return false;
     
-    const inicio = funcionarioSelecionado.horario_inicio || empresa.horario_inicio || '08:00';
-    const fim = funcionarioSelecionado.horario_fim || empresa.horario_fim || '18:00';
+    const dayKeys = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+    const dayKey = dayKeys[new Date(`${quickBooking.data}T00:00:00`).getDay()];
+    const disponibilidadeDia = funcionarioSelecionado.disponibilidade?.[dayKey];
+    const companyDays = empresa.horario_funcionamento?.dias_trabalho;
+    const selectedDay = new Date(`${quickBooking.data}T12:00:00`).getDay();
+    if (!disponibilidadeDia && Array.isArray(companyDays) && companyDays.length > 0
+        && !companyDays.map(Number).includes(selectedDay)) return false;
+    if (disponibilidadeDia && !disponibilidadeDia.disponivel) return false;
+    const inicio = disponibilidadeDia?.inicio || empresa.horario_inicio || '08:00';
+    const fim = disponibilidadeDia?.fim || empresa.horario_fim || '18:00';
     
     // Verificar se o horário está dentro do horário de funcionamento do funcionário
     if (horario < inicio || horario >= fim) return false;
     
     // Verificar intervalos do funcionário (ex: almoço 12:00-13:00)
-    const intervalos = funcionarioSelecionado.intervalos || [];
+    const intervalos = (funcionarioSelecionado.pausas || []).filter((intervalo) =>
+      !Array.isArray(intervalo.dias) || intervalo.dias.includes(dayKey)
+    );
     for (const intervalo of intervalos) {
       if (horario >= intervalo.inicio && horario < intervalo.fim) {
         return false; // Horário está em um intervalo (almoço, etc.)
       }
     }
     
-    // Verificar se há agendamentos neste horário para este funcionário
-    const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-    const agendamentosEmpresa = JSON.parse(localStorage.getItem(`agendamentos_${empresaId}`) || '[]');
-    
-    // Combinar agendamentos de ambas as chaves para verificação completa
-    const todosAgendamentos = [...agendamentos, ...agendamentosEmpresa];
-    
-    // Remover duplicatas baseado no ID
-    const agendamentosUnicos = todosAgendamentos.filter((agendamento, index, self) => 
-      index === self.findIndex(a => a.id === agendamento.id)
-    );
-    
-    const agendamentosHorario = agendamentosUnicos.filter(a => 
-      a.data === quickBooking.data && 
-      a.hora === horario && 
-      a.empresa_id === empresaId &&
-      a.funcionario_id === quickBooking.funcionario_id &&
-      a.status !== 'cancelado'
-    );
-    
-    return agendamentosHorario.length === 0;
+    return verificarDisponibilidadeFuncionario(horario);
   };
 
   const buscarFuncionariosDisponiveis = () => {
@@ -966,9 +923,10 @@ const AgendamentoEmpresa = () => {
           {quickBooking.servicos.length > 0 && (
             <button
                 onClick={handleConfirmarAgendamento}
+                disabled={bookingSubmitting}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 px-6 rounded-xl text-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
             >
-                Confirmar Agendamento
+                {bookingSubmitting ? 'Criando agendamento...' : 'Confirmar Agendamento'}
             </button>
           )}
                   </div>
@@ -1004,10 +962,10 @@ const AgendamentoEmpresa = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white">
-                      {agendamentoStatus === 'pendente' ? 'Agendamento Aguardando Confirmação!' : 'Agendamento Confirmado!'}
+                      {agendamentoStatus === 'em_aprovacao' ? 'Agendamento Aguardando Confirmação!' : 'Agendamento Confirmado!'}
                     </h3>
                     <p className="text-green-200 text-sm">
-                      {agendamentoStatus === 'pendente' 
+                      {agendamentoStatus === 'em_aprovacao'
                         ? 'Tornar este agendamento recorrente?' 
                         : 'Tornar este agendamento recorrente?'}
                     </p>
@@ -1031,12 +989,12 @@ const AgendamentoEmpresa = () => {
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
                 <h4 className="text-lg font-semibold text-gray-900 mb-2">
-                  {agendamentoStatus === 'pendente' 
+                  {agendamentoStatus === 'em_aprovacao'
                     ? 'Agendamento Criado com Sucesso!' 
                     : 'Agendamento Confirmado!'}
                 </h4>
                 <p className="text-gray-600">
-                  {agendamentoStatus === 'pendente'
+                  {agendamentoStatus === 'em_aprovacao'
                     ? 'Seu agendamento foi criado e está aguardando confirmação. Deseja tornar este agendamento recorrente?'
                     : 'Agendamento confirmado! Deseja tornar este agendamento recorrente?'}
                 </p>
@@ -1161,10 +1119,10 @@ const AgendamentoEmpresa = () => {
                 </button>
                 <button
                   onClick={handleConfirmarRecorrencia}
-                  disabled={recurringConfig.total_agendamentos === 0}
+                  disabled={recurringConfig.total_agendamentos === 0 || bookingSubmitting}
                   className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                  {agendamentoStatus === 'pendente' ? 'Tornar Recorrente (Pendente)' : 'Tornar Recorrente'}
+                  {bookingSubmitting ? 'Criando recorrência...' : 'Tornar recorrente'}
                 </button>
                 </div>
                 
@@ -1174,7 +1132,8 @@ const AgendamentoEmpresa = () => {
                     setShowRecurringOptions(false);
                     setAgendamentoConfirmado({
                       empresa_nome: empresa.nome,
-                      data: new Date(quickBooking.data + 'T00:00:00').toLocaleDateString('pt-BR'),
+                      funcionario_nome: funcionarios.find((item) => item.id === quickBooking.funcionario_id)?.nome || 'Profissional',
+                      data: quickBooking.data,
                       hora: quickBooking.hora,
                       servicos: quickBooking.servicos.map(s => s.nome).join(', '),
                       valor_total: calcularValorTotal(),
@@ -1287,7 +1246,8 @@ const AgendamentoEmpresa = () => {
                     setShowRecurringOptions(false);
                     setAgendamentoConfirmado({
                       empresa_nome: empresa.nome,
-                      data: new Date(quickBooking.data + 'T00:00:00').toLocaleDateString('pt-BR'),
+                      funcionario_nome: funcionarios.find((item) => item.id === quickBooking.funcionario_id)?.nome || 'Profissional',
+                      data: quickBooking.data,
                       hora: quickBooking.hora,
                       servicos: quickBooking.servicos.map(s => s.nome).join(', '),
                       valor_total: calcularValorTotal(),
@@ -1319,7 +1279,7 @@ const AgendamentoEmpresa = () => {
             <div className="bg-gradient-to-b from-green-50 to-green-100 rounded-xl p-4 mb-6 shadow-sm">
               <h4 className="font-bold text-gray-900 mb-4 flex items-center">
                 📋 {(agendamentoConfirmado.recorrente || false) ? 'Resumo dos Agendamentos' : 
-                    (agendamentoConfirmado.status === 'pendente' ? 'Resumo do Agendamento (Aguardando Confirmação)' : 'Resumo do Agendamento')}
+                    (agendamentoConfirmado.status === 'em_aprovacao' ? 'Resumo do Agendamento (Aguardando Confirmação)' : 'Resumo do Agendamento')}
               </h4>
               
               {(agendamentoConfirmado.recorrente || false) && (
@@ -1335,7 +1295,7 @@ const AgendamentoEmpresa = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center bg-green-50 rounded-lg p-3">
                   <span className="text-gray-700 flex items-center">📅 <span className="ml-2">Data:</span></span>
-                  <span className="font-bold text-gray-900">{new Date(agendamentoConfirmado.data).toLocaleDateString('pt-BR')}</span>
+                  <span className="font-bold text-gray-900">{formatarDataParaExibicao(agendamentoConfirmado.data)}</span>
                 </div>
                 
                 <div className="flex justify-between items-center bg-green-50 rounded-lg p-3">

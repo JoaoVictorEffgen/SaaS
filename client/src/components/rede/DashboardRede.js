@@ -19,22 +19,12 @@ const DashboardRede = () => {
 
   const fetchRede = async () => {
     try {
-      const token = apiService.getToken();
-      const response = await fetch('http://localhost:5000/api/redes', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const redeData = await response.json();
+      const redeData = await apiService.get('/redes');
+      if (redeData) {
         setRede(redeData);
-      } else if (response.status === 404) {
+      } else {
         // Usuário não possui rede, mostrar opção de criar
         setRede(null);
-      } else {
-        throw new Error('Erro ao carregar dados da rede');
       }
     } catch (err) {
       setError(err.message);
@@ -45,24 +35,9 @@ const DashboardRede = () => {
 
   const criarRede = async (dadosRede) => {
     try {
-      const token = apiService.getToken();
-      const response = await fetch('http://localhost:5000/api/redes', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(dadosRede)
-      });
-
-      if (response.ok) {
-        const novaRede = await response.json();
-        setRede(novaRede);
-        return novaRede;
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao criar rede');
-      }
+      const novaRede = await apiService.post('/redes', dadosRede);
+      setRede(novaRede);
+      return novaRede;
     } catch (err) {
       setError(err.message);
       throw err;

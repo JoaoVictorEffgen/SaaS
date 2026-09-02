@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Upload, Building2 } from 'lucide-react';
-import ImageUpload from '../../components/shared/ImageUpload';
+import { ArrowLeft, Save, Building2 } from 'lucide-react';
+import EmpresaLogoUpload from '../../components/EmpresaLogoUpload';
 import apiService from '../../services/apiService';
 
 const ConfiguracoesEmpresa = () => {
   const { user, loading } = useMySqlAuth();
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState(null);
-  const [, setEmpresaData] = useState(null);
+  const [empresaData, setEmpresaData] = useState(null);
   const [loadingData, setLoadingData] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   // Estados do formulário
   const [formData, setFormData] = useState({
@@ -29,7 +29,6 @@ const ConfiguracoesEmpresa = () => {
 
   useEffect(() => {
     if (user && user.tipo === 'empresa') {
-      setCurrentUser(user);
       loadEmpresaData();
     } else if (!loading) {
       navigate('/');
@@ -42,15 +41,13 @@ const ConfiguracoesEmpresa = () => {
     try {
       setLoadingData(true);
       
-      // Buscar dados da empresa via API
-      const empresas = await apiService.getEmpresas();
-      const empresa = empresas.find(e => e.user_id === user.id);
+      const empresa = await apiService.getEmpresa('me');
       
       if (empresa) {
         setEmpresaData(empresa);
         setFormData({
           nome: empresa.nome || '',
-          email: empresa.email || '',
+          email: user.email || '',
           telefone: empresa.telefone || '',
           endereco: empresa.endereco || '',
           cidade: empresa.cidade || '',
@@ -77,43 +74,26 @@ const ConfiguracoesEmpresa = () => {
     }));
   };
 
-  const handleLogoChange = async (logoUrl, file) => {
-    if (!currentUser || !logoUrl) return;
-    
-    try {
-      console.log('🔄 Atualizando logo da empresa...', { logoUrl, userId: currentUser.id });
-      
-      // Atualizar via API
-      const updatedUser = await apiService.updateProfile({ 
-        logo_url: logoUrl 
-      });
-    
-      if (updatedUser) {
-        console.log('✅ Logo atualizado via API:', updatedUser);
-        
-        // Atualizar estado local
-        const updatedUserData = {
-          ...currentUser,
-          logo_url: logoUrl
-        };
-        setCurrentUser(updatedUserData);
-        
-        console.log('✅ Logo atualizado com sucesso!');
-      }
-    } catch (error) {
-      console.error('❌ Erro ao atualizar logo:', error);
-      alert('Erro ao atualizar logo. Tente novamente.');
-    }
+  const handleLogoUpload = (logoUrl) => {
+    setEmpresaData(prev => ({ ...prev, logo_url: logoUrl }));
   };
 
   const handleSave = async () => {
     try {
-      // Aqui você implementaria a atualização dos dados da empresa
-      // Por enquanto, apenas mostrar feedback
+      if (!empresaData?.id || !formData.nome.trim()) {
+        alert('Informe o nome da empresa antes de salvar.');
+        return;
+      }
+      setSaving(true);
+      const { email, ...empresaPayload } = formData;
+      const empresaAtualizada = await apiService.updateEmpresa(empresaData.id, empresaPayload);
+      setEmpresaData(empresaAtualizada);
       alert('Configurações salvas com sucesso!');
     } catch (error) {
       console.error('❌ Erro ao salvar configurações:', error);
       alert('Erro ao salvar configurações. Tente novamente.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -162,32 +142,11 @@ const ConfiguracoesEmpresa = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
           {/* Seção de Logo */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Logo da Empresa</h2>
-            <div className="flex items-start space-x-6">
-              <div className="flex-shrink-0">
-                <ImageUpload
-                  currentImage={currentUser?.logo_url}
-                  onImageChange={handleLogoChange}
-                  className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors"
-                  placeholder={
-                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                      <Upload className="w-8 h-8 mb-2" />
-                      <span className="text-xs">Logo</span>
-                    </div>
-                  }
-                />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-600 mb-2">
-                  Faça upload do logo da sua empresa. Formatos aceitos: JPG, PNG, GIF (máx. 2MB)
-                </p>
-                <p className="text-xs text-gray-500">
-                  Recomendamos uma imagem quadrada com pelo menos 200x200 pixels para melhor qualidade.
-                </p>
-              </div>
-            </div>
-          </div>
+          <EmpresaLogoUpload
+            empresaId={empresaData?.id}
+            currentLogo={empresaData?.logo_url}
+            onLogoUpload={handleLogoUpload}
+          />
 
           {/* Informações Básicas */}
           <div className="bg-white rounded-xl shadow-sm border p-6">
@@ -215,8 +174,8 @@ const ConfiguracoesEmpresa = () => {
                   type="email"
                   name="email"
                   value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  readOnly
+                  className="w-full cursor-not-allowed bg-gray-100 px-3 py-2 border border-gray-300 rounded-lg text-gray-500"
                   placeholder="contato@empresa.com"
                 />
               </div>
@@ -373,10 +332,11 @@ const ConfiguracoesEmpresa = () => {
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              disabled={saving}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Save className="w-4 h-4" />
-              <span>Salvar Configurações</span>
+              <span>{saving ? 'Salvando...' : 'Salvar Configurações'}</span>
             </button>
           </div>
         </div>

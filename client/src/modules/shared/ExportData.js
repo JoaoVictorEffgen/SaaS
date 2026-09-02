@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Download, 
   FileText, 
-  FileSpreadsheet, 
   File, 
   Calendar,
   Users,
@@ -11,33 +10,69 @@ import {
   Package,
   ArrowLeft
 } from 'lucide-react';
+import apiService from '../../services/apiService';
+import { calculateDashboardMetrics, filterAppointmentsByPeriod } from '../../utils/dashboardMetrics';
+
+const csvEscape = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+const toCsv = (rows) => {
+  if (!rows.length) return '';
+  const headers = Object.keys(rows[0]);
+  return [headers.map(csvEscape).join(','), ...rows.map((row) => headers.map((header) => csvEscape(row[header])).join(','))].join('\n');
+};
+const downloadFile = (content, filename, type = 'text/csv;charset=utf-8') => {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+};
+
 const ExportData = () => {
   const navigate = useNavigate();
   const [periodo, setPeriodo] = useState('30d');
   const [loading, setLoading] = useState(false);
 
-  const handleExport = async (type, format = 'csv') => {
+  const handleExport = async (type) => {
     setLoading(true);
     
     try {
-      switch (type) {
-        case 'agendamentos':
-        case 'kpis':
-        case 'funcionarios':
-        case 'servicos':
-        case 'relatorio':
-        case 'all':
-          // exportService será implementado posteriormente
-          alert(`Exportação de ${type} em formato ${format} será implementada em breve!`);
-          break;
-          
-        default:
-          console.warn('Tipo de exportação não reconhecido:', type);
-          break;
+      const [appointmentsResponse, employeesResponse, servicesResponse, companyResponse] = await Promise.all([
+        apiService.getAgendamentos(),
+        apiService.getMeusFuncionarios(),
+        apiService.getMeusServicos(),
+        apiService.getEmpresa('me')
+      ]);
+      const appointments = filterAppointmentsByPeriod(
+        Array.isArray(appointmentsResponse) ? appointmentsResponse : appointmentsResponse?.data || [],
+        periodo
+      );
+      const employees = employeesResponse?.data || [];
+      const services = servicesResponse?.data || [];
+      const company = companyResponse?.data || companyResponse;
+      const metrics = calculateDashboardMetrics(appointments, employees, services, periodo);
+      const date = new Date().toISOString().slice(0, 10);
+      const rows = {
+        agendamentos: appointments.map((item) => ({
+          ID: item.id, Data: item.data, Hora: String(item.hora || '').slice(0, 5),
+          Cliente: item.cliente?.nome || '', Funcionário: item.funcionario?.nome || '',
+          Serviços: (item.servicos || []).map((service) => service.nome).join('; '),
+          Valor: item.valor_total, Status: item.status
+        })),
+        funcionarios: employees.map((item) => ({ ID: item.id, Nome: item.nome, Email: item.email, Telefone: item.telefone, Cargo: item.cargo })),
+        servicos: services.map((item) => ({ ID: item.id, Nome: item.nome, Descrição: item.descricao, Duração: item.duracao_minutos, Preço: item.preco, Categoria: item.categoria, Ativo: item.ativo ? 'Sim' : 'Não' })),
+        kpis: Object.entries(metrics).filter(([, value]) => typeof value === 'number').map(([metric, value]) => ({ Métrica: metric, Valor: value }))
+      };
+
+      if (type === 'relatorio') {
+        downloadFile(JSON.stringify({ empresa: company, periodo, gerado_em: new Date().toISOString(), metricas: metrics }, null, 2), `relatorio-${date}.json`, 'application/json');
+      } else if (type === 'all') {
+        Object.entries(rows).forEach(([name, data]) => downloadFile(toCsv(data), `${name}-${date}.csv`));
+      } else if (rows[type]) {
+        downloadFile(toCsv(rows[type]), `${type}-${date}.csv`);
       }
-      
-      // Simular delay para mostrar loading
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
     } catch (error) {
       console.error('Erro ao exportar dados:', error);
@@ -79,7 +114,7 @@ const ExportData = () => {
     {
       id: 'relatorio',
       title: 'Relatório Completo',
-      description: 'Relatório consolidado em PDF',
+      description: 'Resumo consolidado em JSON',
       icon: File,
       color: 'red'
     },
@@ -153,24 +188,14 @@ const ExportData = () => {
                   {/* Botões de ação */}
                   <div className="flex space-x-2">
                     {option.id !== 'relatorio' && option.id !== 'all' && (
-                      <>
                         <button
-                          onClick={() => handleExport(option.id, 'csv')}
+                          onClick={() => handleExport(option.id)}
                           disabled={loading}
                           className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium disabled:opacity-50"
                         >
                           <FileText className="h-4 w-4 mr-1 inline" />
                           CSV
                         </button>
-                        <button
-                          onClick={() => handleExport(option.id, 'excel')}
-                          disabled={loading}
-                          className="flex-1 px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium disabled:opacity-50"
-                        >
-                          <FileSpreadsheet className="h-4 w-4 mr-1 inline" />
-                          Excel
-                        </button>
-                      </>
                     )}
                     
                     {(option.id === 'relatorio' || option.id === 'all') && (
@@ -201,8 +226,7 @@ const ExportData = () => {
             <h3 className="text-lg font-semibold text-blue-900 mb-2">Sobre os Formatos</h3>
             <div className="space-y-2 text-sm text-blue-800">
               <p><strong>CSV:</strong> Formato de texto simples, compatível com Excel, Google Sheets e outros editores de planilhas.</p>
-              <p><strong>Excel:</strong> Formato nativo do Microsoft Excel (.xlsx), ideal para análises avançadas.</p>
-              <p><strong>PDF:</strong> Relatório formatado e pronto para impressão ou compartilhamento.</p>
+              <p><strong>JSON:</strong> Resumo estruturado das métricas para integrações e auditoria.</p>
             </div>
           </div>
         </div>
@@ -216,8 +240,8 @@ const ExportData = () => {
             <h4 className="font-medium text-gray-900 mb-2">Para Análises:</h4>
             <ul className="space-y-1">
               <li>• Use CSV para importar em ferramentas de BI</li>
-              <li>• Excel é ideal para gráficos e tabelas dinâmicas</li>
-              <li>• KPIs incluem tendências e comparações</li>
+              <li>• Abra o CSV no Excel para gráficos e tabelas dinâmicas</li>
+              <li>• KPIs são calculados a partir dos agendamentos reais</li>
             </ul>
           </div>
           <div>

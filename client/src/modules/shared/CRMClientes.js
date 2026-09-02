@@ -15,9 +15,8 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
-const CRMClientes = ({ userId, userPlan }) => {
+const CRMClientes = ({ userId, userPlan, appointments = [] }) => {
   const [clientes, setClientes] = useState([]);
-  const [, setAgendamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState('all'); // all, vip, regular, novo
@@ -33,16 +32,13 @@ const CRMClientes = ({ userId, userPlan }) => {
     }
     // Recarregar somente quando o usuário ou o acesso ao recurso mudar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, hasCRMAccess]);
+  }, [userId, hasCRMAccess, appointments]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const agendamentosData = JSON.parse(localStorage.getItem(`agendamentos_${userId}`) || '[]');
-      setAgendamentos(agendamentosData);
-      
       // Extrair clientes únicos dos agendamentos
-      const clientesUnicos = extractClientesFromAgendamentos(agendamentosData);
+      const clientesUnicos = extractClientesFromAgendamentos(appointments);
       setClientes(clientesUnicos);
     } catch (error) {
       console.error('Erro ao carregar dados do CRM:', error);
@@ -55,14 +51,15 @@ const CRMClientes = ({ userId, userPlan }) => {
     const clientesMap = new Map();
 
     agendamentos.forEach(agendamento => {
-      const clienteKey = agendamento.cliente_email;
+      const clienteKey = agendamento.cliente_id || agendamento.cliente?.email || agendamento.cliente_email;
+      if (!clienteKey) return;
       
       if (!clientesMap.has(clienteKey)) {
         clientesMap.set(clienteKey, {
-          id: agendamento.cliente_email,
-          nome: agendamento.cliente_nome,
-          email: agendamento.cliente_email,
-          telefone: agendamento.cliente_telefone || '',
+          id: clienteKey,
+          nome: agendamento.cliente?.nome || agendamento.cliente_nome || 'Cliente',
+          email: agendamento.cliente?.email || agendamento.cliente_email || '',
+          telefone: agendamento.cliente?.telefone || agendamento.cliente_telefone || '',
           endereco: agendamento.cliente_endereco || '',
           primeiroAgendamento: agendamento.data,
           ultimoAgendamento: agendamento.data,
@@ -71,8 +68,8 @@ const CRMClientes = ({ userId, userPlan }) => {
           statusAgendamentos: {
             confirmado: 0,
             cancelado: 0,
-            pendente: 0,
-            concluido: 0
+            em_aprovacao: 0,
+            realizado: 0
           },
           agendamentos: []
         });
@@ -80,8 +77,10 @@ const CRMClientes = ({ userId, userPlan }) => {
 
       const cliente = clientesMap.get(clienteKey);
       cliente.totalAgendamentos++;
-      cliente.totalGasto += parseFloat(agendamento.valor_total) || 0;
-      cliente.statusAgendamentos[agendamento.status]++;
+      if (agendamento.status === 'realizado') {
+        cliente.totalGasto += parseFloat(agendamento.valor_total) || 0;
+      }
+      cliente.statusAgendamentos[agendamento.status] = (cliente.statusAgendamentos[agendamento.status] || 0) + 1;
       cliente.agendamentos.push(agendamento);
 
       // Atualizar datas
@@ -126,7 +125,7 @@ const CRMClientes = ({ userId, userPlan }) => {
     score += Math.min(diasFidelidade * 0.5, 100);
     
     // Pontos por taxa de comparecimento
-    const taxaComparecimento = (cliente.statusAgendamentos.confirmado + cliente.statusAgendamentos.concluido) / cliente.totalAgendamentos;
+    const taxaComparecimento = (cliente.statusAgendamentos.realizado || 0) / cliente.totalAgendamentos;
     score += taxaComparecimento * 50;
     
     return Math.min(Math.round(score), 1000);
@@ -134,7 +133,7 @@ const CRMClientes = ({ userId, userPlan }) => {
 
   const calculateSatisfacao = (cliente) => {
     // Simular satisfação baseada em comportamento
-    const taxaComparecimento = (cliente.statusAgendamentos.confirmado + cliente.statusAgendamentos.concluido) / cliente.totalAgendamentos;
+    const taxaComparecimento = (cliente.statusAgendamentos.realizado || 0) / cliente.totalAgendamentos;
     const taxaCancelamento = cliente.statusAgendamentos.cancelado / cliente.totalAgendamentos;
     
     let satisfacao = 3.0; // Base

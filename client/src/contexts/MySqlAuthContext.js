@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import apiService from '../services/apiService';
-import { LOCAL_DEV, getLocalDevUser } from '../config/appConfig';
+import { BASIC_MODE, LOCAL_DEV, getLocalDevUser } from '../config/appConfig';
 
 const MySqlAuthContext = createContext();
 
@@ -11,9 +11,6 @@ export const useMySqlAuth = () => {
   }
   return context;
 };
-
-const getStoredDevUserType = () =>
-  localStorage.getItem('localDevUserType') || 'empresa';
 
 export const MySqlAuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -57,11 +54,6 @@ export const MySqlAuthProvider = ({ children }) => {
       try {
         setLoading(true);
 
-        if (LOCAL_DEV) {
-          setLocalDevUser(getStoredDevUserType());
-          return;
-        }
-
         const token = apiService.getToken();
 
         if (token) {
@@ -74,11 +66,7 @@ export const MySqlAuthProvider = ({ children }) => {
         }
       } catch (loadError) {
         console.error('Erro ao carregar perfil:', loadError);
-        if (LOCAL_DEV) {
-          setLocalDevUser(getStoredDevUserType());
-        } else {
-          apiService.logout();
-        }
+        apiService.logout();
       } finally {
         setLoading(false);
       }
@@ -98,11 +86,6 @@ export const MySqlAuthProvider = ({ children }) => {
     companyIdentifier = null,
     rememberSession = true
   ) => {
-    if (LOCAL_DEV) {
-      const devUser = setLocalDevUser(tipo || 'empresa');
-      return { success: true, user: devUser };
-    }
-
     try {
       setLoading(true);
       setError(null);
@@ -135,19 +118,19 @@ export const MySqlAuthProvider = ({ children }) => {
   };
 
   const register = async (userData) => {
-    if (LOCAL_DEV) {
-      const devUser = setLocalDevUser(userData?.tipo || 'cliente');
-      return { success: true, user: devUser };
-    }
-
     try {
       setLoading(true);
       const result = await apiService.register(userData);
 
       if (result && result.user) {
-        setUser(result.user);
-        applySubscription(result.user);
-        return { success: true };
+        const registeredUser = {
+          ...result.user,
+          empresa_id: result.empresa?.id || result.user.empresa_id || null
+        };
+        setUser(registeredUser);
+        applySubscription(registeredUser);
+        localStorage.setItem('localDevUserType', registeredUser.tipo || 'empresa');
+        return { success: true, user: registeredUser, empresa: result.empresa };
       }
 
       return { success: false, error: result?.error || 'Erro no registro' };
@@ -166,8 +149,7 @@ export const MySqlAuthProvider = ({ children }) => {
       }
 
       if (user && user.tipo === 'empresa') {
-        const empresas = await apiService.getEmpresas();
-        const empresa = empresas.find((e) => e.user_id === user.id);
+        const empresa = await apiService.getEmpresa('me');
 
         if (empresa) {
           const result = await apiService.updateEmpresa(empresa.id, userData);
@@ -191,11 +173,6 @@ export const MySqlAuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    if (LOCAL_DEV) {
-      setLocalDevUser('empresa');
-      return;
-    }
-
     apiService.logout();
     setUser(null);
     setSubscription({
@@ -221,6 +198,7 @@ export const MySqlAuthProvider = ({ children }) => {
     clearError,
     setLocalDevUser,
     localDev: LOCAL_DEV,
+    basicMode: BASIC_MODE,
     apiService
   };
 

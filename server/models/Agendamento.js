@@ -27,7 +27,7 @@ const Agendamento = sequelize.define('Agendamento', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'users',
+      model: 'empresas',
       key: 'id'
     }
   },
@@ -50,6 +50,11 @@ const Agendamento = sequelize.define('Agendamento', {
   valor_total: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true
+  },
+  servicos: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: []
   },
   data_confirmacao: {
     type: DataTypes.DATE,

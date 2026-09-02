@@ -4,18 +4,15 @@
   "description": "Backend do TimeFlow - Sistema de Agendamento Online",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "npm run start:production",
+    "start:production": "node index.js",
+    "predev": "node -e \"console.log('BASIC_MODE: sem preparacao de banco no dev')\"",
     "dev": "nodemon index.js",
-    "index": "node index.js",
-    "simple": "node simple-server.js",
-    "simple-dev": "nodemon simple-server.js",
-    "mysql": "node mysql-server.js",
-    "mysql-dev": "nodemon mysql-server.js",
-    "setup-db": "node scripts/setup-database.js",
-    "migrate": "sequelize-cli db:migrate",
+    "setup-db": "npm run migrate",
+    "migrate": "sequelize-cli db:migrate --config config/sequelize-cli.js",
     "seed": "sequelize-cli db:seed:all",
     "test": "node -e \"console.log('Servidor pronto para teste')\"",
-    "mobile": "HOST=0.0.0.0 node app.js"
+    "test:basic-e2e": "node scripts/basic-e2e-check.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -31,14 +28,14 @@
     "mysql2": "^3.15.1",
     "nodemailer": "^6.9.7",
     "sequelize": "^6.35.0",
+    "sequelize-cli": "^6.6.2",
     "sqlite3": "^5.1.6",
     "stripe": "^14.5.0",
     "twilio": "^4.19.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1",
-    "sequelize-cli": "^6.6.2"
+    "nodemon": "^3.0.1"
   },
   "keywords": [
     "saas",

@@ -3,13 +3,14 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
+const runtimeConfig = require('../config/runtime');
 
 // Importar pacotes
-const databaseManager = require('./core/database');
 const coreServices = require('./core/services');
 const SecurityMiddleware = require('./security/middleware');
 const PublicRoutes = require('./public/routes');
-const LegacyRoutes = require('./legacy/routes');
+const basicRoutes = require('../basic/routes');
 const { SECURITY_CONFIG, ENV_CONFIG } = require('./shared/constants');
 
 class Application {
@@ -18,7 +19,8 @@ class Application {
     this.setupProxyTrust();
     this.securityMiddleware = new SecurityMiddleware();
     this.publicRoutes = new PublicRoutes();
-    this.legacyRoutes = new LegacyRoutes();
+    this.legacyRoutes = null;
+    this.databaseManager = null;
     this.initialized = false;
   }
 
@@ -115,7 +117,7 @@ class Application {
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
     // Servir arquivos estáticos (uploads)
-    this.app.use('/api/uploads', express.static('uploads'));
+    this.app.use('/api/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
     // Logging de requisições
     this.app.use((req, res, next) => {
@@ -137,8 +139,17 @@ class Application {
     // 1. Rotas públicas PRIMEIRO (sem autenticação)
     this.app.use('/api/public', this.publicRoutes.getRoutes());
     
-    // 2. Rotas legadas (compatibilidade) - INCLUINDO LOGIN PÚBLICO
-    this.app.use('/api', this.legacyRoutes.getRoutes());
+    // 2. Modo básico (sem banco) para início rápido
+    if (runtimeConfig.basicMode) {
+      this.app.use('/api', basicRoutes);
+    } else {
+      if (!this.legacyRoutes) {
+        const LegacyRoutes = require('./legacy/routes');
+        this.legacyRoutes = new LegacyRoutes();
+      }
+      // 2. Rotas legadas (compatibilidade) - INCLUINDO LOGIN PÚBLICO
+      this.app.use('/api', this.legacyRoutes.getRoutes());
+    }
 
     // 3. Rota de fallback
     this.app.use('*', (req, res) => {
@@ -218,8 +229,15 @@ class Application {
     try {
       console.log('🚀 [APP] Inicializando aplicação...');
 
-      // 1. Inicializar banco de dados
-      await databaseManager.initialize();
+      // 1. Inicializar banco de dados (somente fora do modo básico)
+      if (!runtimeConfig.basicMode) {
+        if (!this.databaseManager) {
+          this.databaseManager = require('./core/database');
+        }
+        await this.databaseManager.initialize();
+      } else {
+        console.log('ℹ️ [APP] BASIC_MODE ativo: banco de dados desabilitado.');
+      }
 
       // 2. Inicializar serviços centrais
       await coreServices.initialize();
@@ -282,8 +300,10 @@ class Application {
     }
 
     try {
-      await databaseManager.close();
-      console.log('✅ [APP] Banco de dados desconectado');
+      if (this.databaseManager) {
+        await this.databaseManager.close();
+        console.log('✅ [APP] Banco de dados desconectado');
+      }
     } catch (error) {
       console.error('❌ [APP] Erro ao fechar banco de dados:', error);
     }
@@ -299,9 +319,10 @@ class Application {
     return {
       initialized: this.initialized,
       environment: ENV_CONFIG.NODE_ENV,
+      basicMode: runtimeConfig.basicMode,
       version: '1.0.0',
       database: {
-        connected: databaseManager.isConnected()
+        connected: runtimeConfig.basicMode ? false : this.databaseManager?.isConnected?.() || false
       },
       services: coreServices.getStats()
     };

@@ -26,35 +26,20 @@ const AdicionarEmpresaModal = ({ isOpen, onClose, onAdicionarEmpresa, redeId }) 
     setError(null);
 
     try {
-      const token = apiService.getToken();
-      const response = await fetch(`http://localhost:5000/api/redes/${redeId}/empresas`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
+      const novaEmpresa = await apiService.post(`/redes/${redeId}/empresas`, formData);
+      onAdicionarEmpresa(novaEmpresa);
+      onClose();
+      // Limpar formulário
+      setFormData({
+        nome_unidade: '',
+        endereco: '',
+        cidade: '',
+        estado: '',
+        cep: '',
+        whatsapp: ''
       });
-
-      if (response.ok) {
-        const novaEmpresa = await response.json();
-        onAdicionarEmpresa(novaEmpresa);
-        onClose();
-        // Limpar formulário
-        setFormData({
-          nome_unidade: '',
-          endereco: '',
-          cidade: '',
-          estado: '',
-          cep: '',
-          whatsapp: ''
-        });
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Erro ao adicionar empresa');
-      }
     } catch (err) {
-      setError('Erro de conexão. Tente novamente.');
+      setError(err.message || 'Erro de conexão. Tente novamente.');
     } finally {
       setLoading(false);
     }

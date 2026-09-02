@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { checkFuncionarioEmpresa } = require('../middleware/userPermissions');
-const { Empresa, User, Agendamento } = require('../models');
+const { Empresa, User, Agendamento, sequelize } = require('../models');
+const { isKnownStatus, canTransitionAppointment } = require('../utils/appointmentStatus');
 
 // GET /api/funcionarios/empresa - Buscar dados da empresa do funcionário
 router.get('/empresa', authenticateToken, checkFuncionarioEmpresa, async (req, res) => {
   try {
     const empresa = req.empresa;
-    
+
     // Construir URLs completas
     let logoUrl = null;
     if (empresa.logo_url) {
@@ -87,24 +88,42 @@ router.put('/agendamento/:id/status', authenticateToken, checkFuncionarioEmpresa
     const funcionario = req.user;
     const empresa = req.empresa;
 
-    // Buscar agendamento
-    const agendamento = await Agendamento.findOne({
-      where: {
-        id: agendamentoId,
-        empresa_id: empresa.id,
-        funcionario_id: funcionario.id
+    if (!isKnownStatus(status) || status === 'em_aprovacao') {
+      return res.status(400).json({ success: false, message: 'Status inválido' });
+    }
+
+    const agendamento = await sequelize.transaction(async (transaction) => {
+      const appointment = await Agendamento.findOne({
+        where: {
+          id: agendamentoId,
+          empresa_id: empresa.id,
+          funcionario_id: funcionario.id
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE
+      });
+
+      if (!appointment) return null;
+      if (!canTransitionAppointment(appointment.status, status)) {
+        const transitionError = new Error(`Não é possível alterar de ${appointment.status} para ${status}`);
+        transitionError.statusCode = 409;
+        throw transitionError;
       }
+
+      const updateData = { status };
+      if (status === 'confirmado' || status === 'agendado') updateData.data_confirmacao = new Date();
+      if (status === 'realizado') updateData.data_realizacao = new Date();
+      if (status === 'cancelado') {
+        updateData.data_cancelamento = new Date();
+        updateData.cancelado_por = 'funcionario';
+      }
+      await appointment.update(updateData, { transaction });
+      return appointment;
     });
 
     if (!agendamento) {
-      return res.status(404).json({
-        success: false,
-        message: 'Agendamento não encontrado'
-      });
+      return res.status(404).json({ success: false, message: 'Agendamento não encontrado' });
     }
-
-    // Atualizar status
-    await agendamento.update({ status });
 
     res.json({
       success: true,
@@ -113,6 +132,9 @@ router.put('/agendamento/:id/status', authenticateToken, checkFuncionarioEmpresa
     });
   } catch (error) {
     console.error('❌ Erro ao atualizar agendamento:', error);
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor'

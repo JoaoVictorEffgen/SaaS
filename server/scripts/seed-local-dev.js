@@ -37,6 +37,7 @@ async function seedLocalDev() {
       estado: 'SP',
       cep: '01000-000',
       descricao: 'Empresa de demonstração para testes locais',
+      categoria: 'Beleza e estética',
       whatsapp: '(11) 99999-0001',
       ativo: true,
       identificador_empresa: 'DEMO001'
@@ -70,6 +71,7 @@ async function seedLocalDev() {
       descricao: 'Corte masculino ou feminino',
       preco: 45.0,
       duracao_minutos: 30,
+      categoria: 'Cabelo',
       ativo: true
     });
 
@@ -79,6 +81,7 @@ async function seedLocalDev() {
       descricao: 'Barba completa',
       preco: 25.0,
       duracao_minutos: 20,
+      categoria: 'Barbearia',
       ativo: true
     });
 

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useMySqlAuth } from '../../contexts/MySqlAuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, Clock, DollarSign, Save, X, ArrowLeft } from 'lucide-react';
+import apiService from '../../services/apiService';
 
 const ServicosManagement = () => {
-  const { user } = useMySqlAuth();
   const navigate = useNavigate();
   const [servicos, setServicos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingServico, setEditingServico] = useState(null);
   const [formData, setFormData] = useState({
@@ -15,44 +17,43 @@ const ServicosManagement = () => {
     duracao_minutos: 60,
     preco: 0.00,
     categoria: '',
-    status: 'ativo'
+    ativo: true
   });
 
   useEffect(() => {
     loadServicos();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadServicos = () => {
-    // Simular carregamento de serviços do localStorage
-    const servicosData = JSON.parse(localStorage.getItem(`servicos_${user?.id}`) || '[]');
-    setServicos(servicosData);
-  };
-
-  const saveServicos = (newServicos) => {
-    localStorage.setItem(`servicos_${user?.id}`, JSON.stringify(newServicos));
-    setServicos(newServicos);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    const servicoData = {
-      id: editingServico?.id || Date.now().toString(),
-      ...formData,
-      empresa_id: user.id,
-      created_at: editingServico?.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    let newServicos;
-    if (editingServico) {
-      newServicos = servicos.map(s => s.id === editingServico.id ? servicoData : s);
-    } else {
-      newServicos = [...servicos, servicoData];
+  const loadServicos = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await apiService.getMeusServicos();
+      setServicos(response?.data || []);
+    } catch (loadError) {
+      setError(loadError.message || 'Não foi possível carregar os serviços.');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    saveServicos(newServicos);
-    resetForm();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      setError('');
+      if (editingServico) {
+        await apiService.updateMeuServico(editingServico.id, formData);
+      } else {
+        await apiService.createMeuServico(formData);
+      }
+      await loadServicos();
+      resetForm();
+    } catch (saveError) {
+      setError(saveError.message || 'Não foi possível salvar o serviço.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetForm = () => {
@@ -62,7 +63,7 @@ const ServicosManagement = () => {
       duracao_minutos: 60,
       preco: 0.00,
       categoria: '',
-      status: 'ativo'
+      ativo: true
     });
     setEditingServico(null);
     setShowModal(false);
@@ -76,15 +77,20 @@ const ServicosManagement = () => {
       duracao_minutos: servico.duracao_minutos,
       preco: servico.preco,
       categoria: servico.categoria,
-      status: servico.status
+      ativo: servico.ativo !== false
     });
     setShowModal(true);
   };
 
-  const handleDelete = (servicoId) => {
+  const handleDelete = async (servicoId) => {
     if (window.confirm('Tem certeza que deseja excluir este serviço?')) {
-      const newServicos = servicos.filter(s => s.id !== servicoId);
-      saveServicos(newServicos);
+      try {
+        setError('');
+        await apiService.deleteMeuServico(servicoId);
+        await loadServicos();
+      } catch (deleteError) {
+        setError(deleteError.message || 'Não foi possível excluir o serviço.');
+      }
     }
   };
 
@@ -137,9 +143,13 @@ const ServicosManagement = () => {
           </button>
         </div>
 
+        {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+
         {/* Serviços List */}
         <div className="bg-white shadow rounded-lg">
-          {servicos.length === 0 ? (
+          {loading ? (
+            <div className="py-12 text-center text-sm text-gray-500">Carregando serviços...</div>
+          ) : servicos.length === 0 ? (
             <div className="text-center py-12">
               <div className="mx-auto h-12 w-12 text-gray-400">
                 <Clock className="h-full w-full" />
@@ -215,11 +225,11 @@ const ServicosManagement = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          servico.status === 'ativo' 
+                          servico.ativo !== false
                             ? 'bg-green-100 text-green-800' 
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {servico.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                          {servico.ativo !== false ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -277,6 +287,15 @@ const ServicosManagement = () => {
                       placeholder="Ex: Consultoria, Corte de Cabelo, etc."
                     />
                   </div>
+
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={formData.ativo}
+                      onChange={(e) => setFormData({...formData, ativo: e.target.checked})}
+                    />
+                    Serviço disponível para agendamento
+                  </label>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -346,10 +365,11 @@ const ServicosManagement = () => {
                     </button>
                     <button
                       type="submit"
+                      disabled={saving}
                       className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
                     >
                       <Save className="h-4 w-4 mr-2" />
-                      {editingServico ? 'Atualizar' : 'Criar'}
+                      {saving ? 'Salvando...' : editingServico ? 'Atualizar' : 'Criar'}
                     </button>
                   </div>
                 </form>

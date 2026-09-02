@@ -1,5 +1,4 @@
 // 🛡️ Pacote de Segurança - Middleware
-const { User } = require('../../models');
 const AuthSecurity = require('./auth');
 
 class SecurityMiddleware {
@@ -34,6 +33,7 @@ class SecurityMiddleware {
       }
 
       // Buscar usuário no banco
+      const { User } = require('../../models');
       const user = await User.findByPk(decoded.userId);
       if (!user || !user.ativo) {
         console.log('❌ [SECURITY] Usuário não encontrado ou inativo');
