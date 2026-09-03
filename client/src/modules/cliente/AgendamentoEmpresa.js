@@ -6,6 +6,7 @@ import WhatsAppChat from '../shared/WhatsAppChat';
 import CompanyLocation from '../../components/shared/CompanyLocation';
 import useEmpresaBookingData from '../../hooks/useEmpresaBookingData';
 import apiService from '../../services/apiService';
+import { formatDateOnly } from '../../utils/dateOnly';
 
 const AgendamentoEmpresa = () => {
   const { empresaId } = useParams();
@@ -259,7 +260,7 @@ const AgendamentoEmpresa = () => {
       setBookingSubmitting(true);
       const datasAdicionais = calcularDatasRecorrentes().slice(1);
       const resultados = await Promise.allSettled(
-        datasAdicionais.map((data) => criarAgendamento(data.toISOString().split('T')[0]))
+        datasAdicionais.map((data) => criarAgendamento(formatDateOnly(data)))
       );
       const criados = resultados.filter((resultado) => resultado.status === 'fulfilled').length + 1;
       const falhas = resultados.length - (criados - 1);
