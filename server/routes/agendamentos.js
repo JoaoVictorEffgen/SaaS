@@ -5,6 +5,7 @@ const { Op, Transaction } = require('sequelize');
 const { authenticateToken: auth } = require('../middleware/auth');
 const { canTransitionAppointment } = require('../utils/appointmentStatus');
 const { getBusinessClock, isFutureBusinessSlot, isValidDateOnly } = require('../utils/businessTime');
+const { getAppointmentOwnerFilter } = require('../utils/appointmentScope');
 
 async function getEmpresaIdDoUsuario(user) {
   if (user.tipo === 'empresa') {
@@ -289,18 +290,15 @@ router.get('/hoje', auth, async (req, res) => {
   try {
     const dataHoje = getBusinessClock().date;
     
-    let whereClause = {
-      data: dataHoje
+    const empresaId = req.user.tipo === 'empresa' ? await getEmpresaIdDoUsuario(req.user) : null;
+    const scope = getAppointmentOwnerFilter(req.user, empresaId);
+    if (scope.notFound) return res.status(404).json({ error: 'Empresa não encontrada' });
+    if (scope.denied) return res.status(403).json({ error: 'Sem permissão' });
+
+    const whereClause = {
+      data: dataHoje,
+      ...scope.where
     };
-    
-    // Filtrar por tipo de usuário
-    if (req.user.tipo === 'empresa') {
-      const empresaId = await getEmpresaIdDoUsuario(req.user);
-      if (!empresaId) return res.status(404).json({ error: 'Empresa não encontrada' });
-      whereClause.empresa_id = empresaId;
-    } else if (req.user.tipo === 'funcionario') {
-      whereClause.funcionario_id = req.user.id;
-    }
     
     const agendamentos = await Agendamento.findAll({
       where: whereClause,

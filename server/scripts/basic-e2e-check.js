@@ -260,6 +260,50 @@ const main = async () => {
     );
   });
 
+  await run('hoje nao vaza agendamentos de outros clientes', async () => {
+    const today = new Date();
+    const todayKey = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0')
+    ].join('-');
+
+    const booking = await api('/agendamentos', {
+      method: 'POST',
+      body: JSON.stringify({
+        empresa_id: 1,
+        funcionario_id: 2,
+        data_agendamento: todayKey,
+        hora_inicio: '16:00',
+        servicos: [1]
+      })
+    }, customerToken);
+    assert(booking.response.status === 201, 'Agendamento de hoje deveria ser criado');
+
+    const ownerToday = await api('/agendamentos/hoje', {}, customerToken);
+    assert(ownerToday.response.status === 200, 'Cliente dono deveria listar /hoje');
+    assert(
+      ownerToday.body.some((item) => Number(item.id) === Number(booking.body.id)),
+      'Cliente dono deveria ver o próprio agendamento de hoje'
+    );
+
+    const otherCustomerLogin = await api('/users/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        identifier: 'cliente.novo@timeflow.local',
+        senha: '12345678',
+        tipo: 'cliente'
+      })
+    });
+    assert(otherCustomerLogin.response.status === 200, 'Login do segundo cliente deveria retornar 200');
+    const otherToday = await api('/agendamentos/hoje', {}, otherCustomerLogin.body.token);
+    assert(otherToday.response.status === 200, 'Segundo cliente deveria listar /hoje');
+    assert(
+      otherToday.body.every((item) => Number(item.id) !== Number(booking.body.id)),
+      'Segundo cliente não deveria ver o agendamento de outro cliente'
+    );
+  });
+
   await run('disponibilidade reflete horário ocupado', async () => {
     const availability = await api(`/clientes/empresa/1/disponibilidade?funcionario_id=2&data=2026-09-15`, {}, customerToken);
     assert(availability.response.status === 200, 'Disponibilidade deveria retornar 200');

@@ -16,6 +16,7 @@ const {
   nextId,
   nowIso
 } = require('./store');
+const { getAppointmentOwnerFilter, appointmentMatchesOwnerFilter } = require('../utils/appointmentScope');
 
 const router = express.Router();
 
@@ -448,8 +449,15 @@ router.get('/agendamentos/hoje', requireAuth, (req, res) => {
     String(today.getMonth() + 1).padStart(2, '0'),
     String(today.getDate()).padStart(2, '0')
   ].join('-');
+  const company = req.user.tipo === 'empresa' ? getCompanyByUserId(req.user.id) : null;
+  const scope = getAppointmentOwnerFilter(req.user, company?.id);
+  if (scope.notFound) return res.status(404).json({ error: 'Empresa nao encontrada' });
+  if (scope.denied) return res.status(403).json({ error: 'Sem permissao' });
+
   const list = state.appointments
-    .filter((item) => item.data_agendamento === todayKey)
+    .filter((item) => (
+      item.data_agendamento === todayKey && appointmentMatchesOwnerFilter(item, scope)
+    ))
     .map(toAppointmentView);
   return res.json(list);
 });
