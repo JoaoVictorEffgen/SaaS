@@ -462,13 +462,29 @@ router.post('/agendamentos', requireAuth, requireType(['cliente']), (req, res) =
   }
 
   const company = getCompanyById(empresa_id);
-  if (!company) return res.status(404).json({ error: 'Empresa nao encontrada' });
+  if (!company || company.ativo === false) return res.status(404).json({ error: 'Empresa nao encontrada' });
 
-  const employee = state.users.find((item) => Number(item.id) === Number(funcionario_id) && item.tipo === 'funcionario' && item.ativo !== false);
+  const employee = state.users.find((item) =>
+    Number(item.id) === Number(funcionario_id) &&
+    item.tipo === 'funcionario' &&
+    item.ativo !== false &&
+    Number(item.empresa_id) === Number(company.id)
+  );
   if (!employee) return res.status(404).json({ error: 'Funcionario nao encontrado' });
 
-  const selectedServices = state.services.filter((service) => servicos.includes(Number(service.id)));
-  if (selectedServices.length === 0) return res.status(400).json({ error: 'Selecione ao menos um servico valido' });
+  const serviceIds = servicos.map((item) => Number(item)).filter(Number.isInteger);
+  if (serviceIds.length === 0 || serviceIds.length !== servicos.length) {
+    return res.status(400).json({ error: 'Selecione ao menos um servico valido' });
+  }
+
+  const selectedServices = serviceIds.map((serviceId) => state.services.find((service) =>
+    Number(service.id) === serviceId &&
+    Number(service.empresa_id) === Number(company.id) &&
+    service.ativo !== false
+  ));
+  if (selectedServices.some((service) => !service)) {
+    return res.status(400).json({ error: 'Um ou mais servicos nao pertencem a esta empresa' });
+  }
 
   const requestedStart = String(hora_inicio).slice(0, 5);
   const requestedDuration = selectedServices.reduce((sum, service) => sum + Number(service.duracao_minutos || 0), 0) || 30;
@@ -535,6 +551,9 @@ router.put('/agendamentos/:id/confirmar', requireAuth, (req, res) => {
 
   const isEmployee = Number(appointment.funcionario_id) === Number(req.user.id);
   if (!isEmployee) return res.status(403).json({ error: 'Sem permissao para confirmar este agendamento' });
+  if (!canTransitionStatus(appointment.status, 'confirmado')) {
+    return res.status(400).json({ error: 'Transicao de status invalida para este agendamento' });
+  }
 
   appointment.status = 'confirmado';
   appointment.updated_at = nowIso();
