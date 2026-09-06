@@ -341,6 +341,11 @@ const main = async () => {
     assert(listNetworks.response.status === 200, 'Listagem de rede deveria retornar 200');
     const networkId = listNetworks.body.id || createNetwork.body.id;
     assert(networkId, 'Rede sem id após criação/listagem');
+    assert(
+      Array.isArray(listNetworks.body.empresas) &&
+      listNetworks.body.empresas.every((company) => Number(company.user_id) === 1),
+      'GET /redes não pode listar empresas de outro tenant'
+    );
 
     const createBranch = await api(`/redes/${networkId}/empresas`, {
       method: 'POST',
