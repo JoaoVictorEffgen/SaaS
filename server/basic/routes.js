@@ -5,6 +5,9 @@ const {
   findUserByIdentifier,
   getCompanyByUserId,
   getCompanyById,
+  listCompaniesForOwner,
+  listPromotionsForOwner,
+  ownsPromotion,
   getCompanyForEmployee,
   createSession,
   resolveSession,
@@ -581,7 +584,7 @@ router.get('/pacotes', requireAuth, (req, res) => {
 });
 
 router.get('/promocoes', requireAuth, (req, res) => {
-  return res.json(state.promotions);
+  return res.json(listPromotionsForOwner(req.user.id));
 });
 
 router.get('/empresas/:id/promocoes', (req, res) => {
@@ -591,8 +594,13 @@ router.get('/empresas/:id/promocoes', (req, res) => {
 
 router.put('/promocoes/:id', requireAuth, requireType(['empresa']), (req, res) => {
   const promo = state.promotions.find((item) => Number(item.id) === Number(req.params.id));
-  if (!promo) return res.status(404).json({ error: 'Promocao nao encontrada' });
-  Object.assign(promo, req.body || {});
+  if (!promo || !ownsPromotion(req.user.id, promo)) {
+    return res.status(404).json({ error: 'Promocao nao encontrada' });
+  }
+  const updates = { ...(req.body || {}) };
+  delete updates.id;
+  delete updates.empresa_id;
+  Object.assign(promo, updates);
   return res.json(promo);
 });
 
@@ -605,7 +613,7 @@ router.get('/redes', requireAuth, requireType(['empresa']), (req, res) => {
   const rede = state.redes.find((item) => Number(item.usuario_admin_id) === Number(req.user.id));
   if (!rede) return res.status(404).json({ error: 'Rede nao encontrada' });
 
-  const companies = state.companies.filter((company) => company.ativo !== false);
+  const companies = listCompaniesForOwner(req.user.id);
   const now = new Date();
   const trialEnd = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000);
 
@@ -627,6 +635,7 @@ router.post('/redes', requireAuth, requireType(['empresa']), (req, res) => {
   const existing = state.redes.find((item) => Number(item.usuario_admin_id) === Number(req.user.id));
   if (existing) return res.status(409).json({ error: 'Rede ja existente para esta conta' });
 
+  const companies = listCompaniesForOwner(req.user.id);
   const created = {
     id: nextId(),
     nome_rede: String(payload.nome_rede || '').trim() || 'Minha Rede',
@@ -634,12 +643,12 @@ router.post('/redes', requireAuth, requireType(['empresa']), (req, res) => {
     plano: String(payload.plano || 'trial'),
     usuario_admin_id: req.user.id,
     limite_empresas: 3,
-    empresas_ativas: state.companies.length,
+    empresas_ativas: companies.length,
     logo_rede_url: null,
     cpf_cnpj_usado: String(payload.cpf_cnpj || '').trim() || null
   };
   state.redes.push(created);
-  return res.status(201).json({ ...created, empresas: state.companies });
+  return res.status(201).json({ ...created, empresas: companies });
 });
 
 router.post('/redes/:redeId/empresas', requireAuth, requireType(['empresa']), (req, res) => {

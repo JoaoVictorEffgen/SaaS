@@ -162,6 +162,19 @@ const getCompanyByUserId = (userId) =>
 const getCompanyById = (companyId) =>
   state.companies.find((company) => Number(company.id) === Number(companyId));
 
+const listCompaniesForOwner = (userId) =>
+  state.companies.filter((company) =>
+    Number(company.user_id) === Number(userId) && company.ativo !== false
+  );
+
+const listPromotionsForOwner = (userId) => {
+  const ownedCompanyIds = new Set(listCompaniesForOwner(userId).map((company) => Number(company.id)));
+  return state.promotions.filter((item) => ownedCompanyIds.has(Number(item.empresa_id)));
+};
+
+const ownsPromotion = (userId, promo) =>
+  Boolean(promo) && listCompaniesForOwner(userId).some((company) => Number(company.id) === Number(promo.empresa_id));
+
 const getCompanyForEmployee = (employeeId) => {
   const employee = state.users.find((user) => Number(user.id) === Number(employeeId));
   if (!employee?.empresa_id) return null;
@@ -221,6 +234,9 @@ module.exports = {
   findUserByIdentifier,
   getCompanyByUserId,
   getCompanyById,
+  listCompaniesForOwner,
+  listPromotionsForOwner,
+  ownsPromotion,
   getCompanyForEmployee,
   createSession,
   resolveSession,
