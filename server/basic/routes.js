@@ -2,6 +2,7 @@ const express = require('express');
 const {
   state,
   publicUser,
+  toPublicEmployee,
   findUserByIdentifier,
   getCompanyByUserId,
   getCompanyById,
@@ -221,7 +222,7 @@ router.get('/clientes/empresa/:empresaId', requireAuth, (req, res) => {
   }
   const data = {
     ...company,
-    funcionarios: listCompanyEmployees(company.id).map(publicUser),
+    funcionarios: listCompanyEmployees(company.id).map(toPublicEmployee),
     servicos: listCompanyServices(company.id)
   };
   return res.json({ success: true, data });
