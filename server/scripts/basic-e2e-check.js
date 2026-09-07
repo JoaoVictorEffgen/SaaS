@@ -132,6 +132,17 @@ const main = async () => {
     assert(body.data.length >= 1, 'Deveria haver pelo menos uma empresa');
   });
 
+  await run('vitrine da empresa nao vaza PII dos profissionais', async () => {
+    const { response, body } = await api('/clientes/empresa/1', {}, customerToken);
+    assert(response.status === 200, 'Detalhe da empresa deveria retornar 200');
+    const funcionarios = body.data?.funcionarios || [];
+    assert(funcionarios.length >= 1, 'Empresa demo deveria listar profissionais');
+    assert(
+      funcionarios.every((item) => !item.cpf && !item.email && !item.telefone && !item.senha),
+      'Vitrine do cliente nao pode expor CPF, e-mail, telefone ou senha dos profissionais'
+    );
+  });
+
   await run('CRUD serviço (empresa)', async () => {
     const create = await api('/empresas/me/servicos', {
       method: 'POST',

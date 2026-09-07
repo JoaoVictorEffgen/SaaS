@@ -139,6 +139,21 @@ const publicUser = (user) => {
   return safe;
 };
 
+// Catálogo de agendamento: o cliente precisa só do que a vitrine mostra.
+// CPF, e-mail e telefone do profissional não entram nessa resposta.
+const toPublicEmployee = (user) => {
+  if (!user) return null;
+  return {
+    id: user.id,
+    nome: user.nome,
+    cargo: user.cargo || null,
+    foto_url: user.foto_url || null,
+    url_foto_perfil: user.url_foto_perfil || null,
+    disponibilidade: user.disponibilidade || null,
+    pausas: Array.isArray(user.pausas) ? user.pausas : []
+  };
+};
+
 const findUserByIdentifier = (identifier, tipo) => {
   const value = String(identifier || '').trim().toLowerCase();
   const digits = normalizeDigits(value);
@@ -218,6 +233,7 @@ const sanitizeEmployeePayload = (payload) => ({
 module.exports = {
   state,
   publicUser,
+  toPublicEmployee,
   findUserByIdentifier,
   getCompanyByUserId,
   getCompanyById,
