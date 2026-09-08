@@ -16,6 +16,7 @@ const {
   nextId,
   nowIso
 } = require('./store');
+const { isValidDateOnly } = require('../utils/businessTime');
 
 const router = express.Router();
 
@@ -470,6 +471,11 @@ router.post('/agendamentos', requireAuth, requireType(['cliente']), (req, res) =
   const selectedServices = state.services.filter((service) => servicos.includes(Number(service.id)));
   if (selectedServices.length === 0) return res.status(400).json({ error: 'Selecione ao menos um servico valido' });
 
+  const requestedDate = String(data_agendamento);
+  if (!isValidDateOnly(requestedDate)) {
+    return res.status(400).json({ error: 'Data do agendamento invalida' });
+  }
+
   const requestedStart = String(hora_inicio).slice(0, 5);
   const requestedDuration = selectedServices.reduce((sum, service) => sum + Number(service.duracao_minutos || 0), 0) || 30;
   const toMinutes = (hourText) => {
@@ -481,7 +487,7 @@ router.post('/agendamentos', requireAuth, requireType(['cliente']), (req, res) =
 
   const conflict = state.appointments.find((item) => {
     if (Number(item.funcionario_id) !== Number(funcionario_id)) return false;
-    if (String(item.data_agendamento) !== String(data_agendamento)) return false;
+    if (String(item.data_agendamento) !== requestedDate) return false;
     if (isFinalStatus(item.status)) return false;
     const start = toMinutes(item.hora_inicio);
     const end = start + (Number(item.duracao_minutos) || 30);
@@ -496,7 +502,7 @@ router.post('/agendamentos', requireAuth, requireType(['cliente']), (req, res) =
     empresa_id: Number(empresa_id),
     funcionario_id: Number(funcionario_id),
     cliente_id: Number(req.user.id),
-    data_agendamento: String(data_agendamento),
+    data_agendamento: requestedDate,
     hora_inicio: requestedStart,
     status: 'em_aprovacao',
     servicos: selectedServices.map((service) => Number(service.id)),
