@@ -139,22 +139,27 @@ const publicUser = (user) => {
   return safe;
 };
 
-const findUserByIdentifier = (identifier, tipo) => {
+const userMatchesIdentifier = (user, identifier, tipo) => {
+  if (!user.ativo) return false;
+  if (tipo && user.tipo !== tipo) return false;
+
   const value = String(identifier || '').trim().toLowerCase();
   const digits = normalizeDigits(value);
+  const candidates = [
+    user.email && String(user.email).toLowerCase(),
+    user.telefone && String(user.telefone).toLowerCase(),
+    user.cpf && normalizeDigits(user.cpf),
+    user.cnpj && normalizeDigits(user.cnpj)
+  ].filter(Boolean);
 
-  return state.users.find((user) => {
-    if (!user.ativo) return false;
-    if (tipo && user.tipo !== tipo) return false;
-    const candidates = [
-      user.email && String(user.email).toLowerCase(),
-      user.telefone && String(user.telefone).toLowerCase(),
-      user.cpf && normalizeDigits(user.cpf),
-      user.cnpj && normalizeDigits(user.cnpj)
-    ].filter(Boolean);
-    return candidates.includes(value) || candidates.includes(digits);
-  });
+  return candidates.includes(value) || (Boolean(digits) && candidates.includes(digits));
 };
+
+const findUsersByIdentifier = (identifier, tipo) =>
+  state.users.filter((user) => userMatchesIdentifier(user, identifier, tipo));
+
+const findUserByIdentifier = (identifier, tipo) =>
+  findUsersByIdentifier(identifier, tipo)[0] || undefined;
 
 const getCompanyByUserId = (userId) =>
   state.companies.find((company) => Number(company.user_id) === Number(userId));
@@ -219,6 +224,7 @@ module.exports = {
   state,
   publicUser,
   findUserByIdentifier,
+  findUsersByIdentifier,
   getCompanyByUserId,
   getCompanyById,
   getCompanyForEmployee,

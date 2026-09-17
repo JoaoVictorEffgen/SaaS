@@ -2,7 +2,7 @@ const express = require('express');
 const {
   state,
   publicUser,
-  findUserByIdentifier,
+  findUsersByIdentifier,
   getCompanyByUserId,
   getCompanyById,
   getCompanyForEmployee,
@@ -92,8 +92,11 @@ router.post('/users/login', (req, res) => {
     return res.status(400).json({ error: 'Dados de acesso invalidos' });
   }
 
-  const user = findUserByIdentifier(identifier, tipo);
-  if (!user || String(user.senha) !== String(senha)) {
+  const candidates = findUsersByIdentifier(identifier, tipo);
+  const passwordMatches = candidates.filter((candidate) => String(candidate.senha) === String(senha));
+  // Telefone/CPF/CNPJ podem existir em mais de uma conta. Não escolha a primeira.
+  const user = passwordMatches.length === 1 ? passwordMatches[0] : null;
+  if (!user) {
     return res.status(401).json({ error: 'Credenciais invalidas' });
   }
 
