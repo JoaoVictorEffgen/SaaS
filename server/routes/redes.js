@@ -467,7 +467,7 @@ router.delete('/empresas/:empresaId', authenticateToken, checkTrialValid, isRede
     for (const funcionario of funcionarios) {
       await funcionario.update({
         empresa_id: null,
-        rede_id: null
+        rede_id: rede.id
       });
     }
 

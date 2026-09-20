@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { User, Empresa, RedeEmpresarial } = require('../models');
+const { canAssignEmployeeToRede, toSafeEmployee } = require('../utils/employeeAssignment');
 
 // Middleware para verificar se usuário é admin da rede
 const isRedeAdmin = async (req, res, next) => {
@@ -70,21 +71,17 @@ router.post('/:empresaId/funcionarios', authenticateToken, isRedeAdmin, async (r
     if (funcionario_id) {
       // Adicionar funcionário existente
       const funcionario = await User.findByPk(funcionario_id);
-      
-      if (!funcionario) {
-        return res.status(404).json({ error: 'Funcionário não encontrado' });
+      const assignment = canAssignEmployeeToRede(funcionario, req.rede.id);
+      if (!assignment.ok) {
+        return res.status(assignment.status).json({ error: assignment.error });
       }
-      
-      if (funcionario.empresa_id) {
-        return res.status(400).json({ error: 'Funcionário já está vinculado a uma empresa' });
-      }
-      
-      await funcionario.update({ empresa_id: empresaId });
-      
-      res.json({ 
-        success: true, 
+
+      await funcionario.update({ empresa_id: empresaId, rede_id: req.rede.id });
+
+      res.json({
+        success: true,
         message: 'Funcionário adicionado com sucesso',
-        funcionario: funcionario
+        funcionario: toSafeEmployee(funcionario)
       });
     } else {
       // Criar novo funcionário
@@ -95,13 +92,14 @@ router.post('/:empresaId/funcionarios', authenticateToken, isRedeAdmin, async (r
         cargo,
         tipo: 'funcionario',
         empresa_id: empresaId,
+        rede_id: req.rede.id,
         ativo: true
       });
-      
-      res.status(201).json({ 
-        success: true, 
+
+      res.status(201).json({
+        success: true,
         message: 'Funcionário criado com sucesso',
-        funcionario: novoFuncionario
+        funcionario: toSafeEmployee(novoFuncionario)
       });
     }
   } catch (error) {
@@ -127,7 +125,10 @@ router.delete('/:empresaId/funcionarios/:funcionarioId', authenticateToken, isRe
       return res.status(404).json({ error: 'Funcionário não encontrado nesta empresa' });
     }
     
-    await funcionario.update({ empresa_id: null });
+    await funcionario.update({
+      empresa_id: null,
+      rede_id: funcionario.rede_id || req.rede.id
+    });
     
     res.json({ 
       success: true, 
