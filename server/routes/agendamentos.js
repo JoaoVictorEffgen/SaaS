@@ -3,7 +3,7 @@ const router = express.Router();
 const { Agendamento, User, Empresa, Servico, sequelize } = require('../models');
 const { Op, Transaction } = require('sequelize');
 const { authenticateToken: auth } = require('../middleware/auth');
-const { canTransitionAppointment } = require('../utils/appointmentStatus');
+const { canTransitionAppointment, timeToMinutes, appointmentOccupiesSlot, ACTIVE_BOOKING_STATUSES } = require('../utils/appointmentStatus');
 const { getBusinessClock, isFutureBusinessSlot, isValidDateOnly } = require('../utils/businessTime');
 
 async function getEmpresaIdDoUsuario(user) {
@@ -20,14 +20,6 @@ async function canManageAgendamento(user, agendamento) {
   if (user.tipo === 'empresa') return agendamento.empresa_id === await getEmpresaIdDoUsuario(user);
   return false;
 }
-
-const timeToMinutes = (value) => {
-  const match = String(value || '').match(/^(\d{2}):(\d{2})/);
-  if (!match) return null;
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  return hours <= 23 && minutes <= 59 ? hours * 60 + minutes : null;
-};
 
 const getAppointmentDuration = (appointment) => {
   const duration = (appointment.servicos || []).reduce(
@@ -175,12 +167,12 @@ router.post('/', auth, async (req, res) => {
         where: {
           funcionario_id,
           data,
-          status: { [Op.in]: ['em_aprovacao', 'agendado', 'confirmado'] }
+          status: { [Op.in]: [...ACTIVE_BOOKING_STATUSES, 'realizado'] }
         },
         transaction,
         lock: transaction.LOCK.UPDATE
       });
-      const hasOverlap = existentes.some((existing) => {
+      const hasOverlap = existentes.filter((existing) => appointmentOccupiesSlot(existing)).some((existing) => {
         const existingStart = timeToMinutes(existing.hora);
         const existingEnd = existingStart + getAppointmentDuration(existing);
         return startMinutes < existingEnd && endMinutes > existingStart;

@@ -16,6 +16,7 @@ const {
   nextId,
   nowIso
 } = require('./store');
+const { canCompleteAppointment, appointmentOccupiesSlot } = require('../utils/appointmentStatus');
 
 const router = express.Router();
 
@@ -423,6 +424,9 @@ router.put('/funcionarios/agendamento/:id/status', requireAuth, requireType(['fu
   if (!canTransitionStatus(appointment.status, status)) {
     return res.status(400).json({ error: 'Transicao de status invalida para este agendamento' });
   }
+  if (status === 'realizado' && !canCompleteAppointment(appointment)) {
+    return res.status(409).json({ error: 'So e possivel concluir um agendamento apos o horario marcado' });
+  }
   appointment.status = status;
   appointment.updated_at = nowIso();
   return res.json(toAppointmentView(appointment));
@@ -482,7 +486,7 @@ router.post('/agendamentos', requireAuth, requireType(['cliente']), (req, res) =
   const conflict = state.appointments.find((item) => {
     if (Number(item.funcionario_id) !== Number(funcionario_id)) return false;
     if (String(item.data_agendamento) !== String(data_agendamento)) return false;
-    if (isFinalStatus(item.status)) return false;
+    if (!appointmentOccupiesSlot(item)) return false;
     const start = toMinutes(item.hora_inicio);
     const end = start + (Number(item.duracao_minutos) || 30);
     return requestedStartMinutes < end && requestedEndMinutes > start;

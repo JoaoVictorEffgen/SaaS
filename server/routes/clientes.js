@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { checkIsCliente } = require('../middleware/userPermissions');
 const { Empresa, Promocao, Servico, User, Agendamento } = require('../models');
+const { appointmentOccupiesSlot, ACTIVE_BOOKING_STATUSES } = require('../utils/appointmentStatus');
 
 // GET /api/clientes/empresas - Buscar empresas disponíveis para clientes
 router.get('/empresas', async (req, res) => {
@@ -218,13 +219,13 @@ router.get('/empresa/:id/disponibilidade', authenticateToken, checkIsCliente, as
         empresa_id: req.params.id,
         funcionario_id: funcionarioId,
         data,
-        status: ['em_aprovacao', 'agendado', 'confirmado']
+        status: [...ACTIVE_BOOKING_STATUSES, 'realizado']
       },
-      attributes: ['hora', 'servicos']
+      attributes: ['hora', 'servicos', 'status', 'data']
     });
     res.json({
       success: true,
-      data: appointments.map((appointment) => ({
+      data: appointments.filter((appointment) => appointmentOccupiesSlot(appointment)).map((appointment) => ({
         hora: appointment.hora,
         duracao_minutos: (appointment.servicos || []).reduce(
           (total, service) => total + (Number(service.duracao_minutos) || 0),

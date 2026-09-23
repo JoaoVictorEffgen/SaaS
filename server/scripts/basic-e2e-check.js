@@ -296,6 +296,45 @@ const main = async () => {
     assert(cancelByCustomer.response.status === 400, 'Agendamento concluído não deveria ser cancelável');
   });
 
+  await run('conclusão antecipada não libera horário futuro', async () => {
+    const futureDate = '2026-12-15';
+    const created = await api('/agendamentos', {
+      method: 'POST',
+      body: JSON.stringify({
+        empresa_id: 1,
+        funcionario_id: 2,
+        data_agendamento: futureDate,
+        hora_inicio: '14:00',
+        servicos: [1]
+      })
+    }, customerToken);
+    assert(created.response.status === 201, 'Agendamento futuro deveria ser criado');
+
+    const confirm = await api(`/funcionarios/agendamento/${created.body.id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status: 'agendado' })
+    }, employeeToken);
+    assert(confirm.response.status === 200, 'Funcionário deveria confirmar o agendamento futuro');
+
+    const concludeEarly = await api(`/funcionarios/agendamento/${created.body.id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status: 'realizado' })
+    }, employeeToken);
+    assert(concludeEarly.response.status === 409, 'Concluir horário futuro deveria retornar 409');
+
+    const overlap = await api('/agendamentos', {
+      method: 'POST',
+      body: JSON.stringify({
+        empresa_id: 1,
+        funcionario_id: 2,
+        data_agendamento: futureDate,
+        hora_inicio: '14:00',
+        servicos: [2]
+      })
+    }, customerToken);
+    assert(overlap.response.status === 409, 'Horário futuro concluído indevidamente não pode ser reutilizado');
+  });
+
   await run('bloqueio de duplicidade de horário', async () => {
     const first = await api('/agendamentos', {
       method: 'POST',
