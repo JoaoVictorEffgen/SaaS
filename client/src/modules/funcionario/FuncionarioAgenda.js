@@ -503,6 +503,15 @@ const FuncionarioAgenda = () => {
     return new Date(year, month - 1, day).toLocaleDateString('pt-BR');
   };
 
+  const hasAppointmentStarted = (agendamento) => {
+    const date = agendamento?.data;
+    const time = String(agendamento?.horario || '').slice(0, 5);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return false;
+    const [year, month, day] = date.split('-').map(Number);
+    const [hours, minutes] = time.split(':').map(Number);
+    return new Date(year, month - 1, day, hours, minutes) <= new Date();
+  };
+
   const renderAppointmentActions = (agendamento) => {
     if (['em_aprovacao', 'pendente'].includes(agendamento.status)) {
       return (
@@ -530,6 +539,7 @@ const FuncionarioAgenda = () => {
     if (['confirmado', 'agendado'].includes(agendamento.status)) {
       return (
         <div className="flex flex-wrap gap-2">
+          {hasAppointmentStarted(agendamento) && (
           <button
             type="button"
             onClick={() => updateAgendamentoStatus(agendamento.id, 'realizado')}
@@ -538,6 +548,7 @@ const FuncionarioAgenda = () => {
             <CheckCircle2 className="h-4 w-4" />
             Concluir
           </button>
+          )}
           <button
             type="button"
             onClick={() => abrirModalCancelamento(agendamento.id)}

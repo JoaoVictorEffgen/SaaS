@@ -3,7 +3,7 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { checkFuncionarioEmpresa } = require('../middleware/userPermissions');
 const { Empresa, User, Agendamento, sequelize } = require('../models');
-const { isKnownStatus, canTransitionAppointment } = require('../utils/appointmentStatus');
+const { isKnownStatus, canTransitionAppointment, canCompleteAppointment } = require('../utils/appointmentStatus');
 
 // GET /api/funcionarios/empresa - Buscar dados da empresa do funcionário
 router.get('/empresa', authenticateToken, checkFuncionarioEmpresa, async (req, res) => {
@@ -108,6 +108,11 @@ router.put('/agendamento/:id/status', authenticateToken, checkFuncionarioEmpresa
         const transitionError = new Error(`Não é possível alterar de ${appointment.status} para ${status}`);
         transitionError.statusCode = 409;
         throw transitionError;
+      }
+      if (status === 'realizado' && !canCompleteAppointment(appointment)) {
+        const tooEarlyError = new Error('Só é possível concluir um agendamento após o horário marcado');
+        tooEarlyError.statusCode = 409;
+        throw tooEarlyError;
       }
 
       const updateData = { status };
