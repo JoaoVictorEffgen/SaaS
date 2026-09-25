@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Promocao, PacotePersonalizado } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
+const { sanitizePromocaoUpdate } = require('../utils/promocaoUpdate');
 
 // Middleware para verificar se é empresa
 const checkIsEmpresa = (req, res, next) => {
@@ -272,7 +273,7 @@ router.put('/:id', authenticateToken, checkIsEmpresa, async (req, res) => {
     }
     
     const { id } = req.params;
-    const updateData = req.body;
+    const updateData = sanitizePromocaoUpdate(req.body);
 
     // Verificar se promoção existe e pertence à empresa
     const promocao = await Promocao.findOne({
