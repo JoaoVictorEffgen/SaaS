@@ -138,14 +138,16 @@ const getTrialStatus = async (req, res, next) => {
 /**
  * Função para criar trial de 15 dias
  */
-const createTrial = async (usuarioId, cpfCnpj) => {
+const createTrial = async (usuarioId, cpfCnpj, extras = {}) => {
   const agora = new Date();
   const trialFim = new Date(agora);
   trialFim.setDate(trialFim.getDate() + 15); // 15 dias
+  const nomeRede = String(extras.nome_rede || '').trim();
+  const descricao = String(extras.descricao || '').trim();
   
   return await RedeEmpresarial.create({
-    nome_rede: `Rede Trial - ${cpfCnpj}`,
-    descricao: 'Rede criada durante período de trial gratuito',
+    nome_rede: nomeRede || `Rede Trial - ${cpfCnpj}`,
+    descricao: descricao || 'Rede criada durante período de trial gratuito',
     usuario_admin_id: usuarioId,
     plano: 'trial',
     limite_empresas: 999, // Ilimitado durante trial

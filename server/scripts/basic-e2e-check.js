@@ -322,6 +322,32 @@ const main = async () => {
     assert(duplicate.response.status === 409, 'Agendamento duplicado no mesmo horário deveria ser bloqueado');
   });
 
+  await run('self-service de rede ignora plano pago no body', async () => {
+    const registerPaidAttempt = await api('/users/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        razaoSocial: 'Empresa Plano Pago',
+        email: 'empresa.plano.pago@timeflow.local',
+        senha: '12345678',
+        telefone: '11911115555',
+        cnpj: '99888777000166'
+      })
+    });
+    assert(registerPaidAttempt.response.status === 201, 'Cadastro da empresa para teste de plano deveria retornar 201');
+
+    const createPaidNetwork = await api('/redes', {
+      method: 'POST',
+      body: JSON.stringify({
+        nome_rede: 'Rede Enterprise Fake',
+        descricao: 'Tentativa de autoatribuir enterprise',
+        plano: 'enterprise',
+        cpf_cnpj: '99888777000166'
+      })
+    }, registerPaidAttempt.body.token);
+    assert(createPaidNetwork.response.status === 201, 'Criação de rede deveria retornar 201');
+    assert(createPaidNetwork.body.plano === 'trial', `Plano deveria permanecer trial, recebido ${createPaidNetwork.body.plano}`);
+  });
+
   await run('fluxo de redes e filiais', async () => {
     const createNetwork = await api('/redes', {
       method: 'POST',
