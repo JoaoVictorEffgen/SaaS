@@ -12,7 +12,8 @@
     "migrate": "sequelize-cli db:migrate --config config/sequelize-cli.js",
     "seed": "sequelize-cli db:seed:all",
     "test": "node -e \"console.log('Servidor pronto para teste')\"",
-    "test:basic-e2e": "node scripts/basic-e2e-check.js"
+    "test:basic-e2e": "node scripts/basic-e2e-check.js",
+    "test:network-plan": "node scripts/selfserve-network-plan-check.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

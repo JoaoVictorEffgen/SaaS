@@ -631,7 +631,7 @@ router.post('/redes', requireAuth, requireType(['empresa']), (req, res) => {
     id: nextId(),
     nome_rede: String(payload.nome_rede || '').trim() || 'Minha Rede',
     descricao: String(payload.descricao || '').trim() || '',
-    plano: String(payload.plano || 'trial'),
+    plano: 'trial',
     usuario_admin_id: req.user.id,
     limite_empresas: 3,
     empresas_ativas: state.companies.length,

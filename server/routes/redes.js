@@ -120,7 +120,7 @@ router.get('/', authenticateToken, getTrialStatus, async (req, res) => {
 router.post('/', authenticateToken, checkCpfCnpjUsed, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { nome_rede, descricao, plano = 'trial' } = req.body;
+    const { nome_rede, descricao } = req.body;
     const cpfCnpjLimpo = req.cpfCnpjLimpo;
     
     // Verificar se usuário já possui uma rede
@@ -133,28 +133,10 @@ router.post('/', authenticateToken, checkCpfCnpjUsed, async (req, res) => {
         error: 'Usuário já possui uma rede empresarial.' 
       });
     }
-    
-    let rede;
-    
-    if (plano === 'trial') {
-      // Criar trial de 15 dias
-      rede = await createTrial(userId, cpfCnpjLimpo);
-    } else {
-      // Definir limite de empresas baseado no plano
-      let limite_empresas = 1;
-      if (plano === 'premium') limite_empresas = 3;
-      if (plano === 'enterprise') limite_empresas = 999; // Ilimitado
-      
-      rede = await RedeEmpresarial.create({
-        nome_rede,
-        descricao,
-        usuario_admin_id: userId,
-        plano,
-        limite_empresas,
-        empresas_ativas: 0,
-        cpf_cnpj_usado: cpfCnpjLimpo
-      });
-    }
+
+    // Self-service sempre inicia em trial. Planos pagos não podem ser
+    // atribuídos pelo body — isso exigiria billing/admin.
+    const rede = await createTrial(userId, cpfCnpjLimpo, { nome_rede, descricao });
     
     // Vincular empresa existente à rede (se existir)
     const empresaExistente = await Empresa.findOne({
