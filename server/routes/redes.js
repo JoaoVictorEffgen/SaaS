@@ -116,8 +116,17 @@ router.get('/', authenticateToken, getTrialStatus, async (req, res) => {
   }
 });
 
+const requireEmpresaAccount = (req, res, next) => {
+  if (req.user?.tipo !== 'empresa') {
+    return res.status(403).json({
+      error: 'Apenas contas de empresa podem criar uma rede empresarial.'
+    });
+  }
+  next();
+};
+
 // POST /api/redes - Criar nova rede empresarial
-router.post('/', authenticateToken, checkCpfCnpjUsed, async (req, res) => {
+router.post('/', authenticateToken, requireEmpresaAccount, checkCpfCnpjUsed, async (req, res) => {
   try {
     const userId = req.user.id;
     const { nome_rede, descricao, plano = 'trial' } = req.body;
