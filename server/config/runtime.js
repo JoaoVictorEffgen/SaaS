@@ -1,14 +1,11 @@
 require('dotenv').config();
 
-const parseBoolean = (value, defaultValue = false) => {
-  if (value === undefined || value === null || value === '') return defaultValue;
-  return String(value).toLowerCase() === 'true';
-};
+const { parseBoolean, resolveBasicMode } = require('./runtimeFlags');
 
 const runtimeConfig = {
   nodeEnv: process.env.NODE_ENV || 'development',
   isProduction: (process.env.NODE_ENV || 'development') === 'production',
-  basicMode: parseBoolean(process.env.BASIC_MODE, true),
+  basicMode: resolveBasicMode(process.env),
   localDev: parseBoolean(process.env.LOCAL_DEV, false)
 };
 

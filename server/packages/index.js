@@ -236,6 +236,9 @@ class Application {
         }
         await this.databaseManager.initialize();
       } else {
+        if (ENV_CONFIG.NODE_ENV === 'production') {
+          console.warn('⚠️ [APP] BASIC_MODE em produção: agendamentos ficam só em memória e são apagados no restart.');
+        }
         console.log('ℹ️ [APP] BASIC_MODE ativo: banco de dados desabilitado.');
       }
 

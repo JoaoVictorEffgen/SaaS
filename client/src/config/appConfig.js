@@ -3,7 +3,10 @@ const parseBoolean = (value, fallback = false) => {
   return String(value).toLowerCase() === 'true';
 };
 
-export const BASIC_MODE = parseBoolean(process.env.REACT_APP_BASIC_MODE, true);
+export const BASIC_MODE = parseBoolean(
+  process.env.REACT_APP_BASIC_MODE,
+  process.env.NODE_ENV !== 'production'
+);
 export const LOCAL_DEV =
   process.env.NODE_ENV === 'development' &&
   parseBoolean(process.env.REACT_APP_LOCAL_DEV, false);
