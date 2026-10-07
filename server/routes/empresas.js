@@ -3,6 +3,7 @@ const router = express.Router();
 const { Empresa, User, Servico } = require('../models');
 const { authenticateToken: auth } = require('../middleware/auth');
 const { checkEmpresaOwnership } = require('../middleware/userPermissions');
+const { PUBLIC_PROMOCAO_ATTRIBUTES } = require('../utils/publicPromocao');
 
 // GET /api/empresas - Listar todas as empresas
 router.get('/', auth, async (req, res) => {
@@ -303,6 +304,7 @@ router.get('/:id/promocoes', async (req, res) => {
         ativo: true,
         destaque: true
       },
+      attributes: [...PUBLIC_PROMOCAO_ATTRIBUTES],
       order: [['created_at', 'DESC']]
     });
     
