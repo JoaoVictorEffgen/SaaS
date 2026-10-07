@@ -113,7 +113,11 @@ const state = {
       valor_desconto: 10,
       meses_gratis: null,
       destaque: true,
-      ativo: true
+      ativo: true,
+      codigo_promocional: 'PRIMEIRO10',
+      limite_uso: 50,
+      uso_atual: 4,
+      observacoes: 'código só para campanha interna'
     }
   ],
   redes: [

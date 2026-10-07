@@ -16,6 +16,7 @@ const {
   nextId,
   nowIso
 } = require('./store');
+const { toPublicPromocao } = require('../utils/publicPromocao');
 
 const router = express.Router();
 
@@ -585,7 +586,9 @@ router.get('/promocoes', requireAuth, (req, res) => {
 });
 
 router.get('/empresas/:id/promocoes', (req, res) => {
-  const data = state.promotions.filter((item) => Number(item.empresa_id) === Number(req.params.id));
+  const data = state.promotions
+    .filter((item) => Number(item.empresa_id) === Number(req.params.id))
+    .map(toPublicPromocao);
   return res.json(data);
 });
 
