@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { authenticateToken } = require('../middleware/auth');
 const { User, Empresa } = require('../models');
+const { canViewProfilePhoto, toPublicProfilePhoto } = require('../utils/profilePhotoAccess');
 
 const router = express.Router();
 const ALLOWED_IMAGE_TYPES = {
@@ -339,34 +340,29 @@ router.delete('/logo-empresa/:empresaId', authenticateToken, checkEmpresaOwnersh
   }
 });
 
-// GET /api/upload/foto-perfil/:userId - Obter foto de perfil do usuário
-router.get('/foto-perfil/:userId', async (req, res) => {
+// GET /api/upload-fotos/foto-perfil/:userId - Obter foto de perfil do usuário
+router.get('/foto-perfil/:userId', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'nome', 'url_foto_perfil']
+      attributes: ['id', 'nome', 'url_foto_perfil', 'tipo', 'ativo']
     });
-    
-    if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Usuário não encontrado' 
+
+    if (!canViewProfilePhoto(req.user, user)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado'
       });
     }
-    
+
     res.json({
       success: true,
-      user: {
-        id: user.id,
-        nome: user.nome,
-        url_foto_perfil: user.url_foto_perfil
-      }
+      user: toPublicProfilePhoto(user)
     });
-    
   } catch (error) {
     console.error('❌ Erro ao buscar foto de perfil:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       message: 'Erro interno do servidor'
     });
