@@ -3,7 +3,7 @@ const router = express.Router();
 const { Agendamento, User, Empresa, Servico, sequelize } = require('../models');
 const { Op, Transaction } = require('sequelize');
 const { authenticateToken: auth } = require('../middleware/auth');
-const { canTransitionAppointment } = require('../utils/appointmentStatus');
+const { canTransitionAppointment, belongsToCurrentStaffCompany } = require('../utils/appointmentStatus');
 const { getBusinessClock, isFutureBusinessSlot, isValidDateOnly } = require('../utils/businessTime');
 
 async function getEmpresaIdDoUsuario(user) {
@@ -16,7 +16,7 @@ async function getEmpresaIdDoUsuario(user) {
 
 async function canManageAgendamento(user, agendamento) {
   if (user.tipo === 'cliente') return agendamento.cliente_id === user.id;
-  if (user.tipo === 'funcionario') return agendamento.funcionario_id === user.id;
+  if (user.tipo === 'funcionario') return belongsToCurrentStaffCompany(user, agendamento);
   if (user.tipo === 'empresa') return agendamento.empresa_id === await getEmpresaIdDoUsuario(user);
   return false;
 }
@@ -48,7 +48,9 @@ router.get('/', auth, async (req, res) => {
       if (!empresaId) return res.status(404).json({ error: 'Empresa não encontrada' });
       whereClause.empresa_id = empresaId;
     } else if (req.user.tipo === 'funcionario') {
+      if (!req.user.empresa_id) return res.json([]);
       whereClause.funcionario_id = req.user.id;
+      whereClause.empresa_id = req.user.empresa_id;
     } else if (req.user.tipo === 'cliente') {
       whereClause.cliente_id = req.user.id;
     }

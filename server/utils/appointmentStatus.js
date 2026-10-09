@@ -12,8 +12,15 @@ const canTransitionAppointment = (currentStatus, nextStatus) => (
   currentStatus === nextStatus || Boolean(STATUS_TRANSITIONS[currentStatus]?.has(nextStatus))
 );
 
+const belongsToCurrentStaffCompany = (user, appointment) => {
+  if (!user || Number(appointment?.funcionario_id) !== Number(user.id)) return false;
+  if (user.empresa_id == null || user.empresa_id === '') return false;
+  return Number(appointment.empresa_id) === Number(user.empresa_id);
+};
+
 module.exports = {
   STATUS_TRANSITIONS,
   isKnownStatus,
-  canTransitionAppointment
+  canTransitionAppointment,
+  belongsToCurrentStaffCompany
 };

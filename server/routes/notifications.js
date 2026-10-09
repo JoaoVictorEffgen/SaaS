@@ -2,12 +2,13 @@ const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const { sendAppointmentConfirmation, sendAppointmentReminder, sendAppointmentCancellation } = require('../services/emailService');
 const { Agendamento, User, Empresa } = require('../models');
+const { belongsToCurrentStaffCompany } = require('../utils/appointmentStatus');
 
 const router = express.Router();
 
 async function canSendNotification(user, agendamento) {
   if (user.tipo === 'cliente') return agendamento.cliente_id === user.id;
-  if (user.tipo === 'funcionario') return agendamento.funcionario_id === user.id;
+  if (user.tipo === 'funcionario') return belongsToCurrentStaffCompany(user, agendamento);
   if (user.tipo === 'empresa') {
     const empresa = await Empresa.findOne({ where: { user_id: user.id } });
     return empresa && agendamento.empresa_id === empresa.id;
