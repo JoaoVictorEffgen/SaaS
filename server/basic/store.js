@@ -156,8 +156,32 @@ const findUserByIdentifier = (identifier, tipo) => {
   });
 };
 
-const getCompanyByUserId = (userId) =>
-  state.companies.find((company) => Number(company.user_id) === Number(userId));
+const getCompaniesByUserId = (userId) =>
+  state.companies.filter((company) => Number(company.user_id) === Number(userId));
+
+const getCompanyByUserId = (userId) => getCompaniesByUserId(userId)[0] || null;
+
+const getOwnedCompanyIds = (userId) =>
+  new Set(getCompaniesByUserId(userId).map((company) => Number(company.id)));
+
+const listAppointmentsForUser = (user) => {
+  if (!user) return [];
+  if (user.tipo === 'cliente') {
+    return state.appointments.filter((item) => Number(item.cliente_id) === Number(user.id));
+  }
+  if (user.tipo === 'funcionario') {
+    return state.appointments.filter((item) => Number(item.funcionario_id) === Number(user.id));
+  }
+  const companyIds = getOwnedCompanyIds(user.id);
+  return state.appointments.filter((item) => companyIds.has(Number(item.empresa_id)));
+};
+
+const userManagesAppointment = (user, appointment) => {
+  if (!user || !appointment) return false;
+  if (Number(appointment.cliente_id) === Number(user.id)) return true;
+  if (Number(appointment.funcionario_id) === Number(user.id)) return true;
+  return user.tipo === 'empresa' && getOwnedCompanyIds(user.id).has(Number(appointment.empresa_id));
+};
 
 const getCompanyById = (companyId) =>
   state.companies.find((company) => Number(company.id) === Number(companyId));
@@ -220,8 +244,12 @@ module.exports = {
   publicUser,
   findUserByIdentifier,
   getCompanyByUserId,
+  getCompaniesByUserId,
+  getOwnedCompanyIds,
   getCompanyById,
   getCompanyForEmployee,
+  listAppointmentsForUser,
+  userManagesAppointment,
   createSession,
   resolveSession,
   listCompaniesForClients,

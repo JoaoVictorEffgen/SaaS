@@ -11,6 +11,8 @@ const {
   listCompaniesForClients,
   listCompanyEmployees,
   listCompanyServices,
+  listAppointmentsForUser,
+  userManagesAppointment,
   sanitizeServicePayload,
   sanitizeEmployeePayload,
   nextId,
@@ -429,16 +431,7 @@ router.put('/funcionarios/agendamento/:id/status', requireAuth, requireType(['fu
 });
 
 router.get('/agendamentos', requireAuth, (req, res) => {
-  let data = [];
-  if (req.user.tipo === 'cliente') {
-    data = state.appointments.filter((item) => Number(item.cliente_id) === Number(req.user.id));
-  } else if (req.user.tipo === 'funcionario') {
-    data = state.appointments.filter((item) => Number(item.funcionario_id) === Number(req.user.id));
-  } else {
-    const company = getCompanyByUserId(req.user.id);
-    data = state.appointments.filter((item) => Number(item.empresa_id) === Number(company?.id));
-  }
-  return res.json(data.map(toAppointmentView));
+  return res.json(listAppointmentsForUser(req.user).map(toAppointmentView));
 });
 
 router.get('/agendamentos/hoje', requireAuth, (req, res) => {
@@ -515,10 +508,9 @@ router.put('/agendamentos/:id/cancelar', requireAuth, (req, res) => {
   const appointment = state.appointments.find((item) => Number(item.id) === Number(req.params.id));
   if (!appointment) return res.status(404).json({ error: 'Agendamento nao encontrado' });
 
-  const isOwner =
-    Number(appointment.cliente_id) === Number(req.user.id) ||
-    Number(appointment.funcionario_id) === Number(req.user.id);
-  if (!isOwner) return res.status(403).json({ error: 'Sem permissao para cancelar este agendamento' });
+  if (!userManagesAppointment(req.user, appointment)) {
+    return res.status(403).json({ error: 'Sem permissao para cancelar este agendamento' });
+  }
   if (isFinalStatus(appointment.status)) {
     return res.status(400).json({ error: 'Agendamento ja finalizado e nao pode ser cancelado' });
   }
@@ -533,8 +525,9 @@ router.put('/agendamentos/:id/confirmar', requireAuth, (req, res) => {
   const appointment = state.appointments.find((item) => Number(item.id) === Number(req.params.id));
   if (!appointment) return res.status(404).json({ error: 'Agendamento nao encontrado' });
 
-  const isEmployee = Number(appointment.funcionario_id) === Number(req.user.id);
-  if (!isEmployee) return res.status(403).json({ error: 'Sem permissao para confirmar este agendamento' });
+  const canConfirm = Number(appointment.funcionario_id) === Number(req.user.id)
+    || (req.user.tipo === 'empresa' && userManagesAppointment(req.user, appointment));
+  if (!canConfirm) return res.status(403).json({ error: 'Sem permissao para confirmar este agendamento' });
 
   appointment.status = 'confirmado';
   appointment.updated_at = nowIso();

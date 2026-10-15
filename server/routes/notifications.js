@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const { sendAppointmentConfirmation, sendAppointmentReminder, sendAppointmentCancellation } = require('../services/emailService');
+const { getOwnedEmpresaIds } = require('../middleware/userPermissions');
 const { Agendamento, User, Empresa } = require('../models');
 
 const router = express.Router();
@@ -9,8 +10,8 @@ async function canSendNotification(user, agendamento) {
   if (user.tipo === 'cliente') return agendamento.cliente_id === user.id;
   if (user.tipo === 'funcionario') return agendamento.funcionario_id === user.id;
   if (user.tipo === 'empresa') {
-    const empresa = await Empresa.findOne({ where: { user_id: user.id } });
-    return empresa && agendamento.empresa_id === empresa.id;
+    const ownedIds = await getOwnedEmpresaIds(user);
+    return ownedIds.some((id) => String(id) === String(agendamento.empresa_id));
   }
   return false;
 }

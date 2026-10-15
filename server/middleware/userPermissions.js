@@ -1,6 +1,15 @@
 // Middleware para verificar permissões de usuário
 const { User, Empresa } = require('../models');
 
+const getOwnedEmpresaIds = async (user) => {
+  if (!user || user.tipo !== 'empresa') return [];
+  const empresas = await Empresa.findAll({
+    where: { user_id: user.id },
+    attributes: ['id']
+  });
+  return empresas.map((empresa) => empresa.id);
+};
+
 // Verificar se o usuário é dono da empresa
 const checkEmpresaOwnership = async (req, res, next) => {
   try {
@@ -115,6 +124,7 @@ const checkIsEmpresa = (req, res, next) => {
 };
 
 module.exports = {
+  getOwnedEmpresaIds,
   checkEmpresaOwnership,
   checkFuncionarioEmpresa,
   checkIsCliente,
