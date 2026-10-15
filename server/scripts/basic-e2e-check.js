@@ -354,8 +354,34 @@ const main = async () => {
       })
     }, companyToken);
     assert(createBranch.response.status === 201, 'Criação de filial deveria retornar 201');
+    const branchId = createBranch.body.id;
+    assert(branchId, 'Filial criada sem id');
 
-    const deactivateBranch = await api(`/redes/empresas/${createBranch.body.id}`, {
+    const branchBooking = await api('/agendamentos', {
+      method: 'POST',
+      body: JSON.stringify({
+        empresa_id: branchId,
+        funcionario_id: 2,
+        data_agendamento: '2026-10-21',
+        hora_inicio: '15:00',
+        servicos: [1]
+      })
+    }, customerToken);
+    assert(branchBooking.response.status === 201, 'Agendamento na filial deveria ser criado');
+
+    const companyAppointments = await api('/agendamentos', {}, companyToken);
+    assert(companyAppointments.response.status === 200, 'Empresa deveria listar agendamentos após criar filial');
+    assert(
+      companyAppointments.body.some((item) => Number(item.id) === Number(branchBooking.body.id)),
+      'Agendamento da filial deveria aparecer na agenda da empresa dona da rede'
+    );
+
+    const confirmBranch = await api(`/agendamentos/${branchBooking.body.id}/confirmar`, {
+      method: 'PUT'
+    }, companyToken);
+    assert(confirmBranch.response.status === 200, 'Empresa dona da rede deveria confirmar agendamento da filial');
+
+    const deactivateBranch = await api(`/redes/empresas/${branchId}`, {
       method: 'DELETE'
     }, companyToken);
     assert(deactivateBranch.response.status === 200, 'Desativação de filial deveria retornar 200');

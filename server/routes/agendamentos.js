@@ -3,21 +3,17 @@ const router = express.Router();
 const { Agendamento, User, Empresa, Servico, sequelize } = require('../models');
 const { Op, Transaction } = require('sequelize');
 const { authenticateToken: auth } = require('../middleware/auth');
+const { getOwnedEmpresaIds } = require('../middleware/userPermissions');
 const { canTransitionAppointment } = require('../utils/appointmentStatus');
 const { getBusinessClock, isFutureBusinessSlot, isValidDateOnly } = require('../utils/businessTime');
-
-async function getEmpresaIdDoUsuario(user) {
-  if (user.tipo === 'empresa') {
-    const empresa = await Empresa.findOne({ where: { user_id: user.id } });
-    return empresa?.id || null;
-  }
-  return user.empresa_id || null;
-}
 
 async function canManageAgendamento(user, agendamento) {
   if (user.tipo === 'cliente') return agendamento.cliente_id === user.id;
   if (user.tipo === 'funcionario') return agendamento.funcionario_id === user.id;
-  if (user.tipo === 'empresa') return agendamento.empresa_id === await getEmpresaIdDoUsuario(user);
+  if (user.tipo === 'empresa') {
+    const ownedIds = await getOwnedEmpresaIds(user);
+    return ownedIds.some((id) => String(id) === String(agendamento.empresa_id));
+  }
   return false;
 }
 
@@ -44,9 +40,9 @@ router.get('/', auth, async (req, res) => {
     
     // Filtrar por tipo de usuário
     if (req.user.tipo === 'empresa') {
-      const empresaId = await getEmpresaIdDoUsuario(req.user);
-      if (!empresaId) return res.status(404).json({ error: 'Empresa não encontrada' });
-      whereClause.empresa_id = empresaId;
+      const empresaIds = await getOwnedEmpresaIds(req.user);
+      if (empresaIds.length === 0) return res.status(404).json({ error: 'Empresa não encontrada' });
+      whereClause.empresa_id = { [Op.in]: empresaIds };
     } else if (req.user.tipo === 'funcionario') {
       whereClause.funcionario_id = req.user.id;
     } else if (req.user.tipo === 'cliente') {
@@ -295,9 +291,9 @@ router.get('/hoje', auth, async (req, res) => {
     
     // Filtrar por tipo de usuário
     if (req.user.tipo === 'empresa') {
-      const empresaId = await getEmpresaIdDoUsuario(req.user);
-      if (!empresaId) return res.status(404).json({ error: 'Empresa não encontrada' });
-      whereClause.empresa_id = empresaId;
+      const empresaIds = await getOwnedEmpresaIds(req.user);
+      if (empresaIds.length === 0) return res.status(404).json({ error: 'Empresa não encontrada' });
+      whereClause.empresa_id = { [Op.in]: empresaIds };
     } else if (req.user.tipo === 'funcionario') {
       whereClause.funcionario_id = req.user.id;
     }
