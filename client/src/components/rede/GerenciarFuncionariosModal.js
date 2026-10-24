@@ -227,13 +227,17 @@ const AdicionarFuncionarioTab = ({ funcionariosDisponiveis, onAdicionarFuncionar
     nome: '',
     email: '',
     telefone: '',
-    cargo: ''
+    cargo: '',
+    senha: ''
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (String(formData.senha || '').length < 8) {
+      return;
+    }
     onCriarFuncionario(formData);
-    setFormData({ nome: '', email: '', telefone: '', cargo: '' });
+    setFormData({ nome: '', email: '', telefone: '', cargo: '', senha: '' });
     setShowCriarForm(false);
   };
 
@@ -294,10 +298,22 @@ const AdicionarFuncionarioTab = ({ funcionariosDisponiveis, onAdicionarFuncionar
                   placeholder="Ex: Barbeiro, Recepcionista"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Senha de acesso</label>
+                <input
+                  type="password"
+                  value={formData.senha}
+                  onChange={(e) => setFormData({...formData, senha: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Mínimo de 8 caracteres"
+                  minLength={8}
+                  required
+                />
+              </div>
               <div className="md:col-span-2">
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || String(formData.senha || '').length < 8}
                   className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
                 >
                   {loading ? 'Criando...' : 'Criar Funcionário'}
