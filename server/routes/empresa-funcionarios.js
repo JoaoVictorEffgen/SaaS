@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { User, Empresa, RedeEmpresarial } = require('../models');
+const { validateNewRedeEmployee, toSafeEmployee } = require('../utils/redeEmployeeCreate');
 
 // Middleware para verificar se usuário é admin da rede
 const isRedeAdmin = async (req, res, next) => {
@@ -84,24 +85,34 @@ router.post('/:empresaId/funcionarios', authenticateToken, isRedeAdmin, async (r
       res.json({ 
         success: true, 
         message: 'Funcionário adicionado com sucesso',
-        funcionario: funcionario
+        funcionario: toSafeEmployee(funcionario)
       });
     } else {
-      // Criar novo funcionário
+      const validation = validateNewRedeEmployee({ nome, email, telefone, cargo, senha: req.body.senha });
+      if (!validation.ok) {
+        return res.status(validation.status).json({ error: validation.error });
+      }
+
+      const existingEmail = await User.findOne({ where: { email: validation.data.email } });
+      if (existingEmail) {
+        return res.status(409).json({ error: 'E-mail já cadastrado' });
+      }
+
       const novoFuncionario = await User.create({
-        nome,
-        email,
-        telefone,
-        cargo,
+        nome: validation.data.nome,
+        email: validation.data.email,
+        telefone: validation.data.telefone,
+        cargo: validation.data.cargo,
+        senha: validation.data.senha,
         tipo: 'funcionario',
         empresa_id: empresaId,
         ativo: true
       });
-      
-      res.status(201).json({ 
-        success: true, 
+
+      res.status(201).json({
+        success: true,
         message: 'Funcionário criado com sucesso',
-        funcionario: novoFuncionario
+        funcionario: toSafeEmployee(novoFuncionario)
       });
     }
   } catch (error) {
