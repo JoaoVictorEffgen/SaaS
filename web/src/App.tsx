@@ -1,32 +1,26 @@
-import { useEffect, useState } from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AuthProvider, useAuth } from './auth';
+import Agendar from './paginas/Agendar';
+import Login from './paginas/Login';
+import Painel from './paginas/Painel';
 
-type Estabelecimento = { nome: string };
-
-const API_URL = import.meta.env.VITE_API_URL ?? '';
+function RotaProtegida() {
+  const { usuario, carregando } = useAuth();
+  if (carregando) return <p className="p-6 text-center text-slate-500">Carregando...</p>;
+  return usuario ? <Painel /> : <Navigate to="/login" replace />;
+}
 
 export default function App() {
-  const [estabelecimento, setEstabelecimento] = useState<Estabelecimento | null>(null);
-  const [erro, setErro] = useState(false);
-
-  useEffect(() => {
-    fetch(`${API_URL}/api/estabelecimento`)
-      .then((response) => {
-        if (!response.ok) throw new Error(String(response.status));
-        return response.json() as Promise<Estabelecimento>;
-      })
-      .then(setEstabelecimento)
-      .catch(() => setErro(true));
-  }, []);
-
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
-      <section className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">TimeFlow</p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">
-          {estabelecimento?.nome ?? (erro ? 'API indisponível' : 'Carregando...')}
-        </h1>
-        <p className="mt-3 text-sm text-slate-500">Agendamentos online deste estabelecimento.</p>
-      </section>
-    </main>
+    <AuthProvider>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route path="/" element={<Agendar />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/painel" element={<RotaProtegida />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
