@@ -312,6 +312,7 @@ const AgendaTab = ({ user }) => {
             {(user.tipo === 'dono' || Number(item.funcionario_id) === Number(user.id)) && (
               <div className="flex gap-2">
                 {item.status === 'confirmado' && <button type="button" onClick={() => updateStatus(item.id, 'realizado')} className="rounded-full bg-slate-900 px-3 py-1 text-xs text-white">Concluir</button>}
+                {item.status === 'confirmado' && <button type="button" onClick={() => updateStatus(item.id, 'no_show')} className="rounded-full bg-amber-600 px-3 py-1 text-xs text-white">Falta</button>}
                 {['aguardando_confirmacao', 'confirmado'].includes(item.status) && <button type="button" onClick={() => updateStatus(item.id, 'cancelado')} className="rounded-full bg-red-600 px-3 py-1 text-xs text-white">Cancelar</button>}
               </div>
             )}

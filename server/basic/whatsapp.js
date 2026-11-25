@@ -31,6 +31,15 @@ const reminderText = (appointment) => {
   return `Lembrete do ${state.establishment.nome}: ${appointment.servico_nome} com ${appointment.funcionario_nome} em ${when}. Te esperamos.`;
 };
 
+const cancellationText = (appointment) => {
+  const when = `${appointment.data.split('-').reverse().join('/')} as ${appointment.hora}`;
+  return `Seu horario de ${appointment.servico_nome} em ${when} no ${state.establishment.nome} foi cancelado. Quando quiser, envie OI para remarcar.`;
+};
+
+const reviewText = (appointment) => (
+  `Obrigado por vir ao ${state.establishment.nome}! Como foi o atendimento de ${appointment.servico_nome}? Responda com uma nota de 1 a 5.`
+);
+
 const pushMessage = ({ telefone, direcao, tipo, texto, agendamentoId = null, status = 'registrado' }) => {
   const message = {
     id: nextId(),
@@ -88,8 +97,14 @@ const reply = async (telefone, texto, tipo, agendamentoId = null) => {
 };
 
 const notifyAppointment = async (appointment, tipo = 'confirmacao') => {
-  const texto = tipo === 'lembrete' ? reminderText(appointment) : confirmationText(appointment);
-  return reply(appointment.cliente_telefone, texto, tipo, appointment.id);
+  const texts = {
+    confirmacao: confirmationText,
+    lembrete: reminderText,
+    cancelamento: cancellationText,
+    avaliacao: reviewText
+  };
+  const build = texts[tipo] || confirmationText;
+  return reply(appointment.cliente_telefone, build(appointment), tipo, appointment.id);
 };
 
 const serviceMenu = () => {

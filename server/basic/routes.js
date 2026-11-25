@@ -57,9 +57,10 @@ const publicEstablishment = () => ({
 const canTransition = (from, to) => {
   const allowed = {
     aguardando_confirmacao: ['confirmado', 'cancelado'],
-    confirmado: ['realizado', 'cancelado'],
+    confirmado: ['realizado', 'cancelado', 'no_show'],
     realizado: [],
-    cancelado: []
+    cancelado: [],
+    no_show: []
   };
   return (allowed[from] || []).includes(to);
 };
@@ -168,7 +169,7 @@ router.post('/agendamentos', async (req, res) => {
   return res.status(result.status).json(result.body);
 });
 
-router.put('/agendamentos/:id/status', requireAuth, requireType(['dono', 'funcionario']), (req, res) => {
+router.put('/agendamentos/:id/status', requireAuth, requireType(['dono', 'funcionario']), async (req, res) => {
   const appointment = state.appointments.find((item) => Number(item.id) === Number(req.params.id));
   if (!appointment) return res.status(404).json({ error: 'Agendamento nao encontrado' });
   if (req.user.tipo === 'funcionario' && Number(appointment.funcionario_id) !== Number(req.user.id)) {
@@ -180,7 +181,16 @@ router.put('/agendamentos/:id/status', requireAuth, requireType(['dono', 'funcio
   }
   appointment.status = status;
   appointment.updated_at = nowIso();
-  return res.json(appointment);
+
+  let mensagem = null;
+  if (status === 'cancelado') {
+    mensagem = await notifyAppointment(appointment, 'cancelamento');
+  }
+  if (status === 'realizado') {
+    mensagem = await notifyAppointment(appointment, 'avaliacao');
+  }
+
+  return res.json({ ...appointment, mensagem });
 });
 
 router.get('/servicos', requireAuth, requireType(['dono']), (req, res) => {
@@ -248,6 +258,17 @@ router.get('/whatsapp/mensagens', requireAuth, requireType(['dono', 'funcionario
   res.json(state.messages);
 });
 
+router.get('/whatsapp/webhook', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  const expected = process.env.WHATSAPP_VERIFY_TOKEN || 'timeflow_verify_token';
+  if (mode === 'subscribe' && token === expected) {
+    return res.status(200).send(String(challenge || ''));
+  }
+  return res.status(403).json({ error: 'Token de verificacao invalido' });
+});
+
 router.post('/whatsapp/webhook', async (req, res) => {
   const inbound = readInbound(req.body || {});
   const result = await handleInbound(inbound);
@@ -279,8 +300,35 @@ router.post('/vendas', requireAuth, requireType(['vendedor']), (req, res) => {
 });
 
 router.post('/licenca/ativar', (req, res) => {
-  return res.status(409).json({
-    error: 'Esta instalacao ja pertence a um estabelecimento. Cada copia atende somente um negocio. Use o codigo em uma instalacao nova.'
+  if (state.establishment.licenca_codigo) {
+    return res.status(409).json({
+      error: 'Esta instalacao ja pertence a um estabelecimento. Cada copia atende somente um negocio. Use o codigo em uma instalacao nova.'
+    });
+  }
+
+  const codigo = String(req.body?.codigo || '').trim().toUpperCase();
+  const nome = String(req.body?.nome_estabelecimento || '').trim();
+  if (!codigo || !nome) {
+    return res.status(400).json({ error: 'Informe o codigo da licenca e o nome do estabelecimento' });
+  }
+
+  const license = state.licenses.find((item) => String(item.codigo).toUpperCase() === codigo);
+  if (!license) return res.status(404).json({ error: 'Licenca nao encontrada' });
+  if (license.status !== 'disponivel') {
+    return res.status(409).json({ error: 'Licenca indisponivel para ativacao' });
+  }
+
+  license.status = 'ativada';
+  license.ativada_em = nowIso();
+  license.cliente_nome = nome;
+  state.establishment.licenca_codigo = license.codigo;
+  state.establishment.nome = nome;
+  state.establishment.ativo = true;
+
+  return res.json({
+    success: true,
+    estabelecimento: publicEstablishment(),
+    licenca: license
   });
 });
 

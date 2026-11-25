@@ -37,6 +37,13 @@ const main = async () => {
     assert(body.mode === 'estabelecimento', 'Modo deveria ser estabelecimento');
   });
 
+  await run('verificacao do webhook WhatsApp', async () => {
+    const response = await fetch(`${BASE_URL}/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=timeflow_verify_token&hub.challenge=12345`);
+    const text = await response.text();
+    assert(response.status === 200, 'Verificacao do webhook deveria responder 200');
+    assert(text === '12345', 'Challenge do webhook deveria ser devolvido');
+  });
+
   await run('cadastro de outra empresa bloqueado', async () => {
     const { response } = await api('/users/register', {
       method: 'POST',
@@ -132,6 +139,7 @@ const main = async () => {
       body: JSON.stringify({ status: 'realizado' })
     }, ownerToken);
     assert(done.response.status === 200, 'Dono deveria concluir o horario confirmado');
+    assert(done.body.mensagem?.tipo === 'avaliacao', 'Conclusao deveria pedir avaliacao no WhatsApp');
     const cancel = await api(`/agendamentos/${appointmentId}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status: 'cancelado' })
@@ -160,6 +168,29 @@ const main = async () => {
       body: JSON.stringify({ from: '11955554444', text: 'SIM' })
     });
     assert(confirmed.body.respostas[0].includes('Confirmado'), 'SIM deveria confirmar a reserva do WhatsApp');
+  });
+
+  await run('cancelamento notifica o cliente', async () => {
+    const availability = await api('/disponibilidade?servico_id=1&funcionario_id=2');
+    const freeSlot = availability.body.data[0];
+    assert(freeSlot, 'Deveria haver horario livre para cancelamento');
+    const booked = await api('/agendamentos', {
+      method: 'POST',
+      body: JSON.stringify({
+        nome: 'Cliente Cancelamento',
+        telefone: '11944443333',
+        servico_id: 1,
+        funcionario_id: 2,
+        data: freeSlot.data,
+        hora: freeSlot.hora
+      })
+    });
+    const cancelled = await api(`/agendamentos/${booked.body.agendamento.id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status: 'cancelado' })
+    }, ownerToken);
+    assert(cancelled.response.status === 200, 'Cancelamento deveria responder 200');
+    assert(cancelled.body.mensagem?.tipo === 'cancelamento', 'Cancelamento deveria notificar no WhatsApp');
   });
 
   await run('lembrete automatico e servico duplicado', async () => {
