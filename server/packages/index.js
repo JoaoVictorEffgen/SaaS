@@ -105,6 +105,7 @@ class Application {
     this.app.get('/api/health', (req, res) => {
       res.json({
         status: 'OK',
+        mode: runtimeConfig.basicMode ? 'estabelecimento' : 'banco',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         environment: ENV_CONFIG.NODE_ENV,

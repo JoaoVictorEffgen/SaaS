@@ -4,7 +4,6 @@ import { Building2, UserRound, Users, X } from 'lucide-react';
 import ThemeIconToggle from '../../components/ThemeIconToggle';
 import RecuperarSenha from '../../components/RecuperarSenha';
 import ClientRegistrationModal from '../../components/home/ClientRegistrationModal';
-import FeaturedCompaniesSection from '../../components/home/FeaturedCompaniesSection';
 import HeroCarousel from '../../components/home/HeroCarousel';
 import TimeFlowBrand from '../../components/home/TimeFlowBrand';
 import UnifiedLoginPanel from '../../components/home/UnifiedLoginPanel';
@@ -125,8 +124,6 @@ const AccessSelector = () => {
             </div>
           </div>
         </section>
-
-        <FeaturedCompaniesSection companies={featuredCompanies} onSelectCompany={handleSelectCompany} isDark={isDark} />
 
         <footer className="px-5 pb-7">
           <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 border-t border-slate-200 pt-5 text-center text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:flex-row sm:text-left">
