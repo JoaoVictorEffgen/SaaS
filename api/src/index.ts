@@ -1,20 +1,13 @@
-import cors from 'cors';
-import express from 'express';
+import { criarApp } from './app.js';
 import { config } from './config.js';
+import { criarStore } from './store.js';
 
-const app = express();
-
-app.use(cors({ origin: config.corsOrigin }));
-app.use(express.json());
-
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
+const store = criarStore({
+  nomeEstabelecimento: config.establishmentName,
+  dono: { nome: config.donoNome, email: config.donoEmail, senha: config.donoSenha }
 });
 
-app.get('/api/estabelecimento', (_req, res) => {
-  res.json({ nome: config.establishmentName });
-});
-
-app.listen(config.port, () => {
+criarApp(store).listen(config.port, () => {
   console.log(`API em http://localhost:${config.port}`);
+  console.log(`Login do dono: ${config.donoEmail}`);
 });
