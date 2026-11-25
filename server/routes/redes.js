@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const { RedeEmpresarial, User, Empresa, Agendamento } = require('../models');
 const { checkTrialValid, checkCpfCnpjUsed, getTrialStatus, createTrial } = require('../middleware/trialMiddleware');
+const { deleteNetworkBranch } = require('../utils/deleteNetworkBranch');
 
 // Middleware para verificar se usuário é admin de rede
 const isRedeAdmin = async (req, res, next) => {
@@ -456,38 +457,12 @@ router.delete('/empresas/:empresaId', authenticateToken, checkTrialValid, isRede
       });
     }
 
-    // Remover funcionários da empresa (tornar disponíveis para outras empresas)
-    const funcionarios = await User.findAll({
-      where: {
-        empresa_id: empresaId,
-        tipo: 'funcionario'
-      }
-    });
-
-    for (const funcionario of funcionarios) {
-      await funcionario.update({
-        empresa_id: null,
-        rede_id: null
-      });
-    }
-
-    // Excluir agendamentos relacionados à empresa
-    await Agendamento.destroy({
-      where: { empresa_id: empresaId }
-    });
-
-    // Excluir a empresa
-    await empresa.destroy();
-
-    // Atualizar contador de empresas ativas na rede
-    await rede.update({
-      empresas_ativas: rede.empresas_ativas - 1
-    });
+    const { funcionariosRemovidos } = await deleteNetworkBranch({ empresa, rede });
 
     res.json({ 
       success: true,
       message: 'Filial excluída com sucesso!',
-      funcionariosRemovidos: funcionarios.length
+      funcionariosRemovidos
     });
 
   } catch (error) {
