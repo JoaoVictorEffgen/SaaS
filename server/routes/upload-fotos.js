@@ -4,6 +4,11 @@ const path = require('path');
 const fs = require('fs');
 const { authenticateToken } = require('../middleware/auth');
 const { User, Empresa } = require('../models');
+const {
+  MANAGED_LOGO_NAME,
+  MANAGED_PHOTO_NAME,
+  removeOwnedManagedFile
+} = require('../utils/managedUploads');
 
 const router = express.Router();
 const ALLOWED_IMAGE_TYPES = {
@@ -34,43 +39,17 @@ const hasValidImageSignature = async (file) => {
   return false;
 };
 
-const removeManagedLogo = async (logoUrl) => {
-  if (!logoUrl) return;
-
+const removeManagedLogo = async (logoUrl, empresaId) => {
   try {
-    const pathname = new URL(logoUrl, 'http://timeflow.local').pathname;
-    const filename = path.basename(pathname);
-    const resolvedDirectory = path.resolve(LOGO_UPLOAD_DIR);
-    const resolvedFile = path.resolve(LOGO_UPLOAD_DIR, filename);
-
-    if (!resolvedFile.startsWith(`${resolvedDirectory}${path.sep}`) || !/^empresa_\d+_\d+\.(jpg|png|webp)$/i.test(filename)) {
-      return;
-    }
-
-    await fs.promises.unlink(resolvedFile).catch((error) => {
-      if (error.code !== 'ENOENT') throw error;
-    });
+    await removeOwnedManagedFile(logoUrl, empresaId, LOGO_UPLOAD_DIR, MANAGED_LOGO_NAME);
   } catch (error) {
     console.warn('⚠️ Não foi possível remover o logo anterior:', error.message);
   }
 };
 
-const removeManagedProfilePhoto = async (photoUrl) => {
-  if (!photoUrl) return;
-
+const removeManagedProfilePhoto = async (photoUrl, userId) => {
   try {
-    const pathname = new URL(photoUrl, 'http://timeflow.local').pathname;
-    const filename = path.basename(pathname);
-    const resolvedDirectory = path.resolve(PROFILE_UPLOAD_DIR);
-    const resolvedFile = path.resolve(PROFILE_UPLOAD_DIR, filename);
-
-    if (!resolvedFile.startsWith(`${resolvedDirectory}${path.sep}`) || !/^usuario_\d+_\d+\.(jpg|png|webp)$/i.test(filename)) {
-      return;
-    }
-
-    await fs.promises.unlink(resolvedFile).catch((error) => {
-      if (error.code !== 'ENOENT') throw error;
-    });
+    await removeOwnedManagedFile(photoUrl, userId, PROFILE_UPLOAD_DIR, MANAGED_PHOTO_NAME);
   } catch (error) {
     console.warn('⚠️ Não foi possível remover a foto anterior:', error.message);
   }
@@ -224,7 +203,7 @@ router.post('/foto-perfil', authenticateToken, uploadFotosPerfil.single('foto'),
       { url_foto_perfil: imageUrl },
       { where: { id: userId } }
     );
-    await removeManagedProfilePhoto(previousPhoto);
+    await removeManagedProfilePhoto(previousPhoto, userId);
     
     console.log('✅ Foto de perfil salva com sucesso:', imageUrl);
     
@@ -288,7 +267,7 @@ router.post('/logo-empresa/:empresaId', authenticateToken, checkEmpresaOwnership
     
     // Atualizar empresa com a URL do logo
     await empresa.update({ logo_url: imageUrl });
-    await removeManagedLogo(previousLogo);
+    await removeManagedLogo(previousLogo, empresa.id);
     
     console.log('✅ Logo salvo com sucesso:', imageUrl);
     
@@ -323,7 +302,7 @@ router.delete('/logo-empresa/:empresaId', authenticateToken, checkEmpresaOwnersh
   try {
     const previousLogo = req.empresa.logo_url;
     await req.empresa.update({ logo_url: null });
-    await removeManagedLogo(previousLogo);
+    await removeManagedLogo(previousLogo, req.empresa.id);
 
     res.json({
       success: true,
