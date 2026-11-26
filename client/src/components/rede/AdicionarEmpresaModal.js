@@ -27,7 +27,7 @@ const AdicionarEmpresaModal = ({ isOpen, onClose, onAdicionarEmpresa, redeId }) 
 
     try {
       const novaEmpresa = await apiService.post(`/redes/${redeId}/empresas`, formData);
-      onAdicionarEmpresa(novaEmpresa);
+      onAdicionarEmpresa(novaEmpresa?.data || novaEmpresa);
       onClose();
       // Limpar formulário
       setFormData({

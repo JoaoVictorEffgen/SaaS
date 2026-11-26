@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
-const { RedeEmpresarial, User, Empresa, Agendamento } = require('../models');
+const { RedeEmpresarial, User, Empresa, Agendamento, Servico, Promocao, sequelize } = require('../models');
 const { checkTrialValid, checkCpfCnpjUsed, getTrialStatus, createTrial } = require('../middleware/trialMiddleware');
+const { getPrimaryEmpresaId, isPrimaryEmpresa } = require('../utils/networkCompanies');
 
 // Middleware para verificar se usuário é admin de rede
 const isRedeAdmin = async (req, res, next) => {
@@ -103,10 +104,11 @@ router.get('/', authenticateToken, getTrialStatus, async (req, res) => {
       });
     }
     
-    // Adicionar informações do trial
+    const redeJson = rede.toJSON();
     const redeComTrial = {
-      ...rede.toJSON(),
-      trialStatus: req.trialStatus
+      ...redeJson,
+      trialStatus: req.trialStatus,
+      empresa_principal_id: getPrimaryEmpresaId(redeJson.empresas)
     };
     
     res.json(redeComTrial);
@@ -448,46 +450,60 @@ router.delete('/empresas/:empresaId', authenticateToken, checkTrialValid, isRede
       });
     }
 
-    // Verificar se é a empresa principal (user_id = rede.usuario_admin_id)
-    if (empresa.user_id === rede.usuario_admin_id) {
+    const empresasDaRede = await Empresa.findAll({
+      where: { rede_id: rede.id },
+      attributes: ['id']
+    });
+    if (isPrimaryEmpresa(empresa, empresasDaRede)) {
       return res.status(400).json({ 
         success: false,
         message: 'Não é possível excluir a empresa principal da rede.' 
       });
     }
 
-    // Remover funcionários da empresa (tornar disponíveis para outras empresas)
-    const funcionarios = await User.findAll({
-      where: {
-        empresa_id: empresaId,
-        tipo: 'funcionario'
-      }
-    });
-
-    for (const funcionario of funcionarios) {
-      await funcionario.update({
-        empresa_id: null,
-        rede_id: null
+    const funcionariosRemovidos = await sequelize.transaction(async (transaction) => {
+      const funcionarios = await User.findAll({
+        where: {
+          empresa_id: empresaId,
+          tipo: 'funcionario'
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE
       });
-    }
 
-    // Excluir agendamentos relacionados à empresa
-    await Agendamento.destroy({
-      where: { empresa_id: empresaId }
-    });
+      for (const funcionario of funcionarios) {
+        await funcionario.update({
+          empresa_id: null,
+          rede_id: null
+        }, { transaction });
+      }
 
-    // Excluir a empresa
-    await empresa.destroy();
+      await Agendamento.destroy({
+        where: { empresa_id: empresaId },
+        transaction
+      });
+      await Servico.destroy({
+        where: { empresa_id: empresaId },
+        transaction
+      });
+      await Promocao.destroy({
+        where: { empresa_id: empresaId },
+        transaction
+      });
 
-    // Atualizar contador de empresas ativas na rede
-    await rede.update({
-      empresas_ativas: rede.empresas_ativas - 1
+      await empresa.destroy({ transaction });
+
+      await rede.update({
+        empresas_ativas: Math.max(0, (rede.empresas_ativas || 1) - 1)
+      }, { transaction });
+
+      return funcionarios.length;
     });
 
     res.json({ 
       success: true,
       message: 'Filial excluída com sucesso!',
-      funcionariosRemovidos: funcionarios.length
+      funcionariosRemovidos
     });
 
   } catch (error) {
