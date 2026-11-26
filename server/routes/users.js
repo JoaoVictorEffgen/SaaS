@@ -331,7 +331,7 @@ router.put('/profile', auth, async (req, res) => {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
     
-    const allowedFields = ['nome', 'telefone', 'cpf', 'cargo', 'foto_url', 'url_foto_perfil', 'disponibilidade', 'pausas'];
+    const allowedFields = ['nome', 'telefone', 'cpf', 'cargo', 'foto_url', 'disponibilidade', 'pausas'];
     const updateData = Object.fromEntries(
       Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
     );

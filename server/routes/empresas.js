@@ -361,8 +361,8 @@ router.put('/:id', auth, checkEmpresaOwnership, async (req, res) => {
     } else {
       const allowedFields = [
         'nome', 'cnpj', 'telefone', 'endereco', 'cidade', 'estado', 'cep',
-        'descricao', 'horario_funcionamento', 'logo_url', 'logo_sistema',
-        'imagem_fundo_url', 'website', 'instagram', 'whatsapp', 'latitude', 'longitude'
+        'descricao', 'horario_funcionamento', 'imagem_fundo_url',
+        'website', 'instagram', 'whatsapp', 'latitude', 'longitude'
       ];
       const updateData = Object.fromEntries(
         Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
