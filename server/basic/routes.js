@@ -10,6 +10,7 @@ const {
   resolveSession,
   listCompaniesForClients,
   listCompanyEmployees,
+  getOccupiedSlotsForCompany,
   listCompanyServices,
   sanitizeServicePayload,
   sanitizeEmployeePayload,
@@ -228,17 +229,15 @@ router.get('/clientes/empresa/:empresaId', requireAuth, (req, res) => {
 });
 
 router.get('/clientes/empresa/:empresaId/disponibilidade', requireAuth, (req, res) => {
-  const { funcionario_id, data } = req.query;
-  const appointments = state.appointments.filter((appointment) =>
-    String(appointment.funcionario_id) === String(funcionario_id) &&
-    String(appointment.data_agendamento) === String(data) &&
-    appointment.status !== 'cancelado'
-  );
-  const occupied = appointments.map((appointment) => ({
-    hora: appointment.hora_inicio,
-    duracao_minutos: appointment.duracao_minutos || 60
-  }));
-  res.json({ success: true, data: occupied });
+  const result = getOccupiedSlotsForCompany({
+    empresaId: req.params.empresaId,
+    funcionarioId: req.query.funcionario_id,
+    data: req.query.data
+  });
+  if (result.status !== 200) {
+    return res.status(result.status).json({ error: result.error });
+  }
+  return res.json({ success: true, data: result.data });
 });
 
 router.get('/empresas', (req, res) => {

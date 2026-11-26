@@ -270,6 +270,44 @@ const main = async () => {
     );
   });
 
+  await run('disponibilidade recusa profissional de outra empresa', async () => {
+    const otherCompany = await api('/users/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        razaoSocial: 'Barbearia Vizinha Disponibilidade',
+        email: 'vizinha.disp@timeflow.local',
+        senha: '12345678',
+        telefone: '11922223333',
+        cnpj: '11222333000144'
+      })
+    });
+    assert(otherCompany.response.status === 201, 'Cadastro da empresa vizinha deveria retornar 201');
+
+    const otherEmployee = await api('/empresas/me/funcionarios', {
+      method: 'POST',
+      body: JSON.stringify({
+        nome: 'Funcionario Vizinho',
+        email: 'func.vizinho@timeflow.local',
+        telefone: '11933334444',
+        cpf: '11122233344',
+        cargo: 'Barbeiro',
+        senha: '12345678'
+      })
+    }, otherCompany.body.token);
+    assert(otherEmployee.response.status === 201, 'Criação do funcionário vizinho deveria retornar 201');
+    const foreignId = otherEmployee.body.id;
+
+    const leaked = await api(
+      `/clientes/empresa/1/disponibilidade?funcionario_id=${foreignId}&data=2026-09-15`,
+      {},
+      customerToken
+    );
+    assert(
+      leaked.response.status === 404,
+      `Disponibilidade cruzada deveria retornar 404, recebido ${leaked.response.status}`
+    );
+  });
+
   await run('transição de status do agendamento', async () => {
     const schedule = await api(`/funcionarios/agendamento/${appointmentId}/status`, {
       method: 'PUT',
