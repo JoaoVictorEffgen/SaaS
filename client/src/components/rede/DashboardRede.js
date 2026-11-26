@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import apiService from '../../services/apiService';
 import AdicionarEmpresaModal from './AdicionarEmpresaModal';
 import GerenciarFuncionariosModal from './GerenciarFuncionariosModal';
+import { getNetworkBranches, isPrimaryNetworkEmpresa } from '../../utils/networkCompanies';
 
 const DashboardRede = () => {
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ const DashboardRede = () => {
   const criarRede = async (dadosRede) => {
     try {
       const novaRede = await apiService.post('/redes', dadosRede);
-      setRede(novaRede);
+      await fetchRede();
       return novaRede;
     } catch (err) {
       setError(err.message);
@@ -44,12 +45,8 @@ const DashboardRede = () => {
     }
   };
 
-  const adicionarEmpresa = (novaEmpresa) => {
-    setRede(prev => ({
-      ...prev,
-      empresas: [...(prev.empresas || []), novaEmpresa],
-      empresas_ativas: prev.empresas_ativas + 1
-    }));
+  const adicionarEmpresa = () => {
+    fetchRede();
   };
 
   const abrirGerenciarFuncionarios = (empresa) => {
@@ -58,8 +55,7 @@ const DashboardRede = () => {
   };
 
   const confirmarExclusaoEmpresa = (empresa) => {
-    // Verificar se é a empresa principal (comparar com admin da rede)
-    if (empresa.user_id === rede?.usuario_admin_id) {
+    if (isPrimaryNetworkEmpresa(empresa, rede)) {
       alert('❌ Não é possível excluir a empresa principal da rede.\n\nApenas filiais podem ser excluídas.');
       return;
     }
@@ -123,6 +119,8 @@ const DashboardRede = () => {
   if (!rede) {
     return <CriarRedeForm onCriarRede={criarRede} />;
   }
+
+  const filiais = getNetworkBranches(rede);
 
   return (
     <div className="space-y-6">
@@ -208,7 +206,7 @@ const DashboardRede = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Filiais</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {rede.empresas?.filter(empresa => empresa.user_id !== rede.usuario_admin_id).length || 0}
+                {filiais.length}
               </p>
             </div>
           </div>
@@ -262,7 +260,11 @@ const DashboardRede = () => {
         </div>
         
         <div className="divide-y divide-gray-200">
-          {rede.empresas?.filter(empresa => empresa.user_id !== rede.usuario_admin_id).map((empresa) => (
+          {filiais.length === 0 ? (
+            <div className="p-6 text-center text-gray-500">
+              Nenhuma filial cadastrada na rede
+            </div>
+          ) : filiais.map((empresa) => (
             <div key={empresa.id} className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -304,11 +306,7 @@ const DashboardRede = () => {
                 </div>
               </div>
             </div>
-          )) || (
-            <div className="p-6 text-center text-gray-500">
-              Nenhuma filial cadastrada na rede
-            </div>
-          )}
+          ))}
         </div>
       </div>
 
