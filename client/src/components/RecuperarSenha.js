@@ -15,6 +15,7 @@ const RecuperarSenha = ({ onBack, tipoUsuario = 'empresa' }) => {
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
+  const emailNormalizado = () => email.trim().toLowerCase();
 
   // Função para enviar código de recuperação
   const enviarCodigoRecuperacao = async () => {
@@ -29,7 +30,7 @@ const RecuperarSenha = ({ onBack, tipoUsuario = 'empresa' }) => {
 
     try {
       const response = await apiService.post('/auth', {
-        email,
+        email: emailNormalizado(),
         tipo: tipoUsuario
       });
 
@@ -60,7 +61,7 @@ const RecuperarSenha = ({ onBack, tipoUsuario = 'empresa' }) => {
 
     try {
       const response = await apiService.post('/auth/verificar-codigo', {
-        email,
+        email: emailNormalizado(),
         codigo,
         tipo: tipoUsuario
       });
@@ -102,7 +103,7 @@ const RecuperarSenha = ({ onBack, tipoUsuario = 'empresa' }) => {
 
     try {
       const response = await apiService.post('/auth/redefinir', {
-        email,
+        email: emailNormalizado(),
         codigo,
         novaSenha,
         tipo: tipoUsuario
@@ -132,7 +133,7 @@ const RecuperarSenha = ({ onBack, tipoUsuario = 'empresa' }) => {
 
     try {
       const response = await apiService.post('/auth', {
-        email,
+        email: emailNormalizado(),
         tipo: tipoUsuario
       });
 

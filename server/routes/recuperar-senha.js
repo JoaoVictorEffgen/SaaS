@@ -6,6 +6,12 @@ const express = require('express');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const { User, Empresa } = require('../models');
+const {
+  GENERIC_RECOVERY_MESSAGE,
+  normalizeRecoveryEmail,
+  hashRecoveryCode,
+  isValidRecoveryCode
+} = require('../utils/passwordRecovery');
 
 const router = express.Router();
 
@@ -30,19 +36,11 @@ const gerarCodigoRecuperacao = () => {
   return crypto.randomInt(100000, 1000000).toString();
 };
 
-const hashCodigoRecuperacao = (codigo) =>
-  crypto.createHash('sha256').update(`${process.env.JWT_SECRET}:${codigo}`).digest('hex');
+const respostaGenerica = GENERIC_RECOVERY_MESSAGE;
 
-const respostaGenerica = 'Se os dados informados existirem, você receberá instruções para redefinir sua senha';
+const hashCodigoRecuperacao = (codigo) => hashRecoveryCode(codigo);
 
-const codigoValido = (user, codigo, tipo) => {
-  if (!user || user.tipo !== tipo || !user.codigo_recuperacao_hash || !user.expiracao_recuperacao) return false;
-  if (user.tentativas_recuperacao >= 5 || new Date() > user.expiracao_recuperacao) return false;
-  return crypto.timingSafeEqual(
-    Buffer.from(user.codigo_recuperacao_hash, 'hex'),
-    Buffer.from(hashCodigoRecuperacao(codigo), 'hex')
-  );
-};
+const codigoValido = (user, codigo, tipo) => isValidRecoveryCode(user, codigo, tipo);
 
 // Enviar email de recuperação
 const enviarEmailRecuperacao = async (email, codigo, nome, tipo) => {
@@ -114,7 +112,8 @@ const enviarEmailRecuperacao = async (email, codigo, nome, tipo) => {
 // POST /api/recuperar-senha - Solicitar recuperação de senha
 router.post('/', async (req, res) => {
   try {
-    const { email, tipo } = req.body;
+    const email = normalizeRecoveryEmail(req.body?.email);
+    const { tipo } = req.body || {};
 
     if (!email || !['empresa', 'cliente', 'funcionario'].includes(tipo)) {
       return res.status(400).json({ success: false, message: 'Dados inválidos' });
@@ -132,21 +131,16 @@ router.post('/', async (req, res) => {
     const codigoRecuperacao = gerarCodigoRecuperacao();
     const expiracao = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
 
-    // Salvar código no banco (usando campos temporários)
-    await user.update({
-      codigo_recuperacao_hash: hashCodigoRecuperacao(codigoRecuperacao),
-      expiracao_recuperacao: expiracao,
-      tentativas_recuperacao: 0
-    });
-
-    // Enviar email
+    // Enviar primeiro; só persiste o código se o e-mail sair.
+    // Falha de SMTP não pode devolver 500 — isso enumerava contas existentes.
     const nomeUsuario = user.nome || user.email;
     const emailEnviado = await enviarEmailRecuperacao(email, codigoRecuperacao, nomeUsuario, tipo);
 
-    if (!emailEnviado) {
-      return res.status(500).json({
-        success: false,
-        message: 'Erro ao enviar email. Tente novamente.'
+    if (emailEnviado) {
+      await user.update({
+        codigo_recuperacao_hash: hashCodigoRecuperacao(codigoRecuperacao),
+        expiracao_recuperacao: expiracao,
+        tentativas_recuperacao: 0
       });
     }
 
@@ -168,7 +162,8 @@ router.post('/', async (req, res) => {
 // POST /api/recuperar-senha/verificar-codigo - Verificar código de recuperação
 router.post('/verificar-codigo', async (req, res) => {
   try {
-    const { email, codigo, tipo } = req.body;
+    const email = normalizeRecoveryEmail(req.body?.email);
+    const { codigo, tipo } = req.body || {};
 
     if (!email || !codigo || !tipo) {
       return res.status(400).json({
@@ -202,7 +197,8 @@ router.post('/verificar-codigo', async (req, res) => {
 // POST /api/recuperar-senha/redefinir - Redefinir senha
 router.post('/redefinir', async (req, res) => {
   try {
-    const { email, codigo, novaSenha, tipo } = req.body;
+    const email = normalizeRecoveryEmail(req.body?.email);
+    const { codigo, novaSenha, tipo } = req.body || {};
 
     if (!email || !codigo || !novaSenha || !tipo) {
       return res.status(400).json({
