@@ -7,6 +7,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { isLocalDev, LOCAL_DEV_USERS, getLocalDevUser } = require('../config/localDev');
+const { toPublicUser } = require('../utils/publicUser');
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -307,15 +308,13 @@ router.post('/register', async (req, res) => {
 // GET /api/users/profile - Buscar perfil do usuário logado
 router.get('/profile', auth, async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id, {
-      attributes: { exclude: ['senha'] }
-    });
+    const user = await User.findByPk(req.user.id);
     
     if (!user) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
     
-    res.json(user);
+    res.json(toPublicUser(user));
   } catch (error) {
     console.error('Erro ao buscar perfil:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
@@ -336,9 +335,7 @@ router.put('/profile', auth, async (req, res) => {
       Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
     );
     await user.update(updateData);
-    const safeUser = user.toJSON();
-    delete safeUser.senha;
-    res.json(safeUser);
+    res.json(toPublicUser(user));
   } catch (error) {
     console.error('Erro ao atualizar perfil:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });

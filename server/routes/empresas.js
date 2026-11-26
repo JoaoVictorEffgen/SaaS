@@ -3,6 +3,7 @@ const router = express.Router();
 const { Empresa, User, Servico } = require('../models');
 const { authenticateToken: auth } = require('../middleware/auth');
 const { checkEmpresaOwnership } = require('../middleware/userPermissions');
+const { toPublicUser } = require('../utils/publicUser');
 
 // GET /api/empresas - Listar todas as empresas
 router.get('/', auth, async (req, res) => {
@@ -194,9 +195,7 @@ router.post('/me/funcionarios', auth, checkEmpresaOwnership, async (req, res) =>
       ativo: true
     });
 
-    const safeFuncionario = funcionario.toJSON();
-    delete safeFuncionario.senha;
-    res.status(201).json({ success: true, data: safeFuncionario });
+    res.status(201).json({ success: true, data: toPublicUser(funcionario) });
   } catch (error) {
     console.error('Erro ao criar funcionário:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
@@ -231,9 +230,7 @@ router.put('/me/funcionarios/:funcionarioId', auth, checkEmpresaOwnership, async
     }
 
     await funcionario.update(updateData);
-    const safeFuncionario = funcionario.toJSON();
-    delete safeFuncionario.senha;
-    res.json({ success: true, data: safeFuncionario });
+    res.json({ success: true, data: toPublicUser(funcionario) });
   } catch (error) {
     console.error('Erro ao atualizar funcionário:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
