@@ -191,8 +191,47 @@ const listCompaniesForClients = () =>
       disponivel_para_agendamento: true
     }));
 
+const ACTIVE_OCCUPANCY_STATUSES = ['em_aprovacao', 'agendado', 'confirmado'];
+
 const listCompanyEmployees = (companyId) =>
   state.users.filter((user) => user.tipo === 'funcionario' && Number(user.empresa_id) === Number(companyId) && user.ativo !== false);
+
+// Agenda ocupada da vitrine: só blocos do profissional daquela empresa.
+// Sem esse vínculo, qualquer cliente autenticado sonda a agenda de outro tenant.
+const getOccupiedSlotsForCompany = ({ empresaId, funcionarioId, data }) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data || '')) || funcionarioId === undefined || funcionarioId === null || funcionarioId === '') {
+    return { status: 400, error: 'Data e funcionario sao obrigatorios' };
+  }
+
+  const company = getCompanyById(empresaId);
+  if (!company || company.ativo === false) {
+    return { status: 404, error: 'Empresa nao encontrada' };
+  }
+
+  const employee = state.users.find((user) =>
+    Number(user.id) === Number(funcionarioId) &&
+    user.tipo === 'funcionario' &&
+    user.ativo !== false &&
+    Number(user.empresa_id) === Number(company.id)
+  );
+  if (!employee) {
+    return { status: 404, error: 'Funcionario nao encontrado' };
+  }
+
+  const occupied = state.appointments
+    .filter((appointment) =>
+      Number(appointment.funcionario_id) === Number(employee.id) &&
+      Number(appointment.empresa_id) === Number(company.id) &&
+      String(appointment.data_agendamento) === String(data) &&
+      ACTIVE_OCCUPANCY_STATUSES.includes(String(appointment.status || ''))
+    )
+    .map((appointment) => ({
+      hora: appointment.hora_inicio,
+      duracao_minutos: Number(appointment.duracao_minutos) || 60
+    }));
+
+  return { status: 200, data: occupied };
+};
 
 const listCompanyServices = (companyId) =>
   state.services.filter((service) => Number(service.empresa_id) === Number(companyId) && service.ativo !== false);
@@ -226,6 +265,7 @@ module.exports = {
   resolveSession,
   listCompaniesForClients,
   listCompanyEmployees,
+  getOccupiedSlotsForCompany,
   listCompanyServices,
   sanitizeServicePayload,
   sanitizeEmployeePayload,
